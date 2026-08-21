@@ -31,7 +31,11 @@ class BookingCreate(BaseModel):
     time: str
     address: str
     notes: Optional[str] = None
-
+    
+class SaintActionRequest(BaseModel):
+    action: str
+    reason: Optional[str] = None
+    
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"phone": credentials.phone})
