@@ -24,6 +24,14 @@ class SaintProfileUpdate(BaseModel):
     location: Optional[str] = None
     bio: Optional[str] = None
 
+class BookingCreate(BaseModel):
+    saint_id: str
+    pooja_type: str
+    date: str
+    time: str
+    address: str
+    notes: Optional[str] = None
+
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"phone": credentials.phone})
