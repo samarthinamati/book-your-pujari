@@ -1,12 +1,19 @@
-import sys
-import os 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/app")))
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from auth import get_current_user
+from auth import get_current_user, verify_password, create_access_token
+from database import db
+
 class UserLogin(BaseModel):
     phone: str
     password: str
+
+class SaintProfile(BaseModel):
+    name: str
+    experience: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+
 api_router = APIRouter()
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
