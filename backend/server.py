@@ -35,6 +35,12 @@ class BookingCreate(BaseModel):
 class SaintActionRequest(BaseModel):
     action: str
     reason: Optional[str] = None
+
+class PaymentOrderResponse(BaseModel):
+    order_id: str
+    amount: float
+    currency: str
+    key: Optional[str] = None
     
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
