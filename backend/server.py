@@ -1,9 +1,9 @@
 from typing import Optional
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from auth import get_current_user, verify_password, create_access_token
 from database import db
+from fastapi.middleware.cors import CORSMiddleware
 
 class UserLogin(BaseModel):
     phone: str
