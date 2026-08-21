@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from .auth import get_current_user
 class UserLogin(BaseModel):
     phone: str
     password: str
