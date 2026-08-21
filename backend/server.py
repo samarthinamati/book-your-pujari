@@ -1,4 +1,5 @@
 from typing import Optional
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from auth import get_current_user, verify_password, create_access_token
@@ -13,7 +14,7 @@ class SaintProfile(BaseModel):
     experience: Optional[str] = None
     location: Optional[str] = None
     bio: Optional[str] = None
-
+app = FastAPI()
 api_router = APIRouter()
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
@@ -592,9 +593,6 @@ async def get_analytics(user: dict = Depends(get_current_user)):
         "total_revenue": round(total_revenue, 2)
     }
 
-# Include router
-app.include_router(api_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -602,14 +600,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(api_router)
 # Configure logging
+import logging 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+
+    
