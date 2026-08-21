@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPExeception
+from fastapi import APIRouter, HTTPException
 api_router = APIRouter()
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
