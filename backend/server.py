@@ -1,4 +1,8 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+class UserLogin(baceModel):
+    phone: str
+    password: str
 api_router = APIRouter()
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
