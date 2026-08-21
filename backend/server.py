@@ -36,6 +36,10 @@ class SaintActionRequest(BaseModel):
     action: str
     reason: Optional[str] = None
 
+class PaymentOrderCreate(BaseModel):
+    booking_id: str
+    amount: float
+
 class PaymentOrderResponse(BaseModel):
     order_id: str
     amount: float
