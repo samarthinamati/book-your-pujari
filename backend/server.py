@@ -5,6 +5,9 @@ from auth import get_current_user, verify_password, create_access_token
 from database import db
 from fastapi.middleware.cors import CORSMiddleware
 
+app = FastAPI()
+api_router = APIRouter()
+
 class UserLogin(BaseModel):
     phone: str
     password: str
@@ -14,8 +17,13 @@ class SaintProfile(BaseModel):
     experience: Optional[str] = None
     location: Optional[str] = None
     bio: Optional[str] = None
-app = FastAPI()
-api_router = APIRouter()
+
+class SaintProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    experience: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"phone": credentials.phone})
