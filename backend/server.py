@@ -1,4 +1,4 @@
-"token": token,
+
         "user": {
             "id": user_id,
             "email": user_data.email or "",
