@@ -50,6 +50,11 @@ class PaymentVerify(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+class ReviewCreate(BaseModel):
+    saint_id: str
+    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5 stars")
+    comment: Optional[str] = None
     
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
