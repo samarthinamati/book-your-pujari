@@ -55,6 +55,10 @@ class ReviewCreate(BaseModel):
     saint_id: str
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5 stars")
     comment: Optional[str] = None
+
+class AdminApprovalRequest(BaseModel):
+    status: str  # e.g., "approved" or "rejected"
+    reason: Optional[str] = None
     
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
