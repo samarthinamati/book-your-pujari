@@ -1,3 +1,5 @@
+from fastapi import APIRouter, HTTPExeception
+api_router = APIRouter()
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"phone": credentials.phone})
