@@ -1,13 +1,3 @@
-
-        "user": {
-            "id": user_id,
-            "email": user_data.email or "",
-            "name": user_data.name,
-            "phone": user_data.phone,
-            "role": user_data.role
-        }
-    }
-
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"phone": credentials.phone})
