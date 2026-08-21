@@ -1,3 +1,6 @@
+import sys
+import os 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/app")))
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from auth import get_current_user
