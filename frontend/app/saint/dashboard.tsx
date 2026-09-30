@@ -6,9 +6,9 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/src/context/AuthContext';
-import { apiClient } from '@/src/api/client';
-import { storage } from '@/src/utils/storage';
+import { useAuth } from '../../src/context/AuthContext';
+import { apiClient } from '../../src/api/client';
+import { storage } from '../../src/utils/storage';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
