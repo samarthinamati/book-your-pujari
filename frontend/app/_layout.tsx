@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { AuthProvider } from '@/src/context/AuthContext';
+import { AuthProvider } from '../src/context/AuthContext';
 import { useEffect } from 'react';
 import { Asset } from 'expo-asset';
 import * as SplashScreen from 'expo-splash-screen';
