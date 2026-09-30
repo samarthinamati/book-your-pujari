@@ -6,8 +6,8 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/src/context/AuthContext';
-import { apiClient } from '@/src/api/client';
+import { useAuth } from '../../src/context/AuthContext';
+import { apiClient } from '../../src/api/client';
 
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
