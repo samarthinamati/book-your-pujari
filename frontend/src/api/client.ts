@@ -1,19 +1,31 @@
-// frontend/src/api/client.ts
 import { storage } from '@/src/utils/storage';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL + '/api';
+const API_URL = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api`;
 
 export const apiClient = {
   async request(endpoint: string, options: RequestInit = {}) {
     const token = await storage.secureGet('auth_token', null);
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+      } else if (Array.isArray(options.headers)) {
+        options.headers.forEach(([key, value]) => {
+          headers[key] = value;
+        });
+      } else {
+        Object.assign(headers, options.headers);
+      }
+    }
+
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -22,7 +34,10 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+      const error = await response
+        .json()
+        .catch(() => ({ detail: 'An error occurred' }));
+
       throw new Error(error.detail || 'Request failed');
     }
 
@@ -30,18 +45,28 @@ export const apiClient = {
   },
 
   get(endpoint: string) {
-    return this.request(endpoint, { method: 'GET' });
+    return this.request(endpoint, {
+      method: 'GET',
+    });
   },
 
   post(endpoint: string, data: any) {
-    return this.request(endpoint, { method: 'POST', body: JSON.stringify(data) });
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   put(endpoint: string, data: any) {
-    return this.request(endpoint, { method: 'PUT', body: JSON.stringify(data) });
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
 
   delete(endpoint: string) {
-    return this.request(endpoint, { method: 'DELETE' });
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
   },
 };
