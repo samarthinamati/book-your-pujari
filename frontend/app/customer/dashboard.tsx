@@ -141,7 +141,7 @@ export default function CustomerDashboard() {
                     <View style={styles.saintStats}>
                       <View style={styles.stat}>
                         <Ionicons name="star" size={14} color="#FFB800" />
-                        <Text style={styles.statText}>{saint.rating.toFixed(1)}</Text>
+                        <Text style={styles.statText}>{Number(saint.rating ?? 0).toFixed(1)}</Text>
                       </View>
                       <View style={styles.stat}>
                         <Ionicons name="briefcase" size={14} color="#666" />
