@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: book-your-pujari-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npx expo export -p web
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
