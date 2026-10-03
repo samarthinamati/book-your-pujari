@@ -726,6 +726,21 @@ async def create_review(
     return review_doc
 
 
+@api_router.get("/reviews/saint/{saint_id}")
+async def get_saint_reviews(
+    saint_id: str,
+    user: dict = Depends(get_current_user)
+):
+    reviews = await db.reviews.find(
+        {"saint_id": saint_id}
+    ).sort("created_at", -1).to_list(1000)
+
+    for review in reviews:
+        review["id"] = str(review.pop("_id"))
+
+    return reviews
+
+
 # ==================== SAINT BOOKING ACTION ====================
 
 @api_router.put("/bookings/{booking_id}/saint-action")
@@ -900,4 +915,3 @@ app.include_router(api_router)
 async def shutdown_db_client():
     client.close()
 
-        
