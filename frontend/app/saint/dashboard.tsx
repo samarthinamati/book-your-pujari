@@ -309,7 +309,7 @@ export default function SaintDashboard() {
                 </View>
               </View>
               <View style={styles.statsRow}>
-                <View style={styles.statBox}><Text style={styles.statValue}>{profile.rating.toFixed(1)}</Text><Text style={styles.statLabel}>Rating</Text></View>
+                <View style={styles.statBox}><Text style={styles.statValue}>{Number(profile.rating ?? 0).toFixed(1)}</Text><Text style={styles.statLabel}>Rating</Text></View>
                 <View style={styles.statBox}><Text style={styles.statValue}>{paidBookings.length}</Text><Text style={styles.statLabel}>Bookings</Text></View>
                 <View style={styles.statBox}><Text style={styles.statValue}>₹{totalEarnings}</Text><Text style={styles.statLabel}>Earnings</Text></View>
               </View>
