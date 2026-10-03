@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../src/context/AuthContext';
 import { useEffect } from 'react';
-import { Asset } from 'expo-asset';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -11,16 +10,14 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        await Asset.loadAsync([
-          require('../assets/images/icon.png'),
-          require('../assets/images/adaptive-icon.png'),
-        ]);
+        // No local assets to preload
       } catch (e) {
-        console.warn('Asset preload error:', e);
+        console.warn('Splash screen error:', e);
       } finally {
         await SplashScreen.hideAsync();
       }
     }
+
     prepare();
   }, []);
 
