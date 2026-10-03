@@ -1,4 +1,4 @@
-// frontend/app/saint/profile-setup.tsx
+/ frontend/app/saint/profile-setup.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
