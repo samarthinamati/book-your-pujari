@@ -4,7 +4,7 @@ const API_URL = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api`;
 
 export const apiClient = {
   async request(endpoint: string, options: RequestInit = {}) {
-    const token = await storage.secureGet('auth_token', null);
+    const token = await storage.secureGet<string>('auth_token', null);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -24,9 +24,15 @@ export const apiClient = {
       }
     }
 
+    // IMPORTANT: send JWT token to backend
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token}`;
     }
+
+    console.log(
+      `[API] ${options.method || 'GET'} ${endpoint}`,
+      token ? 'AUTH TOKEN PRESENT' : 'NO AUTH TOKEN'
+    );
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
@@ -36,9 +42,13 @@ export const apiClient = {
     if (!response.ok) {
       const error = await response
         .json()
-        .catch(() => ({ detail: 'An error occurred' }));
+        .catch(() => ({
+          detail: `Request failed with status ${response.status}`,
+        }));
 
-      throw new Error(error.detail || 'Request failed');
+      throw new Error(
+        error.detail || `Request failed with status ${response.status}`
+      );
     }
 
     return response.json();
@@ -70,3 +80,4 @@ export const apiClient = {
     });
   },
 };
+    
