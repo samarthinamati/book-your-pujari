@@ -56,6 +56,12 @@ class UserLogin(BaseModel):
     phone: str
     password: str
 
+class UserRegister(BaseModel):
+    name: str
+    phone: str
+    password: str
+    role: str = "customer"
+
 
 class SaintProfile(BaseModel):
     name: str
@@ -284,6 +290,43 @@ async def ensure_admin_account():
 
 # ==================== AUTH & LOGIN ROUTES ====================
 
+@api_router.post("/auth/register")
+async def register(credentials: UserRegister):
+    phone = credentials.phone.strip()
+    name = credentials.name.strip()
+    role = credentials.role if credentials.role in ["customer", "saint"] else "customer"
+
+    if not name or not phone or len(credentials.password) < 4:
+        raise HTTPException(status_code=400, detail="Invalid registration details")
+
+    existing = await db.users.find_one({"phone": phone})
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this phone number already exists")
+
+    user = {
+        "name": name,
+        "phone": phone,
+        "email": "",
+        "password_hash": hash_password(credentials.password),
+        "role": role,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    result = await db.users.insert_one(user)
+    user_id = str(result.inserted_id)
+
+    token = create_access_token({"user_id": user_id, "role": role})
+    return {
+        "token": token,
+        "user": {
+            "id": user_id,
+            "email": "",
+            "name": name,
+            "phone": phone,
+            "role": role,
+        },
+    }
+
+
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
 
@@ -362,7 +405,7 @@ async def create_saint_profile(
 
     profile_dict = profile.dict()
     profile_dict["user_id"] = user["id"]
-    profile_dict["is_approved"] = True
+    profile_dict["is_approved"] = False
     profile_dict["created_at"] = datetime.utcnow().isoformat()
     profile_dict["updated_at"] = datetime.utcnow().isoformat()
 
@@ -572,7 +615,201 @@ async def get_my_bookings(
     return bookings
 
 
+# ==================== PAYMENT ROUTES ====================
+
+@api_router.post("/payment/create-order", response_model=PaymentOrderResponse)
+async def create_payment_order(
+    payload: PaymentOrderCreate,
+    user: dict = Depends(get_current_user)
+):
+    booking = await db.bookings.find_one({"_id": ObjectId(payload.booking_id)})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("customer_id") != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized booking access")
+    if razorpay_client is None:
+        raise HTTPException(status_code=500, detail="Payment service is not configured")
+
+    amount = int(booking.get("total_price", 0) * 100)
+    try:
+        order = razorpay_client.order.create({
+            "amount": amount,
+            "currency": "INR",
+            "receipt": payload.booking_id,
+            "payment_capture": 1,
+        })
+    except Exception as exc:
+        logger.exception("Razorpay order creation failed")
+        raise HTTPException(status_code=502, detail="Unable to create payment order") from exc
+
+    await db.bookings.update_one(
+        {"_id": booking["_id"]},
+        {"$set": {"razorpay_order_id": order["id"]}}
+    )
+    return {
+        "order_id": order["id"],
+        "amount": amount,
+        "currency": "INR",
+        "booking_id": payload.booking_id,
+        "key_id": RAZORPAY_KEY_ID,
+    }
+
+
+@api_router.post("/payment/verify")
+async def verify_payment(
+    payload: PaymentVerify,
+    user: dict = Depends(get_current_user)
+):
+    booking = await db.bookings.find_one({"_id": ObjectId(payload.booking_id)})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("customer_id") != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Unauthorized booking access")
+    if razorpay_client is None:
+        raise HTTPException(status_code=500, detail="Payment service is not configured")
+
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            "razorpay_order_id": payload.razorpay_order_id,
+            "razorpay_payment_id": payload.razorpay_payment_id,
+            "razorpay_signature": payload.razorpay_signature,
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Payment verification failed") from exc
+
+    await db.bookings.update_one(
+        {"_id": booking["_id"]},
+        {"$set": {
+            "payment_status": "paid",
+            "razorpay_payment_id": payload.razorpay_payment_id,
+            "razorpay_signature": payload.razorpay_signature,
+            "booking_status": "pending",
+            "paid_at": datetime.utcnow().isoformat(),
+        }}
+    )
+    return {"message": "Payment verified successfully", "booking_id": payload.booking_id}
+
+
+# ==================== REVIEW ROUTES ====================
+
+@api_router.post("/reviews")
+async def create_review(
+    review: ReviewCreate,
+    user: dict = Depends(get_current_user)
+):
+    if user.get("role") != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can submit reviews")
+    if review.rating < 1 or review.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+
+    booking = await db.bookings.find_one({"_id": ObjectId(review.booking_id)})
+    if not booking or booking.get("customer_id") != user["id"]:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("payment_status") != "paid":
+        raise HTTPException(status_code=400, detail="Only paid bookings can be reviewed")
+
+    existing = await db.reviews.find_one({"booking_id": review.booking_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Review already submitted")
+
+    review_doc = {
+        "booking_id": review.booking_id,
+        "saint_id": review.saint_id,
+        "customer_id": user["id"],
+        "rating": review.rating,
+        "comment": review.comment.strip(),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    result = await db.reviews.insert_one(review_doc)
+    review_doc["id"] = str(result.inserted_id)
+    review_doc.pop("_id", None)
+    return review_doc
+
+
+# ==================== SAINT BOOKING ACTION ====================
+
+@api_router.put("/bookings/{booking_id}/saint-action")
+async def saint_booking_action(
+    booking_id: str,
+    action: SaintActionRequest,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["saint"])
+    if action.action not in ["accept", "reject"]:
+        raise HTTPException(status_code=400, detail="Invalid booking action")
+    try:
+        booking = await db.bookings.find_one({"_id": ObjectId(booking_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("saint_id") is None:
+        raise HTTPException(status_code=400, detail="Booking has no saint")
+
+    profile = await db.saint_profiles.find_one({"_id": ObjectId(booking["saint_id"])})
+    if not profile or profile.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="This booking is not assigned to you")
+
+    status_value = "accepted" if action.action == "accept" else "rejected"
+    update = {"saint_action": status_value, "updated_at": datetime.utcnow().isoformat()}
+    if action.action == "accept":
+        update["booking_status"] = "confirmed"
+    else:
+        update["booking_status"] = "rejected"
+
+    await db.bookings.update_one({"_id": booking["_id"]}, {"$set": update})
+    return {"message": f"Booking {action.action}ed successfully", "booking_id": booking_id, "saint_action": status_value}
+
+
 # ==================== ADMIN ROUTES ====================
+
+@api_router.get("/admin/analytics")
+async def admin_analytics(user: dict = Depends(get_current_user)):
+    await require_role(user, ["admin"])
+    total_bookings = await db.bookings.count_documents({})
+    paid_bookings = await db.bookings.count_documents({"payment_status": "paid"})
+    active_saints = await db.saint_profiles.count_documents({"is_active": True, "is_approved": True})
+    pending_saints = await db.saint_profiles.count_documents({"is_approved": False})
+    pending_bookings = await db.bookings.count_documents({"booking_status": "pending"})
+    revenue_result = await db.bookings.aggregate([
+        {"$match": {"payment_status": "paid"}},
+        {"$group": {"_id": None, "total": {"$sum": "$platform_commission"}}}
+    ]).to_list(1)
+    revenue = revenue_result[0].get("total", 0) if revenue_result else 0
+    return {
+        "total_bookings": total_bookings,
+        "paid_bookings": paid_bookings,
+        "active_saints": active_saints,
+        "pending_saints": pending_saints,
+        "pending_bookings": pending_bookings,
+        "revenue": revenue,
+    }
+
+
+@api_router.get("/admin/saints/pending")
+async def admin_pending_saints(user: dict = Depends(get_current_user)):
+    await require_role(user, ["admin"])
+    saints = await db.saint_profiles.find({"is_approved": False}).to_list(1000)
+    for saint in saints:
+        saint["id"] = str(saint.pop("_id"))
+    return saints
+
+
+@api_router.post("/admin/saints/approve")
+async def admin_approve_saint(payload: AdminApprovalRequest, user: dict = Depends(get_current_user)):
+    await require_role(user, ["admin"])
+    try:
+        saint_id = ObjectId(payload.saint_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid saint ID")
+    result = await db.saint_profiles.update_one(
+        {"_id": saint_id},
+        {"$set": {"is_approved": payload.approved, "is_active": payload.approved, "updated_at": datetime.utcnow().isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Saint not found")
+    return {"message": "Saint approved" if payload.approved else "Saint rejected", "approved": payload.approved}
+
 
 @api_router.get("/admin/dashboard")
 async def admin_dashboard(
@@ -662,3 +899,5 @@ app.include_router(api_router)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+        
