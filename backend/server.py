@@ -445,30 +445,51 @@ async def update_saint_profile(
 ):
     await require_role(user, ["saint"])
 
-    update_dict = {
-        k: v
-        for k, v in updates.dict().items()
-        if v is not None
-    }
+    profile = await db.saint_profiles.find_one({
+        "user_id": user["id"]
+    })
 
-    update_dict["updated_at"] = datetime.utcnow().isoformat()
-
-    result = await db.saint_profiles.find_one_and_update(
-        {"user_id": user["id"]},
-        {"$set": update_dict},
-        return_document=True
-    )
-
-    if not result:
+    if not profile:
         raise HTTPException(
             status_code=404,
             detail="Profile not found"
         )
 
-    result["id"] = str(result.pop("_id"))
+    update_dict = {}
 
-    return result
+    if updates.name is not None:
+        update_dict["name"] = updates.name.strip()
 
+    if updates.location is not None:
+        update_dict["location"] = updates.location.strip()
+
+    if updates.operating_areas is not None:
+        update_dict["operating_areas"] = [
+            area.strip()
+            for area in updates.operating_areas
+            if area and area.strip()
+        ]
+
+    if updates.poojas is not None:
+        update_dict["poojas"] = updates.poojas
+
+    if updates.is_active is not None:
+        update_dict["is_active"] = updates.is_active
+
+    update_dict["updated_at"] = datetime.utcnow().isoformat()
+
+    await db.saint_profiles.update_one(
+        {"_id": profile["_id"]},
+        {"$set": update_dict}
+    )
+
+    updated_profile = await db.saint_profiles.find_one({
+        "_id": profile["_id"]
+    })
+
+    updated_profile["id"] = str(updated_profile.pop("_id"))
+
+    return updated_profile
 
 @api_router.delete("/saints/profile")
 async def delete_saint_profile(
