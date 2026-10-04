@@ -40,8 +40,9 @@ export default function BookingScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [bookingDate, setBookingDate] = useState(new Date());
-  const [bookingTime, setBookingTime] = useState(new Date());
+  // Date and time when the Saint should visit the customer's home
+  const [visitDate, setVisitDate] = useState(new Date());
+  const [visitTime, setVisitTime] = useState(new Date());
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -192,7 +193,7 @@ export default function BookingScreen() {
     if (!address.trim()) {
       Alert.alert(
         'Error',
-        'Please enter your address.'
+        'Please enter your home address.'
       );
       return;
     }
@@ -217,13 +218,15 @@ export default function BookingScreen() {
         pooja_name:
           selectedPooja?.name || '',
 
+        // Date when Saint should visit the customer's home
         booking_date:
-          bookingDate
+          visitDate
             .toISOString()
             .split('T')[0],
 
+        // Time when Saint should visit the customer's home
         booking_time:
-          bookingTime.toLocaleTimeString(
+          visitTime.toLocaleTimeString(
             'en-US',
             {
               hour: '2-digit',
@@ -231,6 +234,7 @@ export default function BookingScreen() {
             }
           ),
 
+        // Customer's home address
         address: address.trim(),
 
         customer_name:
@@ -241,7 +245,7 @@ export default function BookingScreen() {
       };
 
       console.log(
-        '[Booking] Creating booking:',
+        '[Booking] Creating home visit booking:',
         bookingData
       );
 
@@ -405,7 +409,7 @@ export default function BookingScreen() {
 
         Alert.alert(
           'Booking Confirmed!',
-          'Your pooja has been booked successfully.',
+          'Your pooja has been booked successfully. The Saint will visit your home at the selected date and time.',
           [
             {
               text: 'OK',
@@ -539,6 +543,7 @@ export default function BookingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -569,9 +574,11 @@ export default function BookingScreen() {
           false
         }
       >
+
         {/* SAINT DETAILS */}
         <View style={styles.saintCard}>
           <View style={styles.saintInfo}>
+
             <View
               style={styles.saintAvatar}
             >
@@ -674,13 +681,21 @@ export default function BookingScreen() {
           </View>
         </View>
 
-        {/* DATE & TIME */}
+        {/* SAINT VISIT DATE & TIME */}
         <View style={styles.section}>
+
           <Text style={styles.sectionTitle}>
-            Select Date & Time
+            When should the Saint visit?
           </Text>
 
-          {/* DATE BUTTON */}
+          <Text
+            style={styles.sectionDescription}
+          >
+            Select when the Saint should come to
+            your home for the pooja.
+          </Text>
+
+          {/* VISIT DATE */}
           <TouchableOpacity
             style={styles.dateTimeButton}
             onPress={() =>
@@ -700,13 +715,13 @@ export default function BookingScreen() {
               <Text
                 style={styles.dateTimeLabel}
               >
-                Date
+                Visit Date
               </Text>
 
               <Text
                 style={styles.dateTimeText}
               >
-                {bookingDate.toLocaleDateString(
+                {visitDate.toLocaleDateString(
                   'en-IN',
                   {
                     day: 'numeric',
@@ -724,7 +739,7 @@ export default function BookingScreen() {
             />
           </TouchableOpacity>
 
-          {/* TIME BUTTON */}
+          {/* VISIT TIME */}
           <TouchableOpacity
             style={styles.dateTimeButton}
             onPress={() =>
@@ -744,13 +759,13 @@ export default function BookingScreen() {
               <Text
                 style={styles.dateTimeLabel}
               >
-                Time
+                Visit Time
               </Text>
 
               <Text
                 style={styles.dateTimeText}
               >
-                {bookingTime.toLocaleTimeString(
+                {visitTime.toLocaleTimeString(
                   'en-IN',
                   {
                     hour: '2-digit',
@@ -770,7 +785,7 @@ export default function BookingScreen() {
           {/* DATE PICKER */}
           {showDatePicker && (
             <DateTimePicker
-              value={bookingDate}
+              value={visitDate}
               mode="date"
               minimumDate={new Date()}
               display="default"
@@ -781,7 +796,7 @@ export default function BookingScreen() {
                 setShowDatePicker(false);
 
                 if (date) {
-                  setBookingDate(date);
+                  setVisitDate(date);
                 }
               }}
             />
@@ -790,7 +805,7 @@ export default function BookingScreen() {
           {/* TIME PICKER */}
           {showTimePicker && (
             <DateTimePicker
-              value={bookingTime}
+              value={visitTime}
               mode="time"
               display="default"
               onChange={(
@@ -800,7 +815,7 @@ export default function BookingScreen() {
                 setShowTimePicker(false);
 
                 if (date) {
-                  setBookingTime(date);
+                  setVisitTime(date);
                 }
               }}
             />
@@ -809,6 +824,7 @@ export default function BookingScreen() {
 
         {/* CUSTOMER DETAILS */}
         <View style={styles.section}>
+
           <Text
             style={styles.sectionTitle}
           >
@@ -870,7 +886,7 @@ export default function BookingScreen() {
                 styles.input,
                 styles.textArea,
               ]}
-              placeholder="Complete Address"
+              placeholder="Your Home Address"
               value={address}
               onChangeText={
                 setAddress
@@ -907,7 +923,7 @@ export default function BookingScreen() {
           </View>
         </View>
 
-        {/* PAYMENT BUTTON */}
+        {/* PAYMENT */}
         <TouchableOpacity
           style={[
             styles.bookButton,
@@ -944,6 +960,7 @@ export default function BookingScreen() {
         <View
           style={styles.bottomSpace}
         />
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -1091,6 +1108,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 8,
+  },
+
+  sectionDescription: {
+    fontSize: 14,
+    color: '#777',
+    lineHeight: 20,
     marginBottom: 16,
   },
 
@@ -1157,7 +1181,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
-  /* INPUTS */
+  /* CUSTOMER INPUTS */
 
   inputContainer: {
     flexDirection: 'row',
@@ -1244,4 +1268,4 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 30,
   },
-});     
+});
