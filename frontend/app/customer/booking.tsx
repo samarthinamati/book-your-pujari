@@ -145,6 +145,17 @@ export default function BookingScreen() {
     }
   };
 
+  /*
+   * PRICE CALCULATION
+   *
+   * Pujari amount + 10% platform commission.
+   * Final amount is rounded UP to the next whole rupee.
+   *
+   * Examples:
+   * ₹6   -> ₹6.60 -> ₹7
+   * ₹50  -> ₹55
+   * ₹101 -> ₹111.10 -> ₹112
+   */
   const calculateTotal = () => {
     if (!selectedPooja) {
       return {
@@ -154,17 +165,13 @@ export default function BookingScreen() {
       };
     }
 
-    const base = Number(
-      selectedPooja?.price ?? 0
-    );
+    const base = Number(selectedPooja?.price ?? 0);
 
-    const commission = Math.round(
-      base * 0.10
-    );
+    // 10% platform commission
+    const commission = base * 0.10;
 
-    const total = Math.round(
-      base + commission
-    );
+    // Round UP to the next whole rupee
+    const total = Math.ceil(base + commission);
 
     return {
       base,
@@ -292,6 +299,11 @@ export default function BookingScreen() {
           'Payment order could not be created.'
         );
       }
+
+      console.log(
+        '[Payment] Backend payment order:',
+        paymentOrder
+      );
 
       if (Platform.OS !== 'web') {
         router.push({
