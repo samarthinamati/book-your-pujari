@@ -47,9 +47,11 @@ export default function BookingScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [address, setAddress] = useState('');
+
   const [customerName, setCustomerName] = useState(
     user?.name || ''
   );
+
   const [customerPhone, setCustomerPhone] = useState(
     user?.phone || ''
   );
@@ -77,29 +79,17 @@ export default function BookingScreen() {
 
   const fetchSaintDetails = async () => {
     try {
-      console.log(
-        '[Booking] Saint ID:',
-        saintId
-      );
-
-      console.log(
-        '[Booking] Pooja:',
-        poojaNameParam
-      );
+      console.log('[Booking] Saint ID:', saintId);
+      console.log('[Booking] Pooja:', poojaNameParam);
 
       const data = await apiClient.get(
         `/saints/${encodeURIComponent(String(saintId))}`
       );
 
-      console.log(
-        '[Booking] Saint response:',
-        data
-      );
+      console.log('[Booking] Saint response:', data);
 
       if (!data) {
-        throw new Error(
-          'Saint details not found'
-        );
+        throw new Error('Saint details not found');
       }
 
       setSaint(data);
@@ -112,27 +102,22 @@ export default function BookingScreen() {
 
       if (poojaNameParam) {
         try {
-          decodedPoojaName =
-            decodeURIComponent(
-              String(poojaNameParam)
-            );
+          decodedPoojaName = decodeURIComponent(
+            String(poojaNameParam)
+          );
         } catch {
-          decodedPoojaName =
-            String(poojaNameParam);
+          decodedPoojaName = String(poojaNameParam);
         }
       }
 
       const pooja = poojas.find(
         (p: any) =>
-          String(p?.name || '') ===
-          decodedPoojaName
+          String(p?.name || '') === decodedPoojaName
       );
 
       if (pooja) {
         setSelectedPooja(pooja);
       } else if (poojas.length > 0) {
-        // Fallback to first service if the
-        // requested pooja cannot be found.
         setSelectedPooja(poojas[0]);
       } else {
         setSelectedPooja(null);
@@ -304,7 +289,6 @@ export default function BookingScreen() {
         );
       }
 
-      // MOBILE
       if (Platform.OS !== 'web') {
         router.push({
           pathname: '/customer/payment',
@@ -348,7 +332,6 @@ export default function BookingScreen() {
         return;
       }
 
-      // WEB RAZORPAY
       const options = {
         description: `${
           selectedPooja?.name ||
@@ -586,7 +569,7 @@ export default function BookingScreen() {
           false
         }
       >
-        {/* SAINT */}
+        {/* SAINT DETAILS */}
         <View style={styles.saintCard}>
           <View style={styles.saintInfo}>
             <View
@@ -639,7 +622,7 @@ export default function BookingScreen() {
           </View>
         </View>
 
-        {/* POOJA */}
+        {/* POOJA DETAILS */}
         <View style={styles.section}>
           <Text
             style={styles.sectionTitle}
@@ -693,83 +676,109 @@ export default function BookingScreen() {
 
         {/* DATE & TIME */}
         <View style={styles.section}>
-          <Text
-            style={styles.sectionTitle}
-          >
+          <Text style={styles.sectionTitle}>
             Select Date & Time
           </Text>
 
+          {/* DATE BUTTON */}
           <TouchableOpacity
-            style={
-              styles.dateTimeButton
-            }
+            style={styles.dateTimeButton}
             onPress={() =>
               setShowDatePicker(true)
             }
+            activeOpacity={0.7}
           >
             <Ionicons
               name="calendar-outline"
-              size={20}
-              color="#666"
+              size={22}
+              color="#FF6B35"
             />
 
-            <Text
-              style={
-                styles.dateTimeText
-              }
+            <View
+              style={styles.dateTimeInfo}
             >
-              {bookingDate.toLocaleDateString(
-                'en-US',
-                {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                }
-              )}
-            </Text>
+              <Text
+                style={styles.dateTimeLabel}
+              >
+                Date
+              </Text>
+
+              <Text
+                style={styles.dateTimeText}
+              >
+                {bookingDate.toLocaleDateString(
+                  'en-IN',
+                  {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  }
+                )}
+              </Text>
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#999"
+            />
           </TouchableOpacity>
 
+          {/* TIME BUTTON */}
           <TouchableOpacity
-            style={
-              styles.dateTimeButton
-            }
+            style={styles.dateTimeButton}
             onPress={() =>
               setShowTimePicker(true)
             }
+            activeOpacity={0.7}
           >
             <Ionicons
               name="time-outline"
-              size={20}
-              color="#666"
+              size={22}
+              color="#FF6B35"
             />
 
-            <Text
-              style={
-                styles.dateTimeText
-              }
+            <View
+              style={styles.dateTimeInfo}
             >
-              {bookingTime.toLocaleTimeString(
-                'en-US',
-                {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }
-              )}
-            </Text>
+              <Text
+                style={styles.dateTimeLabel}
+              >
+                Time
+              </Text>
+
+              <Text
+                style={styles.dateTimeText}
+              >
+                {bookingTime.toLocaleTimeString(
+                  'en-IN',
+                  {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }
+                )}
+              </Text>
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#999"
+            />
           </TouchableOpacity>
 
+          {/* DATE PICKER */}
           {showDatePicker && (
             <DateTimePicker
               value={bookingDate}
               mode="date"
               minimumDate={new Date()}
+              display="default"
               onChange={(
                 event,
                 date
               ) => {
-                setShowDatePicker(
-                  Platform.OS === 'ios'
-                );
+                setShowDatePicker(false);
 
                 if (date) {
                   setBookingDate(date);
@@ -778,17 +787,17 @@ export default function BookingScreen() {
             />
           )}
 
+          {/* TIME PICKER */}
           {showTimePicker && (
             <DateTimePicker
               value={bookingTime}
               mode="time"
+              display="default"
               onChange={(
                 event,
                 date
               ) => {
-                setShowTimePicker(
-                  Platform.OS === 'ios'
-                );
+                setShowTimePicker(false);
 
                 if (date) {
                   setBookingTime(date);
@@ -907,9 +916,12 @@ export default function BookingScreen() {
           ]}
           onPress={handleBooking}
           disabled={submitting}
+          activeOpacity={0.8}
         >
           {submitting ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator
+              color="#FFF"
+            />
           ) : (
             <>
               <Text
@@ -979,6 +991,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  /* HEADER */
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1008,9 +1022,13 @@ const styles = StyleSheet.create({
     width: 40,
   },
 
+  /* CONTENT */
+
   content: {
     flex: 1,
   },
+
+  /* SAINT */
 
   saintCard: {
     backgroundColor: '#FFF',
@@ -1061,6 +1079,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
+  /* SECTIONS */
+
   section: {
     backgroundColor: '#FFF',
     padding: 20,
@@ -1073,6 +1093,8 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
   },
+
+  /* POOJA */
 
   poojaCard: {
     backgroundColor: '#F8F9FA',
@@ -1104,20 +1126,38 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 
+  /* DATE & TIME */
+
   dateTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     marginBottom: 12,
-    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+
+  dateTimeInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  dateTimeLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 3,
   },
 
   dateTimeText: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#333',
   },
+
+  /* INPUTS */
 
   inputContainer: {
     flexDirection: 'row',
@@ -1140,6 +1180,8 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
+
+  /* TOTAL */
 
   totalSection: {
     padding: 20,
@@ -1167,6 +1209,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FF6B35',
   },
+
+  /* PAYMENT */
 
   bookButton: {
     flexDirection: 'row',
@@ -1200,4 +1244,4 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 30,
   },
-});
+});     
