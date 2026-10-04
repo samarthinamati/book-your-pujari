@@ -893,19 +893,46 @@ async def create_booking(
 
 # ============================================================
 # CUSTOMER BOOKINGS
-# ============================================================
+# =============================================================
 
 @api_router.get("/bookings/my-bookings")
 async def get_my_bookings(
     user: dict = Depends(get_current_user)
 ):
 
-    bookings = await db.bookings.find({
-        "customer_id": user["id"]
-    }).sort(
-        "created_at",
-        -1
-    ).to_list(1000)
+    if user.get("role") == "customer":
+
+        bookings = await db.bookings.find({
+            "customer_id": user["id"]
+        }).sort(
+            "created_at",
+            -1
+        ).to_list(1000)
+
+    elif user.get("role") == "saint":
+
+        profile = await db.saint_profiles.find_one({
+            "user_id": user["id"]
+        })
+
+        if not profile:
+            raise HTTPException(
+                status_code=404,
+                detail="Saint profile not found"
+            )
+
+        saint_id = str(profile["_id"])
+
+        bookings = await db.bookings.find({
+            "saint_id": saint_id
+        }).sort(
+            "created_at",
+            -1
+        ).to_list(1000)
+
+    else:
+
+        bookings = []
 
     for booking in bookings:
 
@@ -914,8 +941,6 @@ async def get_my_bookings(
         )
 
     return bookings
-
-
 # ============================================================
 # PAYMENT
 # ============================================================
