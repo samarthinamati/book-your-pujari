@@ -168,8 +168,11 @@ export default function SaintDashboard() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.delete('/saints/profile');
-              setProfile(null);
+  await apiClient.delete('/saints/profile');
+
+await logout();
+
+router.replace('/auth/login');
             } catch (error: any) {
               Alert.alert('Error', error.message);
             }
