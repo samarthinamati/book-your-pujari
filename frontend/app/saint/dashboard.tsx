@@ -1,7 +1,16 @@
 // frontend/app/saint/dashboard.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Modal,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,15 +19,27 @@ import { useAuth } from '../../src/context/AuthContext';
 import { apiClient } from '../../src/api/client';
 import { storage } from '../../src/utils/storage';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 const formatDateWithDay = (dateStr: string): string => {
   try {
     const date = new Date(dateStr);
     const day = DAYS[date.getDay()];
+
     const formatted = date.toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
+
     return `${formatted} · ${day}`;
   } catch {
     return dateStr;
@@ -51,7 +72,11 @@ export default function SaintDashboard() {
 
   const fetchData = async () => {
     try {
-      const savedLastSeen = await storage.getItem('saint_last_seen_bookings', '');
+      const savedLastSeen = await storage.getItem(
+        'saint_last_seen_bookings',
+        ''
+      );
+
       setLastSeenAt(savedLastSeen);
 
       try {
@@ -62,7 +87,9 @@ export default function SaintDashboard() {
       }
 
       try {
-        const bookingsData = await apiClient.get('/bookings/my-bookings');
+        const bookingsData = await apiClient.get(
+          '/bookings/my-bookings'
+        );
 
         bookingsData.sort(
           (a: any, b: any) =>
@@ -73,13 +100,15 @@ export default function SaintDashboard() {
         setBookings(bookingsData);
 
         const pendingBookings = bookingsData.filter(
-          (b: any) => (b.saint_action || 'pending') === 'pending'
+          (b: any) =>
+            (b.saint_action || 'pending') === 'pending'
         );
 
         if (savedLastSeen) {
           const unread = pendingBookings.filter(
             (b: any) =>
-              new Date(b.created_at) > new Date(savedLastSeen)
+              new Date(b.created_at) >
+              new Date(savedLastSeen)
           );
 
           setNewBookingsCount(unread.length);
@@ -90,7 +119,10 @@ export default function SaintDashboard() {
         } else {
           setNewBookingsCount(pendingBookings.length);
 
-          if (pendingBookings.length > 0 && !popupBooking) {
+          if (
+            pendingBookings.length > 0 &&
+            !popupBooking
+          ) {
             setPopupBooking(pendingBookings[0]);
           }
         }
@@ -168,11 +200,19 @@ export default function SaintDashboard() {
           style: 'destructive',
           onPress: async () => {
             try {
-  await apiClient.delete('/saints/profile');
+              await apiClient.delete('/saints/profile');
 
-await logout();
+              // Clear dashboard data
+              setProfile(null);
+              setPopupBooking(null);
+              setBookings([]);
+              setNewBookingsCount(0);
 
-router.replace('/auth/login');
+              // Logout the Saint
+              await logout();
+
+              // Go back to login
+              router.replace('/auth/login');
             } catch (error: any) {
               Alert.alert('Error', error.message);
             }
@@ -203,7 +243,10 @@ router.replace('/auth/login');
       },
       {
         text: action === 'accept' ? 'Accept' : 'Reject',
-        style: action === 'reject' ? 'destructive' : 'default',
+        style:
+          action === 'reject'
+            ? 'destructive'
+            : 'default',
         onPress: async () => {
           try {
             await apiClient.put(
@@ -294,7 +337,8 @@ router.replace('/auth/login');
       b => b.payment_status === 'paid'
     )
     .reduce(
-      (sum, b) => sum + Number(b.base_price || 0),
+      (sum, b) =>
+        sum + Number(b.base_price || 0),
       0
     );
 
@@ -1210,13 +1254,13 @@ router.replace('/auth/login');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA'
+    backgroundColor: '#F8F9FA',
   },
 
   centerContainer: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
 
   header: {
@@ -1226,30 +1270,30 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    borderBottomColor: '#E0E0E0',
   },
 
   greeting: {
     fontSize: 14,
-    color: '#666'
+    color: '#666',
   },
 
   userName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 4
+    marginTop: 4,
   },
 
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 12,
   },
 
   notificationWrapper: {
     position: 'relative',
-    padding: 4
+    padding: 4,
   },
 
   notificationBadge: {
@@ -1264,13 +1308,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#FFF'
+    borderColor: '#FFF',
   },
 
   notificationBadgeText: {
     color: '#FFF',
     fontSize: 11,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
 
   iconButton: {
@@ -1279,11 +1323,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
 
   content: {
-    flex: 1
+    flex: 1,
   },
 
   notificationBanner: {
@@ -1297,44 +1341,44 @@ const styles = StyleSheet.create({
     shadowColor: '#FF6B35',
     shadowOffset: {
       width: 0,
-      height: 3
+      height: 3,
     },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    elevation: 4
+    elevation: 4,
   },
 
   notificationBannerText: {
     color: '#FFF',
     fontSize: 15,
     fontWeight: '600',
-    flex: 1
+    flex: 1,
   },
 
   markReadText: {
     color: '#FFF',
     fontSize: 11,
-    opacity: 0.9
+    opacity: 0.9,
   },
 
   emptyProfile: {
     alignItems: 'center',
     paddingVertical: 80,
-    paddingHorizontal: 24
+    paddingHorizontal: 24,
   },
 
   emptyTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 16
+    marginTop: 16,
   },
 
   emptySubtitle: {
     fontSize: 15,
     color: '#666',
     textAlign: 'center',
-    marginTop: 8
+    marginTop: 8,
   },
 
   createButton: {
@@ -1342,13 +1386,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    marginTop: 24
+    marginTop: 24,
   },
 
   createButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   profileCard: {
@@ -1359,16 +1403,16 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2
+      height: 2,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 3
+    elevation: 3,
   },
 
   profileHeader: {
     flexDirection: 'row',
-    marginBottom: 20
+    marginBottom: 20,
   },
 
   avatar: {
@@ -1378,37 +1422,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16
+    marginRight: 16,
   },
 
   profileInfo: {
     flex: 1,
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
 
   profileName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333'
+    color: '#333',
   },
 
   profileLocation: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4
+    marginTop: 4,
   },
 
   approvalStatus: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 8
+    marginTop: 8,
   },
 
   approvedText: {
     fontSize: 13,
     color: '#4CAF50',
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   statsRow: {
@@ -1416,23 +1460,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
-    paddingTop: 16
+    paddingTop: 16,
   },
 
   statBox: {
-    alignItems: 'center'
+    alignItems: 'center',
   },
 
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FF6B35'
+    color: '#FF6B35',
   },
 
   statLabel: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4
+    marginTop: 4,
   },
 
   actionsCard: {
@@ -1440,41 +1484,41 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 4,
-    marginBottom: 16
+    marginBottom: 16,
   },
 
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    gap: 12
+    gap: 12,
   },
 
   actionText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
 
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
 
   toggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    flex: 1
+    flex: 1,
   },
 
   toggleSubtext: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2
+    marginTop: 2,
   },
 
   toggleButton: {
@@ -1483,28 +1527,28 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#CCC',
     padding: 3,
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
 
   toggleButtonActive: {
-    backgroundColor: '#4CAF50'
+    backgroundColor: '#4CAF50',
   },
 
   toggleCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FFF'
+    backgroundColor: '#FFF',
   },
 
   toggleCircleActive: {
-    alignSelf: 'flex-end'
+    alignSelf: 'flex-end',
   },
 
   divider: {
     height: 1,
     backgroundColor: '#E0E0E0',
-    marginHorizontal: 16
+    marginHorizontal: 16,
   },
 
   section: {
@@ -1512,44 +1556,44 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
-    padding: 16
+    padding: 16,
   },
 
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 16,
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333'
+    color: '#333',
   },
 
   markAllText: {
     fontSize: 13,
     color: '#FF6B35',
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   emptyBookings: {
     padding: 32,
-    alignItems: 'center'
+    alignItems: 'center',
   },
 
   emptyBookingsText: {
     color: '#666',
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 12
+    marginTop: 12,
   },
 
   emptyBookingsSubtext: {
     color: '#999',
     fontSize: 13,
-    marginTop: 4
+    marginTop: 4,
   },
 
   bookingCard: {
@@ -1559,13 +1603,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    position: 'relative'
+    position: 'relative',
   },
 
   bookingCardNew: {
     borderColor: '#FF6B35',
     borderWidth: 2,
-    backgroundColor: '#FFF5F0'
+    backgroundColor: '#FFF5F0',
   },
 
   newBadge: {
@@ -1575,14 +1619,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B35',
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 10
+    borderRadius: 10,
   },
 
   newBadgeText: {
     color: '#FFF',
     fontSize: 10,
     fontWeight: 'bold',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
 
   bookingCardHeader: {
@@ -1592,14 +1636,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    borderBottomColor: '#E0E0E0',
   },
 
   bookingPoojaName: {
     fontSize: 17,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 6
+    marginBottom: 6,
   },
 
   paymentPill: {
@@ -1609,40 +1653,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    gap: 4
+    gap: 4,
   },
 
   paymentPillText: {
     fontSize: 11,
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   priceTag: {
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
   },
 
   priceTagLabel: {
     fontSize: 10,
     color: '#999',
     textTransform: 'uppercase',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
 
   priceTagValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#4CAF50',
-    marginTop: 2
+    marginTop: 2,
   },
 
   detailsGrid: {
-    gap: 10
+    gap: 10,
   },
 
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10
+    gap: 10,
   },
 
   detailIcon: {
@@ -1652,7 +1696,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2
+    marginTop: 2,
   },
 
   detailLabel: {
@@ -1660,14 +1704,14 @@ const styles = StyleSheet.create({
     color: '#999',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
-    marginBottom: 2
+    marginBottom: 2,
   },
 
   detailValue: {
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
-    lineHeight: 20
+    lineHeight: 20,
   },
 
   actionButtonsRow: {
@@ -1676,7 +1720,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0'
+    borderTopColor: '#E0E0E0',
   },
 
   actionBtn: {
@@ -1686,21 +1730,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 10,
-    gap: 6
+    gap: 6,
   },
 
   acceptActionBtn: {
-    backgroundColor: '#4CAF50'
+    backgroundColor: '#4CAF50',
   },
 
   rejectActionBtn: {
-    backgroundColor: '#F44336'
+    backgroundColor: '#F44336',
   },
 
   actionBtnText: {
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '600',
   },
 
   modalOverlay: {
@@ -1708,7 +1752,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20
+    padding: 20,
   },
 
   modalContent: {
@@ -1716,12 +1760,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     width: '100%',
-    maxHeight: '90%'
+    maxHeight: '90%',
   },
 
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 20,
   },
 
   bellIcon: {
@@ -1731,25 +1775,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12
+    marginBottom: 12,
   },
 
   modalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333'
+    color: '#333',
   },
 
   modalSubtitle: {
     fontSize: 14,
     color: '#666',
     marginTop: 4,
-    textAlign: 'center'
+    textAlign: 'center',
   },
 
   modalScroll: {
     maxHeight: 400,
-    marginBottom: 16
+    marginBottom: 16,
   },
 
   modalPoojaCard: {
@@ -1759,20 +1803,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FF6B35',
-    alignItems: 'center'
+    alignItems: 'center',
   },
 
   modalPoojaName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4
+    marginBottom: 4,
   },
 
   modalPoojaEarn: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50'
+    color: '#4CAF50',
   },
 
   modalDetail: {
@@ -1782,31 +1826,31 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 10,
     backgroundColor: '#F8F9FA',
-    borderRadius: 8
+    borderRadius: 8,
   },
 
   modalDetailContent: {
-    flex: 1
+    flex: 1,
   },
 
   modalDetailLabel: {
     fontSize: 11,
     color: '#999',
     textTransform: 'uppercase',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   },
 
   modalDetailValue: {
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
-    marginTop: 2
+    marginTop: 2,
   },
 
   modalActions: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10
+    marginBottom: 10,
   },
 
   modalBtn: {
@@ -1816,34 +1860,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 12,
-    gap: 6
+    gap: 6,
   },
 
   modalAcceptBtn: {
-    backgroundColor: '#4CAF50'
+    backgroundColor: '#4CAF50',
   },
 
   modalRejectBtn: {
-    backgroundColor: '#F44336'
+    backgroundColor: '#F44336',
   },
 
   modalBtnText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '700',
   },
 
   btnDisabled: {
-    opacity: 0.6
+    opacity: 0.6,
   },
 
   modalLater: {
     alignItems: 'center',
-    padding: 10
+    padding: 10,
   },
 
   modalLaterText: {
     color: '#999',
-    fontSize: 14
+    fontSize: 14,
   },
 });
