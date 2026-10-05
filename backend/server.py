@@ -659,22 +659,39 @@ async def get_my_bookings(
     user: dict = Depends(get_current_user)
 ):
     if user.get("role") == "customer":
-        query = {"customer_id": user["id"]}
+        # Customer can see all their bookings
+        query = {
+            "customer_id": user["id"]
+        }
+
     elif user.get("role") == "saint":
-        profile = await db.saint_profiles.find_one({"user_id": user["id"]})
+        # Saint can see ONLY bookings that have been paid
+        profile = await db.saint_profiles.find_one({
+            "user_id": user["id"]
+        })
+
         if not profile:
             return []
-        query = {"saint_id": str(profile["_id"])}
+
+        query = {
+            "saint_id": str(profile["_id"]),
+            "payment_status": "paid"
+        }
+
     else:
         query = {}
 
-    bookings = await db.bookings.find(query).sort("created_at", -1).to_list(1000)
+    bookings = await db.bookings.find(
+        query
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(1000)
 
     for booking in bookings:
         booking["id"] = str(booking.pop("_id"))
 
     return bookings
-
 
 # ==================== PAYMENT ROUTES ====================
 
