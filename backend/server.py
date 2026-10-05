@@ -595,12 +595,37 @@ async def create_booking(
             detail="This Saint is currently unavailable"
         )
 
-    base_price = 1000
-    platform_commission = round(base_price * 0.10)
-    total_price = round(
-        base_price + platform_commission
-    )
+       # Find the price set by the Saint for the selected pooja
+    selected_pooja = None
 
+    for pooja in saint.get("poojas", []):
+        if str(pooja.get("name", "")).strip().lower() == booking.pooja_name.strip().lower():
+            selected_pooja = pooja
+            break
+
+    if not selected_pooja:
+        raise HTTPException(
+            status_code=404,
+            detail="Selected pooja was not found for this Saint"
+        )
+
+    try:
+        base_price = float(selected_pooja.get("price", 0))
+    except (TypeError, ValueError):
+        base_price = 0
+
+    if base_price <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid price set for this pooja"
+        )
+
+    # Platform commission = 10% of Saint's price
+    # Total is always rounded UP to the next whole rupee
+    import math
+
+    total_price = math.ceil(base_price * 1.10)
+    platform_commission = total_price - base_price
     booking_dict = {
         "customer_id": user["id"],
         "saint_id": booking.saint_id,
