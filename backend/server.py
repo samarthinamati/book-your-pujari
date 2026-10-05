@@ -836,6 +836,12 @@ async def saint_booking_action(
         raise HTTPException(status_code=400, detail="Invalid booking ID")
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+            # Customer must complete payment before Saint can accept or reject
+    if booking.get("payment_status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Customer has not completed payment yet"
+        )
     if booking.get("saint_id") is None:
         raise HTTPException(status_code=400, detail="Booking has no saint")
 
