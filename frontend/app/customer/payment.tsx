@@ -106,8 +106,16 @@ export default function PaymentWebScreen() {
             razorpay_signature: data.razorpay_signature,
             booking_id: bookingId,
           });
-          Alert.alert('Booking Confirmed!', 'Your pooja has been booked successfully.',
-            [{ text: 'OK', onPress: () => router.replace('/customer/bookings') }]);
+        Alert.alert(
+  '✅ Saint Booked Successfully!',
+  'Your payment has been completed and your booking has been sent to the Saint.\n\nWaiting for Saint confirmation.\n\nFor further status updates, check the 📅 Calendar icon on the Saint Search page.',
+  [
+    {
+      text: 'OK',
+      onPress: () => router.replace('/customer/dashboard'),
+    },
+  ]
+);
         } catch (error: any) {
           Alert.alert('Payment Verification Failed', error.message,
             [{ text: 'OK', onPress: () => router.back() }]);
