@@ -191,17 +191,17 @@ export default function SaintProfileSetup() {
         console.log('Updated Saint Profile:', updatedProfile);
 
         Alert.alert(
-          'Success',
-          'Your Saint profile has been updated successfully.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                router.replace('/saint/dashboard');
-              },
-            },
-          ]
-        );
+  '🎉 Profile Created Successfully!',
+  'Your profile has been created and is now LIVE. Customers can now find and book your poojas.',
+  [
+    {
+      text: 'OK',
+      onPress: () => {
+        router.replace('/saint/dashboard');
+      },
+    },
+  ]
+);
       } else {
         // CREATE NEW PROFILE
         const createdProfile = await apiClient.post(
