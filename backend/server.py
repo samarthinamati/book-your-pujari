@@ -524,7 +524,13 @@ async def search_saints(
 
     if location:
         query["operating_areas"] = {
-            "$regex": location,
+            "$regex": location.strip(),
+            "$options": "i"
+        }
+
+    if pooja:
+        query["poojas.name"] = {
+            "$regex": pooja.strip(),
             "$options": "i"
         }
 
@@ -536,7 +542,6 @@ async def search_saints(
         saint["id"] = str(saint.pop("_id"))
 
     return saints
-
 
 @api_router.get("/saints/{saint_id}")
 async def get_saint_details(
