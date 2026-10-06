@@ -371,6 +371,12 @@ export default function BookingScreen() {
             paymentResult
           );
 
+          /*
+           * IMPORTANT:
+           * Verify payment with backend first.
+           * Only after successful verification
+           * show the success popup.
+           */
           await apiClient.post(
             '/payment/verify',
             {
@@ -388,15 +394,18 @@ export default function BookingScreen() {
             }
           );
 
+          /*
+           * CUSTOMER SUCCESS POPUP
+           */
           Alert.alert(
-            'Booking Confirmed!',
-            'Your pooja has been booked successfully. The Saint will visit your home at the selected date and time.',
+            '✅ Saint Booked Successfully!',
+            'Your payment has been completed and your booking has been sent to the Saint.\n\nWaiting for Saint confirmation.\n\nFor further status updates, check the 📅 Calendar icon on the Saint Search page.',
             [
               {
                 text: 'OK',
                 onPress: () =>
                   router.replace(
-                    '/customer/bookings'
+                    '/customer/dashboard'
                   ),
               },
             ]
