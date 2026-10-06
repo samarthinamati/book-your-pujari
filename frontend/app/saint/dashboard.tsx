@@ -30,8 +30,15 @@ const DAYS = [
 ];
 
 const formatDateWithDay = (dateStr: string): string => {
+  if (!dateStr) return 'Not available';
+
   try {
     const date = new Date(dateStr);
+
+    if (isNaN(date.getTime())) {
+      return dateStr;
+    }
+
     const day = DAYS[date.getDay()];
 
     const formatted = date.toLocaleDateString('en-US', {
@@ -42,7 +49,7 @@ const formatDateWithDay = (dateStr: string): string => {
 
     return `${formatted} · ${day}`;
   } catch {
-    return dateStr;
+    return dateStr || 'Not available';
   }
 };
 
@@ -59,15 +66,8 @@ export default function SaintDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // Automatically check for new bookings every 5 seconds
   useEffect(() => {
     fetchData();
-
-    const interval = setInterval(() => {
-      fetchData();
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
@@ -87,9 +87,11 @@ export default function SaintDashboard() {
       }
 
       try {
-        const bookingsData = await apiClient.get(
-          '/bookings/my-bookings'
-        );
+        const response = await apiClient.get('/bookings/my-bookings');
+
+        const bookingsData = Array.isArray(response)
+          ? response
+          : [];
 
         bookingsData.sort(
           (a: any, b: any) =>
@@ -97,32 +99,39 @@ export default function SaintDashboard() {
             new Date(a.created_at).getTime()
         );
 
-        setBookings(bookingsData);
+        /*
+         * Saint should only see paid bookings.
+         * Backend already returns paid bookings for Saints,
+         * but this also protects the frontend.
+         */
+        const paidBookings = bookingsData.filter(
+          (booking: any) =>
+            booking.payment_status === 'paid'
+        );
 
-        const pendingBookings = bookingsData.filter(
-          (b: any) =>
-            (b.saint_action || 'pending') === 'pending'
+        setBookings(paidBookings);
+
+        const pendingBookings = paidBookings.filter(
+          (booking: any) =>
+            (booking.saint_action || 'pending') === 'pending'
         );
 
         if (savedLastSeen) {
           const unread = pendingBookings.filter(
-            (b: any) =>
-              new Date(b.created_at) >
+            (booking: any) =>
+              new Date(booking.created_at) >
               new Date(savedLastSeen)
           );
 
           setNewBookingsCount(unread.length);
 
-          if (unread.length > 0 && !popupBooking) {
+          if (unread.length > 0) {
             setPopupBooking(unread[0]);
           }
         } else {
           setNewBookingsCount(pendingBookings.length);
 
-          if (
-            pendingBookings.length > 0 &&
-            !popupBooking
-          ) {
+          if (pendingBookings.length > 0) {
             setPopupBooking(pendingBookings[0]);
           }
         }
@@ -153,20 +162,24 @@ export default function SaintDashboard() {
   };
 
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/auth/login');
+    Alert.alert(
+      'Logout',
+      'Are you sure?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/auth/login');
+          },
+        },
+      ]
+    );
   };
 
   const handleToggleActive = async () => {
@@ -182,7 +195,10 @@ export default function SaintDashboard() {
 
       setProfile(updated);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert(
+        'Error',
+        error.message
+      );
     }
   };
 
@@ -200,21 +216,16 @@ export default function SaintDashboard() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.delete('/saints/profile');
+              await apiClient.delete(
+                '/saints/profile'
+              );
 
-              // Clear dashboard data
               setProfile(null);
-              setPopupBooking(null);
-              setBookings([]);
-              setNewBookingsCount(0);
-
-              // Logout the Saint
-              await logout();
-
-              // Go back to login
-              router.replace('/auth/login');
             } catch (error: any) {
-              Alert.alert('Error', error.message);
+              Alert.alert(
+                'Error',
+                error.message
+              );
             }
           },
         },
@@ -236,46 +247,62 @@ export default function SaintDashboard() {
         ? 'Confirm that you will perform this pooja?'
         : 'Are you sure you want to reject this booking? Customer will be refunded.';
 
-    Alert.alert(title, message, [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: action === 'accept' ? 'Accept' : 'Reject',
-        style:
-          action === 'reject'
-            ? 'destructive'
-            : 'default',
-        onPress: async () => {
-          try {
-            await apiClient.put(
-              `/bookings/${bookingId}/saint-action`,
-              {
-                action,
-                reason: '',
-              }
-            );
-
-            Alert.alert(
-              'Success',
-              `Booking ${action}ed successfully`
-            );
-
-            setPopupBooking(null);
-            await fetchData();
-          } catch (error: any) {
-            Alert.alert('Error', error.message);
-          }
+    Alert.alert(
+      title,
+      message,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text:
+            action === 'accept'
+              ? 'Accept'
+              : 'Reject',
+          style:
+            action === 'reject'
+              ? 'destructive'
+              : 'default',
+          onPress: async () => {
+            try {
+              await apiClient.put(
+                `/bookings/${bookingId}/saint-action`,
+                {
+                  action,
+                  reason: '',
+                }
+              );
+
+              Alert.alert(
+                'Success',
+                `Booking ${action}ed successfully`
+              );
+
+              setPopupBooking(null);
+
+              fetchData();
+            } catch (error: any) {
+              Alert.alert(
+                'Error',
+                error.message
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handlePopupAction = async (
     action: 'accept' | 'reject'
   ) => {
-    if (!popupBooking || actionProcessing) return;
+    if (
+      !popupBooking ||
+      actionProcessing
+    ) {
+      return;
+    }
 
     setActionProcessing(true);
 
@@ -297,15 +324,20 @@ export default function SaintDashboard() {
 
       setPopupBooking(null);
 
-      await fetchData();
+      fetchData();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert(
+        'Error',
+        error.message
+      );
     } finally {
       setActionProcessing(false);
     }
   };
 
-  const isNewBooking = (booking: any): boolean => {
+  const isNewBooking = (
+    booking: any
+  ): boolean => {
     if (
       booking.saint_action &&
       booking.saint_action !== 'pending'
@@ -313,7 +345,9 @@ export default function SaintDashboard() {
       return false;
     }
 
-    if (!lastSeenAt) return true;
+    if (!lastSeenAt) {
+      return true;
+    }
 
     return (
       new Date(booking.created_at) >
@@ -334,22 +368,27 @@ export default function SaintDashboard() {
 
   const totalEarnings = bookings
     .filter(
-      b => b.payment_status === 'paid'
+      (booking) =>
+        booking.payment_status === 'paid'
     )
     .reduce(
-      (sum, b) =>
-        sum + Number(b.base_price || 0),
+      (sum, booking) =>
+        sum + Number(booking.base_price ?? 0),
       0
     );
 
   const paidBookings = bookings.filter(
-    b => b.payment_status === 'paid'
+    (booking) =>
+      booking.payment_status === 'paid'
   );
 
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* NEW BOOKING POPUP */}
+      {/* ================================
+          NEW BOOKING POPUP
+      ================================= */}
+
       <Modal
         visible={!!popupBooking}
         transparent
@@ -359,9 +398,11 @@ export default function SaintDashboard() {
         }
       >
         <View style={styles.modalOverlay}>
+
           <View style={styles.modalContent}>
 
             <View style={styles.modalHeader}>
+
               <View style={styles.bellIcon}>
                 <Ionicons
                   name="notifications"
@@ -377,6 +418,7 @@ export default function SaintDashboard() {
               <Text style={styles.modalSubtitle}>
                 Would you like to accept this booking?
               </Text>
+
             </View>
 
             {popupBooking && (
@@ -385,18 +427,26 @@ export default function SaintDashboard() {
                 showsVerticalScrollIndicator={false}
               >
 
+                {/* POOJA */}
+
                 <View style={styles.modalPoojaCard}>
+
                   <Text style={styles.modalPoojaName}>
-                    {popupBooking.pooja_name}
+                    {popupBooking.pooja_name ||
+                      'Pooja not available'}
                   </Text>
 
                   <Text style={styles.modalPoojaEarn}>
                     You earn: ₹
-                    {popupBooking.base_price}
+                    {popupBooking.base_price ?? 0}
                   </Text>
+
                 </View>
 
+                {/* CUSTOMER */}
+
                 <View style={styles.modalDetail}>
+
                   <Ionicons
                     name="person"
                     size={18}
@@ -404,17 +454,24 @@ export default function SaintDashboard() {
                   />
 
                   <View style={styles.modalDetailContent}>
+
                     <Text style={styles.modalDetailLabel}>
                       Customer
                     </Text>
 
                     <Text style={styles.modalDetailValue}>
-                      {popupBooking.customer_name}
+                      {popupBooking.customer_name ||
+                        'Not available'}
                     </Text>
+
                   </View>
+
                 </View>
 
+                {/* MOBILE */}
+
                 <View style={styles.modalDetail}>
+
                   <Ionicons
                     name="call"
                     size={18}
@@ -422,17 +479,24 @@ export default function SaintDashboard() {
                   />
 
                   <View style={styles.modalDetailContent}>
+
                     <Text style={styles.modalDetailLabel}>
                       Mobile
                     </Text>
 
                     <Text style={styles.modalDetailValue}>
-                      {popupBooking.customer_phone}
+                      {popupBooking.customer_phone ||
+                        'Not available'}
                     </Text>
+
                   </View>
+
                 </View>
 
+                {/* DATE */}
+
                 <View style={styles.modalDetail}>
+
                   <Ionicons
                     name="calendar"
                     size={18}
@@ -440,19 +504,27 @@ export default function SaintDashboard() {
                   />
 
                   <View style={styles.modalDetailContent}>
+
                     <Text style={styles.modalDetailLabel}>
                       Date & Day
                     </Text>
 
                     <Text style={styles.modalDetailValue}>
-                      {formatDateWithDay(
-                        popupBooking.booking_date
-                      )}
+                      {popupBooking.booking_date
+                        ? formatDateWithDay(
+                            popupBooking.booking_date
+                          )
+                        : 'Not available'}
                     </Text>
+
                   </View>
+
                 </View>
 
+                {/* TIME */}
+
                 <View style={styles.modalDetail}>
+
                   <Ionicons
                     name="time"
                     size={18}
@@ -460,17 +532,24 @@ export default function SaintDashboard() {
                   />
 
                   <View style={styles.modalDetailContent}>
+
                     <Text style={styles.modalDetailLabel}>
                       Time
                     </Text>
 
                     <Text style={styles.modalDetailValue}>
-                      {popupBooking.booking_time}
+                      {popupBooking.booking_time ||
+                        'Not available'}
                     </Text>
+
                   </View>
+
                 </View>
 
+                {/* ADDRESS */}
+
                 <View style={styles.modalDetail}>
+
                   <Ionicons
                     name="location"
                     size={18}
@@ -478,18 +557,27 @@ export default function SaintDashboard() {
                   />
 
                   <View style={styles.modalDetailContent}>
+
                     <Text style={styles.modalDetailLabel}>
                       Address
                     </Text>
 
-                    <Text style={styles.modalDetailValue}>
-                      {popupBooking.address}
+                    <Text
+                      style={styles.modalDetailValue}
+                      numberOfLines={10}
+                    >
+                      {popupBooking.address ||
+                        'Not available'}
                     </Text>
+
                   </View>
+
                 </View>
 
               </ScrollView>
             )}
+
+            {/* POPUP BUTTONS */}
 
             <View style={styles.modalActions}>
 
@@ -515,6 +603,7 @@ export default function SaintDashboard() {
                 <Text style={styles.modalBtnText}>
                   Reject
                 </Text>
+
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -539,6 +628,7 @@ export default function SaintDashboard() {
                 <Text style={styles.modalBtnText}>
                   Accept
                 </Text>
+
               </TouchableOpacity>
 
             </View>
@@ -556,13 +646,18 @@ export default function SaintDashboard() {
             </TouchableOpacity>
 
           </View>
+
         </View>
       </Modal>
 
-      {/* HEADER */}
+      {/* ================================
+          HEADER
+      ================================= */}
+
       <View style={styles.header}>
 
         <View>
+
           <Text style={styles.greeting}>
             Welcome,
           </Text>
@@ -570,12 +665,14 @@ export default function SaintDashboard() {
           <Text style={styles.userName}>
             {user?.name}
           </Text>
+
         </View>
 
         <View style={styles.headerActions}>
 
           {newBookingsCount > 0 && (
             <View style={styles.notificationWrapper}>
+
               <Ionicons
                 name="notifications"
                 size={24}
@@ -583,10 +680,15 @@ export default function SaintDashboard() {
               />
 
               <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
+
+                <Text
+                  style={styles.notificationBadgeText}
+                >
                   {newBookingsCount}
                 </Text>
+
               </View>
+
             </View>
           )}
 
@@ -603,7 +705,12 @@ export default function SaintDashboard() {
           </TouchableOpacity>
 
         </View>
+
       </View>
+
+      {/* ================================
+          MAIN CONTENT
+      ================================= */}
 
       <ScrollView
         style={styles.content}
@@ -630,13 +737,16 @@ export default function SaintDashboard() {
             </Text>
 
             <Text style={styles.emptySubtitle}>
-              Set up your profile to start receiving bookings
+              Set up your profile to start receiving
+              bookings
             </Text>
 
             <TouchableOpacity
               style={styles.createButton}
               onPress={() =>
-                router.push('/saint/profile-setup')
+                router.push(
+                  '/saint/profile-setup'
+                )
               }
               testID="create-profile-button"
             >
@@ -651,40 +761,56 @@ export default function SaintDashboard() {
 
           <>
 
-            {/* NOTIFICATION BANNER */}
+            {/* NOTIFICATION */}
+
             {newBookingsCount > 0 && (
               <TouchableOpacity
                 style={styles.notificationBanner}
                 onPress={markAllAsSeen}
               >
+
                 <Ionicons
                   name="notifications"
                   size={20}
                   color="#FFF"
                 />
 
-                <Text style={styles.notificationBannerText}>
-                  You have {newBookingsCount} new booking
-                  {newBookingsCount > 1 ? 's' : ''}!
+                <Text
+                  style={
+                    styles.notificationBannerText
+                  }
+                >
+                  You have {newBookingsCount} new
+                  booking
+                  {newBookingsCount > 1
+                    ? 's'
+                    : ''}
+                  !
                 </Text>
 
-                <Text style={styles.markReadText}>
+                <Text
+                  style={styles.markReadText}
+                >
                   Tap to mark as read
                 </Text>
+
               </TouchableOpacity>
             )}
 
             {/* PROFILE CARD */}
+
             <View style={styles.profileCard}>
 
               <View style={styles.profileHeader}>
 
                 <View style={styles.avatar}>
+
                   <Ionicons
                     name="person"
                     size={40}
                     color="#FF6B35"
                   />
+
                 </View>
 
                 <View style={styles.profileInfo}>
@@ -693,11 +819,15 @@ export default function SaintDashboard() {
                     {profile.name}
                   </Text>
 
-                  <Text style={styles.profileLocation}>
+                  <Text
+                    style={styles.profileLocation}
+                  >
                     {profile.location}
                   </Text>
 
-                  <View style={styles.approvalStatus}>
+                  <View
+                    style={styles.approvalStatus}
+                  >
 
                     <Ionicons
                       name="checkmark-circle"
@@ -705,18 +835,22 @@ export default function SaintDashboard() {
                       color="#4CAF50"
                     />
 
-                    <Text style={styles.approvedText}>
+                    <Text
+                      style={styles.approvedText}
+                    >
                       Live & Verified
                     </Text>
 
                   </View>
 
                 </View>
+
               </View>
 
               <View style={styles.statsRow}>
 
                 <View style={styles.statBox}>
+
                   <Text style={styles.statValue}>
                     {Number(
                       profile.rating ?? 0
@@ -726,9 +860,11 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Rating
                   </Text>
+
                 </View>
 
                 <View style={styles.statBox}>
+
                   <Text style={styles.statValue}>
                     {paidBookings.length}
                   </Text>
@@ -736,9 +872,11 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Bookings
                   </Text>
+
                 </View>
 
                 <View style={styles.statBox}>
+
                   <Text style={styles.statValue}>
                     ₹{totalEarnings}
                   </Text>
@@ -746,6 +884,7 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Earnings
                   </Text>
+
                 </View>
 
               </View>
@@ -753,6 +892,7 @@ export default function SaintDashboard() {
             </View>
 
             {/* ACTIONS */}
+
             <View style={styles.actionsCard}>
 
               <TouchableOpacity
@@ -764,6 +904,7 @@ export default function SaintDashboard() {
                 }
                 testID="edit-profile-button"
               >
+
                 <Ionicons
                   name="create-outline"
                   size={24}
@@ -779,6 +920,7 @@ export default function SaintDashboard() {
                   size={20}
                   color="#999"
                 />
+
               </TouchableOpacity>
 
               <View style={styles.divider} />
@@ -802,15 +944,19 @@ export default function SaintDashboard() {
                   />
 
                   <View>
+
                     <Text style={styles.actionText}>
                       Profile Status
                     </Text>
 
-                    <Text style={styles.toggleSubtext}>
+                    <Text
+                      style={styles.toggleSubtext}
+                    >
                       {profile.is_active
                         ? 'Active'
                         : 'Inactive'}
                     </Text>
+
                   </View>
 
                 </View>
@@ -824,6 +970,7 @@ export default function SaintDashboard() {
                   onPress={handleToggleActive}
                   testID="toggle-active-button"
                 >
+
                   <View
                     style={[
                       styles.toggleCircle,
@@ -831,6 +978,7 @@ export default function SaintDashboard() {
                         styles.toggleCircleActive,
                     ]}
                   />
+
                 </TouchableOpacity>
 
               </View>
@@ -842,6 +990,7 @@ export default function SaintDashboard() {
                 onPress={handleDeleteProfile}
                 testID="delete-profile-button"
               >
+
                 <Ionicons
                   name="trash-outline"
                   size={24}
@@ -862,11 +1011,13 @@ export default function SaintDashboard() {
                   size={20}
                   color="#999"
                 />
+
               </TouchableOpacity>
 
             </View>
 
             {/* BOOKINGS */}
+
             <View style={styles.section}>
 
               <View style={styles.sectionHeader}>
@@ -879,7 +1030,9 @@ export default function SaintDashboard() {
                   <TouchableOpacity
                     onPress={markAllAsSeen}
                   >
-                    <Text style={styles.markAllText}>
+                    <Text
+                      style={styles.markAllText}
+                    >
                       Mark all read
                     </Text>
                   </TouchableOpacity>
@@ -897,11 +1050,17 @@ export default function SaintDashboard() {
                     color="#CCC"
                   />
 
-                  <Text style={styles.emptyBookingsText}>
+                  <Text
+                    style={styles.emptyBookingsText}
+                  >
                     No bookings yet
                   </Text>
 
-                  <Text style={styles.emptyBookingsSubtext}>
+                  <Text
+                    style={
+                      styles.emptyBookingsSubtext
+                    }
+                  >
                     New bookings will appear here
                   </Text>
 
@@ -933,19 +1092,36 @@ export default function SaintDashboard() {
                     >
 
                       {isNew && (
-                        <View style={styles.newBadge}>
-                          <Text style={styles.newBadgeText}>
+                        <View
+                          style={styles.newBadge}
+                        >
+                          <Text
+                            style={
+                              styles.newBadgeText
+                            }
+                          >
                             NEW
                           </Text>
                         </View>
                       )}
 
-                      <View style={styles.bookingCardHeader}>
+                      <View
+                        style={
+                          styles.bookingCardHeader
+                        }
+                      >
 
-                        <View style={{ flex: 1 }}>
+                        <View
+                          style={{ flex: 1 }}
+                        >
 
-                          <Text style={styles.bookingPoojaName}>
-                            {booking.pooja_name}
+                          <Text
+                            style={
+                              styles.bookingPoojaName
+                            }
+                          >
+                            {booking.pooja_name ||
+                              'Pooja not available'}
                           </Text>
 
                           <View
@@ -997,7 +1173,8 @@ export default function SaintDashboard() {
 
                           </View>
 
-                          {saintAction === 'accepted' && (
+                          {saintAction ===
+                            'accepted' && (
                             <View
                               style={[
                                 styles.paymentPill,
@@ -1018,7 +1195,10 @@ export default function SaintDashboard() {
                               <Text
                                 style={[
                                   styles.paymentPillText,
-                                  { color: '#2196F3' },
+                                  {
+                                    color:
+                                      '#2196F3',
+                                  },
                                 ]}
                               >
                                 You Accepted
@@ -1027,7 +1207,8 @@ export default function SaintDashboard() {
                             </View>
                           )}
 
-                          {saintAction === 'rejected' && (
+                          {saintAction ===
+                            'rejected' && (
                             <View
                               style={[
                                 styles.paymentPill,
@@ -1048,7 +1229,10 @@ export default function SaintDashboard() {
                               <Text
                                 style={[
                                   styles.paymentPillText,
-                                  { color: '#F44336' },
+                                  {
+                                    color:
+                                      '#F44336',
+                                  },
                                 ]}
                               >
                                 You Rejected
@@ -1059,24 +1243,42 @@ export default function SaintDashboard() {
 
                         </View>
 
-                        <View style={styles.priceTag}>
+                        <View
+                          style={styles.priceTag}
+                        >
 
-                          <Text style={styles.priceTagLabel}>
+                          <Text
+                            style={styles.priceTagLabel}
+                          >
                             You earn
                           </Text>
 
-                          <Text style={styles.priceTagValue}>
-                            ₹{booking.base_price}
+                          <Text
+                            style={styles.priceTagValue}
+                          >
+                            ₹
+                            {Number(
+                              booking.base_price ?? 0
+                            )}
                           </Text>
 
                         </View>
 
                       </View>
 
-                      <View style={styles.detailsGrid}>
+                      {/* BOOKING DETAILS */}
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailIcon}>
+                      <View
+                        style={styles.detailsGrid}
+                      >
+
+                        <View
+                          style={styles.detailRow}
+                        >
+
+                          <View
+                            style={styles.detailIcon}
+                          >
                             <Ionicons
                               name="person"
                               size={16}
@@ -1084,19 +1286,38 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>
+                          <View
+                            style={{ flex: 1 }}
+                          >
+
+                            <Text
+                              style={
+                                styles.detailLabel
+                              }
+                            >
                               Customer Name
                             </Text>
 
-                            <Text style={styles.detailValue}>
-                              {booking.customer_name}
+                            <Text
+                              style={
+                                styles.detailValue
+                              }
+                            >
+                              {booking.customer_name ||
+                                'Not available'}
                             </Text>
+
                           </View>
+
                         </View>
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailIcon}>
+                        <View
+                          style={styles.detailRow}
+                        >
+
+                          <View
+                            style={styles.detailIcon}
+                          >
                             <Ionicons
                               name="call"
                               size={16}
@@ -1104,19 +1325,38 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>
+                          <View
+                            style={{ flex: 1 }}
+                          >
+
+                            <Text
+                              style={
+                                styles.detailLabel
+                              }
+                            >
                               Mobile Number
                             </Text>
 
-                            <Text style={styles.detailValue}>
-                              {booking.customer_phone}
+                            <Text
+                              style={
+                                styles.detailValue
+                              }
+                            >
+                              {booking.customer_phone ||
+                                'Not available'}
                             </Text>
+
                           </View>
+
                         </View>
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailIcon}>
+                        <View
+                          style={styles.detailRow}
+                        >
+
+                          <View
+                            style={styles.detailIcon}
+                          >
                             <Ionicons
                               name="calendar"
                               size={16}
@@ -1124,21 +1364,41 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>
+                          <View
+                            style={{ flex: 1 }}
+                          >
+
+                            <Text
+                              style={
+                                styles.detailLabel
+                              }
+                            >
                               Date & Day
                             </Text>
 
-                            <Text style={styles.detailValue}>
-                              {formatDateWithDay(
-                                booking.booking_date
-                              )}
+                            <Text
+                              style={
+                                styles.detailValue
+                              }
+                            >
+                              {booking.booking_date
+                                ? formatDateWithDay(
+                                    booking.booking_date
+                                  )
+                                : 'Not available'}
                             </Text>
+
                           </View>
+
                         </View>
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailIcon}>
+                        <View
+                          style={styles.detailRow}
+                        >
+
+                          <View
+                            style={styles.detailIcon}
+                          >
                             <Ionicons
                               name="time"
                               size={16}
@@ -1146,19 +1406,38 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>
+                          <View
+                            style={{ flex: 1 }}
+                          >
+
+                            <Text
+                              style={
+                                styles.detailLabel
+                              }
+                            >
                               Time
                             </Text>
 
-                            <Text style={styles.detailValue}>
-                              {booking.booking_time}
+                            <Text
+                              style={
+                                styles.detailValue
+                              }
+                            >
+                              {booking.booking_time ||
+                                'Not available'}
                             </Text>
+
                           </View>
+
                         </View>
 
-                        <View style={styles.detailRow}>
-                          <View style={styles.detailIcon}>
+                        <View
+                          style={styles.detailRow}
+                        >
+
+                          <View
+                            style={styles.detailIcon}
+                          >
                             <Ionicons
                               name="location"
                               size={16}
@@ -1166,21 +1445,40 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>
+                          <View
+                            style={{ flex: 1 }}
+                          >
+
+                            <Text
+                              style={
+                                styles.detailLabel
+                              }
+                            >
                               Address
                             </Text>
 
-                            <Text style={styles.detailValue}>
-                              {booking.address}
+                            <Text
+                              style={
+                                styles.detailValue
+                              }
+                              numberOfLines={10}
+                            >
+                              {booking.address ||
+                                'Not available'}
                             </Text>
+
                           </View>
+
                         </View>
 
                       </View>
 
                       {canAction && (
-                        <View style={styles.actionButtonsRow}>
+                        <View
+                          style={
+                            styles.actionButtonsRow
+                          }
+                        >
 
                           <TouchableOpacity
                             style={[
@@ -1195,15 +1493,21 @@ export default function SaintDashboard() {
                             }
                             testID={`reject-booking-${booking.id}`}
                           >
+
                             <Ionicons
                               name="close-circle"
                               size={20}
                               color="#FFF"
                             />
 
-                            <Text style={styles.actionBtnText}>
+                            <Text
+                              style={
+                                styles.actionBtnText
+                              }
+                            >
                               Reject
                             </Text>
+
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1219,24 +1523,30 @@ export default function SaintDashboard() {
                             }
                             testID={`accept-booking-${booking.id}`}
                           >
+
                             <Ionicons
                               name="checkmark-circle"
                               size={20}
                               color="#FFF"
                             />
 
-                            <Text style={styles.actionBtnText}>
+                            <Text
+                              style={
+                                styles.actionBtnText
+                              }
+                            >
                               Accept
                             </Text>
+
                           </TouchableOpacity>
 
                         </View>
                       )}
 
                     </View>
+
                   );
                 })
-
               )}
 
             </View>
@@ -1252,6 +1562,7 @@ export default function SaintDashboard() {
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
@@ -1747,6 +2058,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  /* ================================
+     POPUP STYLES
+  ================================= */
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -1845,6 +2160,7 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
     marginTop: 2,
+    lineHeight: 21,
   },
 
   modalActions: {
@@ -1890,4 +2206,5 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
   },
+
 });
