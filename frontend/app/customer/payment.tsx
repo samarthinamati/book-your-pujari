@@ -375,7 +375,7 @@ export default function BookingScreen() {
            * IMPORTANT:
            * Verify payment with backend first.
            * Only after successful verification
-           * show the success popup.
+           * redirect to the Bookings / Calendar page.
            */
           await apiClient.post(
             '/payment/verify',
@@ -395,21 +395,16 @@ export default function BookingScreen() {
           );
 
           /*
-           * CUSTOMER SUCCESS POPUP
+           * PAYMENT SUCCESS
+           *
+           * No success popup.
+           * Directly open the customer's
+           * Bookings / Calendar dashboard.
            */
-          Alert.alert(
-            '✅ Saint Booked Successfully!',
-            'Your payment has been completed and your booking has been sent to the Saint.\n\nWaiting for Saint confirmation.\n\nFor further status updates, check the 📅 Calendar icon on the Saint Search page.',
-            [
-              {
-                text: 'OK',
-                onPress: () =>
-                  router.replace(
-                    '/customer/dashboard'
-                  ),
-              },
-            ]
+          router.replace(
+            '/customer/bookings'
           );
+
         } catch (error: any) {
           console.error(
             '[Payment] Error:',
