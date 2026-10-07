@@ -1,6 +1,6 @@
-// frontend/app/saint/dashboard.tsx
+  // frontend/app/saint/dashboard.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -60,8 +60,24 @@ export default function SaintDashboard() {
   const [lastSeenAt, setLastSeenAt] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
   const [popupBooking, setPopupBooking] = useState<any>(null);
+
   const [actionProcessing, setActionProcessing] = useState(false);
+
+  /*
+   * Keeps bookings that the Saint selected "Decide Later" on
+   * from immediately opening the popup again during polling.
+   */
+  const [dismissedPopupIds, setDismissedPopupIds] = useState<
+    Record<string, boolean>
+  >({});
+
+  /*
+   * Prevents an old fetchData request from changing popup state
+   * after a newer action has already happened.
+   */
+  const fetchRequestRef = useRef(0);
 
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -71,6 +87,8 @@ export default function SaintDashboard() {
   }, []);
 
   const fetchData = async () => {
+    const requestId = ++fetchRequestRef.current;
+
     try {
       const savedLastSeen = await storage.getItem(
         'saint_last_seen_bookings',
@@ -101,8 +119,8 @@ export default function SaintDashboard() {
 
         /*
          * Saint should only see paid bookings.
-         * Backend already returns paid bookings for Saints,
-         * but this also protects the frontend.
+         * Backend already returns only paid bookings,
+         * but this protects the frontend too.
          */
         const paidBookings = bookingsData.filter(
           (booking: any) =>
@@ -116,31 +134,70 @@ export default function SaintDashboard() {
             (booking.saint_action || 'pending') === 'pending'
         );
 
+        let unread: any[] = [];
+
         if (savedLastSeen) {
-          const unread = pendingBookings.filter(
+          unread = pendingBookings.filter(
             (booking: any) =>
               new Date(booking.created_at) >
               new Date(savedLastSeen)
           );
-
-          setNewBookingsCount(unread.length);
-
-          if (unread.length > 0) {
-            setPopupBooking(unread[0]);
-          }
         } else {
-          setNewBookingsCount(pendingBookings.length);
+          unread = pendingBookings;
+        }
 
-          if (pendingBookings.length > 0) {
-            setPopupBooking(pendingBookings[0]);
+        /*
+         * Remove bookings that the Saint has already chosen
+         * "Decide Later" for during this screen session.
+         */
+        const popupCandidates = unread.filter(
+          (booking: any) =>
+            !dismissedPopupIds[String(booking.id)]
+        );
+
+        if (requestId !== fetchRequestRef.current) {
+          return;
+        }
+
+        setNewBookingsCount(unread.length);
+
+        /*
+         * Only show a new popup if there isn't already one open.
+         * This is important because fetchData can run repeatedly.
+         */
+        if (!popupBooking && popupCandidates.length > 0) {
+          setPopupBooking(popupCandidates[0]);
+        }
+
+        /*
+         * If the current popup booking has already been accepted
+         * or rejected on the server, close it.
+         */
+        if (popupBooking) {
+          const currentBooking = paidBookings.find(
+            (booking: any) =>
+              String(booking.id) ===
+              String(popupBooking.id)
+          );
+
+          if (
+            currentBooking &&
+            currentBooking.saint_action &&
+            currentBooking.saint_action !== 'pending'
+          ) {
+            setPopupBooking(null);
           }
         }
       } catch {
-        setBookings([]);
+        if (requestId === fetchRequestRef.current) {
+          setBookings([]);
+        }
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === fetchRequestRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -197,7 +254,7 @@ export default function SaintDashboard() {
     } catch (error: any) {
       Alert.alert(
         'Error',
-        error.message
+        error?.message || 'Failed to update profile status'
       );
     }
   };
@@ -224,7 +281,7 @@ export default function SaintDashboard() {
             } catch (error: any) {
               Alert.alert(
                 'Error',
-                error.message
+                error?.message || 'Failed to delete profile'
               );
             }
           },
@@ -233,10 +290,88 @@ export default function SaintDashboard() {
     );
   };
 
-  const handleBookingAction = async (
+  /*
+   * Common function for accepting/rejecting a booking.
+   * Both popup buttons and booking-card buttons use this function.
+   */
+  const performBookingAction = async (
     bookingId: string,
     action: 'accept' | 'reject'
   ) => {
+    if (!bookingId || actionProcessing) {
+      return;
+    }
+
+    setActionProcessing(true);
+
+    try {
+      await apiClient.put(
+        `/bookings/${bookingId}/saint-action`,
+        {
+          action,
+          reason: '',
+        }
+      );
+
+      /*
+       * Remove the booking from popup immediately.
+       */
+      if (
+        popupBooking &&
+        String(popupBooking.id) === String(bookingId)
+      ) {
+        setPopupBooking(null);
+      }
+
+      /*
+       * Prevent an old pending popup from coming back
+       * while the fresh booking list is loading.
+       */
+      setDismissedPopupIds((previous) => {
+        const updated = {
+          ...previous,
+        };
+
+        delete updated[String(bookingId)];
+
+        return updated;
+      });
+
+      /*
+       * Refresh immediately from backend.
+       */
+      await fetchData();
+
+      Alert.alert(
+        'Success',
+        action === 'accept'
+          ? 'Booking accepted! Customer will be notified.'
+          : 'Booking rejected. Refund will be processed if payment was made.'
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error?.message ||
+          `Failed to ${action} booking`
+      );
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  /*
+   * Booking-card Accept/Reject.
+   *
+   * Confirmation is shown first.
+   */
+  const handleBookingAction = (
+    bookingId: string,
+    action: 'accept' | 'reject'
+  ) => {
+    if (!bookingId || actionProcessing) {
+      return;
+    }
+
     const title =
       action === 'accept'
         ? 'Accept Booking'
@@ -265,74 +400,100 @@ export default function SaintDashboard() {
               ? 'destructive'
               : 'default',
           onPress: async () => {
-            try {
-              await apiClient.put(
-                `/bookings/${bookingId}/saint-action`,
-                {
-                  action,
-                  reason: '',
-                }
-              );
-
-              Alert.alert(
-                'Success',
-                `Booking ${action}ed successfully`
-              );
-
-              setPopupBooking(null);
-
-              fetchData();
-            } catch (error: any) {
-              Alert.alert(
-                'Error',
-                error.message
-              );
-            }
+            await performBookingAction(
+              bookingId,
+              action
+            );
           },
         },
       ]
     );
   };
 
-  const handlePopupAction = async (
+  /*
+   * Popup Accept/Reject.
+   *
+   * These buttons directly process the currently displayed
+   * popup booking.
+   */
+  const handlePopupAction = (
     action: 'accept' | 'reject'
   ) => {
     if (
       !popupBooking ||
+      !popupBooking.id ||
       actionProcessing
     ) {
       return;
     }
 
-    setActionProcessing(true);
+    const bookingId = String(
+      popupBooking.id
+    );
 
-    try {
-      await apiClient.put(
-        `/bookings/${popupBooking.id}/saint-action`,
+    const title =
+      action === 'accept'
+        ? 'Accept Booking'
+        : 'Reject Booking';
+
+    const message =
+      action === 'accept'
+        ? 'Confirm that you will perform this pooja?'
+        : 'Are you sure you want to reject this booking? Customer will be refunded.';
+
+    Alert.alert(
+      title,
+      message,
+      [
         {
-          action,
-          reason: '',
-        }
-      );
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text:
+            action === 'accept'
+              ? 'Accept'
+              : 'Reject',
+          style:
+            action === 'reject'
+              ? 'destructive'
+              : 'default',
+          onPress: async () => {
+            await performBookingAction(
+              bookingId,
+              action
+            );
+          },
+        },
+      ]
+    );
+  };
 
-      Alert.alert(
-        'Success',
-        action === 'accept'
-          ? 'Booking accepted! Customer will be notified.'
-          : 'Booking rejected. Refund will be processed if payment was made.'
-      );
-
-      setPopupBooking(null);
-
-      fetchData();
-    } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.message
-      );
-    } finally {
-      setActionProcessing(false);
+  /*
+   * Decide Later:
+   *
+   * - closes popup
+   * - keeps booking pending
+   * - does NOT call the backend
+   * - keeps the booking available in the list
+   * - prevents this same popup from reopening during
+   *   the current dashboard session
+   */
+  const handleDecideLater = () => {
+    if (!popupBooking || actionProcessing) {
+      return;
     }
+
+    const bookingId = String(
+      popupBooking.id
+    );
+
+    setDismissedPopupIds((previous) => ({
+      ...previous,
+      [bookingId]: true,
+    }));
+
+    setPopupBooking(null);
   };
 
   const isNewBooking = (
@@ -393,9 +554,7 @@ export default function SaintDashboard() {
         visible={!!popupBooking}
         transparent
         animationType="fade"
-        onRequestClose={() =>
-          setPopupBooking(null)
-        }
+        onRequestClose={handleDecideLater}
       >
         <View style={styles.modalOverlay}>
 
@@ -425,7 +584,9 @@ export default function SaintDashboard() {
               <ScrollView
                 style={styles.modalScroll}
                 showsVerticalScrollIndicator={true}
-                contentContainerStyle={{ paddingBottom: 2 }}
+                contentContainerStyle={{
+                  paddingBottom: 2,
+                }}
               >
 
                 <Text style={styles.bookingInfoHeading}>
@@ -458,13 +619,19 @@ export default function SaintDashboard() {
                     color="#FF6B35"
                   />
 
-                  <View style={styles.modalDetailContent}>
+                  <View
+                    style={styles.modalDetailContent}
+                  >
 
-                    <Text style={styles.modalDetailLabel}>
+                    <Text
+                      style={styles.modalDetailLabel}
+                    >
                       Customer
                     </Text>
 
-                    <Text style={styles.modalDetailValue}>
+                    <Text
+                      style={styles.modalDetailValue}
+                    >
                       {popupBooking.customer_name ||
                         'Not available'}
                     </Text>
@@ -483,13 +650,19 @@ export default function SaintDashboard() {
                     color="#FF6B35"
                   />
 
-                  <View style={styles.modalDetailContent}>
+                  <View
+                    style={styles.modalDetailContent}
+                  >
 
-                    <Text style={styles.modalDetailLabel}>
+                    <Text
+                      style={styles.modalDetailLabel}
+                    >
                       Mobile
                     </Text>
 
-                    <Text style={styles.modalDetailValue}>
+                    <Text
+                      style={styles.modalDetailValue}
+                    >
                       {popupBooking.customer_phone ||
                         'Not available'}
                     </Text>
@@ -508,13 +681,19 @@ export default function SaintDashboard() {
                     color="#FF6B35"
                   />
 
-                  <View style={styles.modalDetailContent}>
+                  <View
+                    style={styles.modalDetailContent}
+                  >
 
-                    <Text style={styles.modalDetailLabel}>
+                    <Text
+                      style={styles.modalDetailLabel}
+                    >
                       Date & Day
                     </Text>
 
-                    <Text style={styles.modalDetailValue}>
+                    <Text
+                      style={styles.modalDetailValue}
+                    >
                       {popupBooking.booking_date
                         ? formatDateWithDay(
                             popupBooking.booking_date
@@ -536,13 +715,19 @@ export default function SaintDashboard() {
                     color="#FF6B35"
                   />
 
-                  <View style={styles.modalDetailContent}>
+                  <View
+                    style={styles.modalDetailContent}
+                  >
 
-                    <Text style={styles.modalDetailLabel}>
+                    <Text
+                      style={styles.modalDetailLabel}
+                    >
                       Time
                     </Text>
 
-                    <Text style={styles.modalDetailValue}>
+                    <Text
+                      style={styles.modalDetailValue}
+                    >
                       {popupBooking.booking_time ||
                         'Not available'}
                     </Text>
@@ -561,9 +746,13 @@ export default function SaintDashboard() {
                     color="#FF6B35"
                   />
 
-                  <View style={styles.modalDetailContent}>
+                  <View
+                    style={styles.modalDetailContent}
+                  >
 
-                    <Text style={styles.modalDetailLabel}>
+                    <Text
+                      style={styles.modalDetailLabel}
+                    >
                       Address
                     </Text>
 
@@ -597,13 +786,22 @@ export default function SaintDashboard() {
                   handlePopupAction('reject')
                 }
                 disabled={actionProcessing}
+                activeOpacity={0.8}
                 testID="popup-reject-button"
               >
-                <Ionicons
-                  name="close-circle"
-                  size={22}
-                  color="#FFF"
-                />
+
+                {actionProcessing ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#FFF"
+                  />
+                ) : (
+                  <Ionicons
+                    name="close-circle"
+                    size={22}
+                    color="#FFF"
+                  />
+                )}
 
                 <Text style={styles.modalBtnText}>
                   Reject
@@ -622,13 +820,22 @@ export default function SaintDashboard() {
                   handlePopupAction('accept')
                 }
                 disabled={actionProcessing}
+                activeOpacity={0.8}
                 testID="popup-accept-button"
               >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={22}
-                  color="#FFF"
-                />
+
+                {actionProcessing ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#FFF"
+                  />
+                ) : (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color="#FFF"
+                  />
+                )}
 
                 <Text style={styles.modalBtnText}>
                   Accept
@@ -638,12 +845,14 @@ export default function SaintDashboard() {
 
             </View>
 
+            {/* DECIDE LATER */}
+
             <TouchableOpacity
               style={styles.modalLater}
-              onPress={() =>
-                setPopupBooking(null)
-              }
+              onPress={handleDecideLater}
               disabled={actionProcessing}
+              activeOpacity={0.7}
+              testID="popup-decide-later-button"
             >
               <Text style={styles.modalLaterText}>
                 Decide Later
@@ -789,8 +998,7 @@ export default function SaintDashboard() {
                   booking
                   {newBookingsCount > 1
                     ? 's'
-                    : ''}
-                  !
+                    : ''}!
                 </Text>
 
                 <Text
@@ -1478,6 +1686,8 @@ export default function SaintDashboard() {
 
                       </View>
 
+                      {/* ACCEPT / REJECT BUTTONS */}
+
                       {canAction && (
                         <View
                           style={
@@ -1489,6 +1699,8 @@ export default function SaintDashboard() {
                             style={[
                               styles.actionBtn,
                               styles.rejectActionBtn,
+                              actionProcessing &&
+                                styles.btnDisabled,
                             ]}
                             onPress={() =>
                               handleBookingAction(
@@ -1496,6 +1708,8 @@ export default function SaintDashboard() {
                                 'reject'
                               )
                             }
+                            disabled={actionProcessing}
+                            activeOpacity={0.8}
                             testID={`reject-booking-${booking.id}`}
                           >
 
@@ -1519,6 +1733,8 @@ export default function SaintDashboard() {
                             style={[
                               styles.actionBtn,
                               styles.acceptActionBtn,
+                              actionProcessing &&
+                                styles.btnDisabled,
                             ]}
                             onPress={() =>
                               handleBookingAction(
@@ -1526,6 +1742,8 @@ export default function SaintDashboard() {
                                 'accept'
                               )
                             }
+                            disabled={actionProcessing}
+                            activeOpacity={0.8}
                             testID={`accept-booking-${booking.id}`}
                           >
 
