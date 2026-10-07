@@ -1,6 +1,6 @@
-  // frontend/app/saint/dashboard.tsx
+// frontend/app/saint/dashboard.tsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -30,15 +30,8 @@ const DAYS = [
 ];
 
 const formatDateWithDay = (dateStr: string): string => {
-  if (!dateStr) return 'Not available';
-
   try {
     const date = new Date(dateStr);
-
-    if (isNaN(date.getTime())) {
-      return dateStr;
-    }
-
     const day = DAYS[date.getDay()];
 
     const formatted = date.toLocaleDateString('en-US', {
@@ -49,7 +42,7 @@ const formatDateWithDay = (dateStr: string): string => {
 
     return `${formatted} · ${day}`;
   } catch {
-    return dateStr || 'Not available';
+    return dateStr;
   }
 };
 
@@ -60,35 +53,23 @@ export default function SaintDashboard() {
   const [lastSeenAt, setLastSeenAt] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [popupBooking, setPopupBooking] = useState<any>(null);
-
   const [actionProcessing, setActionProcessing] = useState(false);
-
-  /*
-   * Keeps bookings that the Saint selected "Decide Later" on
-   * from immediately opening the popup again during polling.
-   */
-  const [dismissedPopupIds, setDismissedPopupIds] = useState<
-    Record<string, boolean>
-  >({});
-
-  /*
-   * Prevents an old fetchData request from changing popup state
-   * after a newer action has already happened.
-   */
-  const fetchRequestRef = useRef(0);
 
   const { user, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     fetchData();
+
+    const interval = setInterval(() => {
+      fetchData();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
-    const requestId = ++fetchRequestRef.current;
-
     try {
       const savedLastSeen = await storage.getItem(
         'saint_last_seen_bookings',
@@ -105,11 +86,9 @@ export default function SaintDashboard() {
       }
 
       try {
-        const response = await apiClient.get('/bookings/my-bookings');
-
-        const bookingsData = Array.isArray(response)
-          ? response
-          : [];
+        const bookingsData = await apiClient.get(
+          '/bookings/my-bookings'
+        );
 
         bookingsData.sort(
           (a: any, b: any) =>
@@ -117,87 +96,41 @@ export default function SaintDashboard() {
             new Date(a.created_at).getTime()
         );
 
-        /*
-         * Saint should only see paid bookings.
-         * Backend already returns only paid bookings,
-         * but this protects the frontend too.
-         */
-        const paidBookings = bookingsData.filter(
-          (booking: any) =>
-            booking.payment_status === 'paid'
+        setBookings(bookingsData);
+
+        const pendingBookings = bookingsData.filter(
+          (b: any) =>
+            (b.saint_action || 'pending') === 'pending'
         );
-
-        setBookings(paidBookings);
-
-        const pendingBookings = paidBookings.filter(
-          (booking: any) =>
-            (booking.saint_action || 'pending') === 'pending'
-        );
-
-        let unread: any[] = [];
 
         if (savedLastSeen) {
-          unread = pendingBookings.filter(
-            (booking: any) =>
-              new Date(booking.created_at) >
+          const unread = pendingBookings.filter(
+            (b: any) =>
+              new Date(b.created_at) >
               new Date(savedLastSeen)
           );
+
+          setNewBookingsCount(unread.length);
+
+          if (unread.length > 0 && !popupBooking) {
+            setPopupBooking(unread[0]);
+          }
         } else {
-          unread = pendingBookings;
-        }
-
-        /*
-         * Remove bookings that the Saint has already chosen
-         * "Decide Later" for during this screen session.
-         */
-        const popupCandidates = unread.filter(
-          (booking: any) =>
-            !dismissedPopupIds[String(booking.id)]
-        );
-
-        if (requestId !== fetchRequestRef.current) {
-          return;
-        }
-
-        setNewBookingsCount(unread.length);
-
-        /*
-         * Only show a new popup if there isn't already one open.
-         * This is important because fetchData can run repeatedly.
-         */
-        if (!popupBooking && popupCandidates.length > 0) {
-          setPopupBooking(popupCandidates[0]);
-        }
-
-        /*
-         * If the current popup booking has already been accepted
-         * or rejected on the server, close it.
-         */
-        if (popupBooking) {
-          const currentBooking = paidBookings.find(
-            (booking: any) =>
-              String(booking.id) ===
-              String(popupBooking.id)
-          );
+          setNewBookingsCount(pendingBookings.length);
 
           if (
-            currentBooking &&
-            currentBooking.saint_action &&
-            currentBooking.saint_action !== 'pending'
+            pendingBookings.length > 0 &&
+            !popupBooking
           ) {
-            setPopupBooking(null);
+            setPopupBooking(pendingBookings[0]);
           }
         }
       } catch {
-        if (requestId === fetchRequestRef.current) {
-          setBookings([]);
-        }
+        setBookings([]);
       }
     } finally {
-      if (requestId === fetchRequestRef.current) {
-        setLoading(false);
-        setRefreshing(false);
-      }
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -219,24 +152,20 @@ export default function SaintDashboard() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Are you sure?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          router.replace('/auth/login');
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/auth/login');
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleToggleActive = async () => {
@@ -254,7 +183,7 @@ export default function SaintDashboard() {
     } catch (error: any) {
       Alert.alert(
         'Error',
-        error?.message || 'Failed to update profile status'
+        error?.message || 'Unable to update profile status.'
       );
     }
   };
@@ -273,15 +202,20 @@ export default function SaintDashboard() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.delete(
-                '/saints/profile'
-              );
+              await apiClient.delete('/saints/profile');
 
               setProfile(null);
+              setPopupBooking(null);
+              setBookings([]);
+              setNewBookingsCount(0);
+
+              await logout();
+
+              router.replace('/auth/login');
             } catch (error: any) {
               Alert.alert(
                 'Error',
-                error?.message || 'Failed to delete profile'
+                error?.message || 'Unable to delete profile.'
               );
             }
           },
@@ -291,21 +225,26 @@ export default function SaintDashboard() {
   };
 
   /*
-   * Common function for accepting/rejecting a booking.
-   * Both popup buttons and booking-card buttons use this function.
+   * FIXED:
+   * Accept / Reject now directly calls the backend.
+   * There is no nested confirmation Alert.
    */
-  const performBookingAction = async (
+  const handleBookingAction = async (
     bookingId: string,
     action: 'accept' | 'reject'
   ) => {
-    if (!bookingId || actionProcessing) {
-      return;
-    }
-
-    setActionProcessing(true);
+    if (actionProcessing) return;
 
     try {
-      await apiClient.put(
+      setActionProcessing(true);
+
+      console.log(
+        '[BOOKING ACTION START]',
+        bookingId,
+        action
+      );
+
+      const response = await apiClient.put(
         `/bookings/${bookingId}/saint-action`,
         {
           action,
@@ -313,46 +252,31 @@ export default function SaintDashboard() {
         }
       );
 
-      /*
-       * Remove the booking from popup immediately.
-       */
-      if (
-        popupBooking &&
-        String(popupBooking.id) === String(bookingId)
-      ) {
-        setPopupBooking(null);
-      }
+      console.log(
+        '[BOOKING ACTION SUCCESS]',
+        response
+      );
 
-      /*
-       * Prevent an old pending popup from coming back
-       * while the fresh booking list is loading.
-       */
-      setDismissedPopupIds((previous) => {
-        const updated = {
-          ...previous,
-        };
+      setPopupBooking(null);
 
-        delete updated[String(bookingId)];
-
-        return updated;
-      });
-
-      /*
-       * Refresh immediately from backend.
-       */
       await fetchData();
 
       Alert.alert(
         'Success',
         action === 'accept'
-          ? 'Booking accepted! Customer will be notified.'
-          : 'Booking rejected. Refund will be processed if payment was made.'
+          ? 'Booking accepted successfully.'
+          : 'Booking rejected successfully.'
       );
     } catch (error: any) {
+      console.error(
+        '[BOOKING ACTION ERROR]',
+        error
+      );
+
       Alert.alert(
         'Error',
         error?.message ||
-          `Failed to ${action} booking`
+          'Unable to update booking. Please try again.'
       );
     } finally {
       setActionProcessing(false);
@@ -360,145 +284,63 @@ export default function SaintDashboard() {
   };
 
   /*
-   * Booking-card Accept/Reject.
-   *
-   * Confirmation is shown first.
+   * FIXED:
+   * Accept / Reject from the NEW BOOKING popup.
    */
-  const handleBookingAction = (
-    bookingId: string,
+  const handlePopupAction = async (
     action: 'accept' | 'reject'
   ) => {
-    if (!bookingId || actionProcessing) {
-      return;
+    if (!popupBooking || actionProcessing) return;
+
+    try {
+      setActionProcessing(true);
+
+      console.log(
+        '[POPUP ACTION START]',
+        popupBooking.id,
+        action
+      );
+
+      const response = await apiClient.put(
+        `/bookings/${popupBooking.id}/saint-action`,
+        {
+          action,
+          reason: '',
+        }
+      );
+
+      console.log(
+        '[POPUP ACTION SUCCESS]',
+        response
+      );
+
+      setPopupBooking(null);
+
+      await fetchData();
+
+      Alert.alert(
+        'Success',
+        action === 'accept'
+          ? 'Booking accepted successfully.'
+          : 'Booking rejected successfully.'
+      );
+    } catch (error: any) {
+      console.error(
+        '[POPUP ACTION ERROR]',
+        error
+      );
+
+      Alert.alert(
+        'Error',
+        error?.message ||
+          'Unable to update booking.'
+      );
+    } finally {
+      setActionProcessing(false);
     }
-
-    const title =
-      action === 'accept'
-        ? 'Accept Booking'
-        : 'Reject Booking';
-
-    const message =
-      action === 'accept'
-        ? 'Confirm that you will perform this pooja?'
-        : 'Are you sure you want to reject this booking? Customer will be refunded.';
-
-    Alert.alert(
-      title,
-      message,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text:
-            action === 'accept'
-              ? 'Accept'
-              : 'Reject',
-          style:
-            action === 'reject'
-              ? 'destructive'
-              : 'default',
-          onPress: async () => {
-            await performBookingAction(
-              bookingId,
-              action
-            );
-          },
-        },
-      ]
-    );
   };
 
-  /*
-   * Popup Accept/Reject.
-   *
-   * These buttons directly process the currently displayed
-   * popup booking.
-   */
-  const handlePopupAction = (
-    action: 'accept' | 'reject'
-  ) => {
-    if (
-      !popupBooking ||
-      !popupBooking.id ||
-      actionProcessing
-    ) {
-      return;
-    }
-
-    const bookingId = String(
-      popupBooking.id
-    );
-
-    const title =
-      action === 'accept'
-        ? 'Accept Booking'
-        : 'Reject Booking';
-
-    const message =
-      action === 'accept'
-        ? 'Confirm that you will perform this pooja?'
-        : 'Are you sure you want to reject this booking? Customer will be refunded.';
-
-    Alert.alert(
-      title,
-      message,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text:
-            action === 'accept'
-              ? 'Accept'
-              : 'Reject',
-          style:
-            action === 'reject'
-              ? 'destructive'
-              : 'default',
-          onPress: async () => {
-            await performBookingAction(
-              bookingId,
-              action
-            );
-          },
-        },
-      ]
-    );
-  };
-
-  /*
-   * Decide Later:
-   *
-   * - closes popup
-   * - keeps booking pending
-   * - does NOT call the backend
-   * - keeps the booking available in the list
-   * - prevents this same popup from reopening during
-   *   the current dashboard session
-   */
-  const handleDecideLater = () => {
-    if (!popupBooking || actionProcessing) {
-      return;
-    }
-
-    const bookingId = String(
-      popupBooking.id
-    );
-
-    setDismissedPopupIds((previous) => ({
-      ...previous,
-      [bookingId]: true,
-    }));
-
-    setPopupBooking(null);
-  };
-
-  const isNewBooking = (
-    booking: any
-  ): boolean => {
+  const isNewBooking = (booking: any): boolean => {
     if (
       booking.saint_action &&
       booking.saint_action !== 'pending'
@@ -506,9 +348,7 @@ export default function SaintDashboard() {
       return false;
     }
 
-    if (!lastSeenAt) {
-      return true;
-    }
+    if (!lastSeenAt) return true;
 
     return (
       new Date(booking.created_at) >
@@ -529,39 +369,34 @@ export default function SaintDashboard() {
 
   const totalEarnings = bookings
     .filter(
-      (booking) =>
-        booking.payment_status === 'paid'
+      b => b.payment_status === 'paid'
     )
     .reduce(
-      (sum, booking) =>
-        sum + Number(booking.base_price ?? 0),
+      (sum, b) =>
+        sum + Number(b.base_price || 0),
       0
     );
 
   const paidBookings = bookings.filter(
-    (booking) =>
-      booking.payment_status === 'paid'
+    b => b.payment_status === 'paid'
   );
 
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* ================================
-          NEW BOOKING POPUP
-      ================================= */}
-
+      {/* NEW BOOKING POPUP */}
       <Modal
         visible={!!popupBooking}
         transparent
         animationType="fade"
-        onRequestClose={handleDecideLater}
+        onRequestClose={() =>
+          setPopupBooking(null)
+        }
       >
         <View style={styles.modalOverlay}>
-
           <View style={styles.modalContent}>
 
             <View style={styles.modalHeader}>
-
               <View style={styles.bellIcon}>
                 <Ionicons
                   name="notifications"
@@ -577,201 +412,119 @@ export default function SaintDashboard() {
               <Text style={styles.modalSubtitle}>
                 Would you like to accept this booking?
               </Text>
-
             </View>
 
             {popupBooking && (
               <ScrollView
                 style={styles.modalScroll}
-                showsVerticalScrollIndicator={true}
-                contentContainerStyle={{
-                  paddingBottom: 2,
-                }}
+                showsVerticalScrollIndicator={false}
               >
 
-                <Text style={styles.bookingInfoHeading}>
-                  Booking Details
-                </Text>
-
-                {/* POOJA */}
-
                 <View style={styles.modalPoojaCard}>
-
                   <Text style={styles.modalPoojaName}>
-                    {popupBooking.pooja_name ||
-                      'Pooja not available'}
+                    {popupBooking.pooja_name}
                   </Text>
 
                   <Text style={styles.modalPoojaEarn}>
                     You earn: ₹
-                    {popupBooking.base_price ?? 0}
+                    {popupBooking.base_price}
                   </Text>
-
                 </View>
 
-                {/* CUSTOMER */}
-
                 <View style={styles.modalDetail}>
-
                   <Ionicons
                     name="person"
                     size={18}
                     color="#FF6B35"
                   />
 
-                  <View
-                    style={styles.modalDetailContent}
-                  >
-
-                    <Text
-                      style={styles.modalDetailLabel}
-                    >
+                  <View style={styles.modalDetailContent}>
+                    <Text style={styles.modalDetailLabel}>
                       Customer
                     </Text>
 
-                    <Text
-                      style={styles.modalDetailValue}
-                    >
-                      {popupBooking.customer_name ||
-                        'Not available'}
+                    <Text style={styles.modalDetailValue}>
+                      {popupBooking.customer_name}
                     </Text>
-
                   </View>
-
                 </View>
 
-                {/* MOBILE */}
-
                 <View style={styles.modalDetail}>
-
                   <Ionicons
                     name="call"
                     size={18}
                     color="#FF6B35"
                   />
 
-                  <View
-                    style={styles.modalDetailContent}
-                  >
-
-                    <Text
-                      style={styles.modalDetailLabel}
-                    >
+                  <View style={styles.modalDetailContent}>
+                    <Text style={styles.modalDetailLabel}>
                       Mobile
                     </Text>
 
-                    <Text
-                      style={styles.modalDetailValue}
-                    >
-                      {popupBooking.customer_phone ||
-                        'Not available'}
+                    <Text style={styles.modalDetailValue}>
+                      {popupBooking.customer_phone}
                     </Text>
-
                   </View>
-
                 </View>
 
-                {/* DATE */}
-
                 <View style={styles.modalDetail}>
-
                   <Ionicons
                     name="calendar"
                     size={18}
                     color="#FF6B35"
                   />
 
-                  <View
-                    style={styles.modalDetailContent}
-                  >
-
-                    <Text
-                      style={styles.modalDetailLabel}
-                    >
+                  <View style={styles.modalDetailContent}>
+                    <Text style={styles.modalDetailLabel}>
                       Date & Day
                     </Text>
 
-                    <Text
-                      style={styles.modalDetailValue}
-                    >
-                      {popupBooking.booking_date
-                        ? formatDateWithDay(
-                            popupBooking.booking_date
-                          )
-                        : 'Not available'}
+                    <Text style={styles.modalDetailValue}>
+                      {formatDateWithDay(
+                        popupBooking.booking_date
+                      )}
                     </Text>
-
                   </View>
-
                 </View>
 
-                {/* TIME */}
-
                 <View style={styles.modalDetail}>
-
                   <Ionicons
                     name="time"
                     size={18}
                     color="#FF6B35"
                   />
 
-                  <View
-                    style={styles.modalDetailContent}
-                  >
-
-                    <Text
-                      style={styles.modalDetailLabel}
-                    >
+                  <View style={styles.modalDetailContent}>
+                    <Text style={styles.modalDetailLabel}>
                       Time
                     </Text>
 
-                    <Text
-                      style={styles.modalDetailValue}
-                    >
-                      {popupBooking.booking_time ||
-                        'Not available'}
+                    <Text style={styles.modalDetailValue}>
+                      {popupBooking.booking_time}
                     </Text>
-
                   </View>
-
                 </View>
 
-                {/* ADDRESS */}
-
                 <View style={styles.modalDetail}>
-
                   <Ionicons
                     name="location"
                     size={18}
                     color="#FF6B35"
                   />
 
-                  <View
-                    style={styles.modalDetailContent}
-                  >
-
-                    <Text
-                      style={styles.modalDetailLabel}
-                    >
+                  <View style={styles.modalDetailContent}>
+                    <Text style={styles.modalDetailLabel}>
                       Address
                     </Text>
 
-                    <Text
-                      style={styles.modalDetailValue}
-                      numberOfLines={10}
-                    >
-                      {popupBooking.address ||
-                        'Not available'}
+                    <Text style={styles.modalDetailValue}>
+                      {popupBooking.address}
                     </Text>
-
                   </View>
-
                 </View>
 
               </ScrollView>
             )}
-
-            {/* POPUP BUTTONS */}
 
             <View style={styles.modalActions}>
 
@@ -786,27 +539,17 @@ export default function SaintDashboard() {
                   handlePopupAction('reject')
                 }
                 disabled={actionProcessing}
-                activeOpacity={0.8}
                 testID="popup-reject-button"
               >
-
-                {actionProcessing ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFF"
-                  />
-                ) : (
-                  <Ionicons
-                    name="close-circle"
-                    size={22}
-                    color="#FFF"
-                  />
-                )}
+                <Ionicons
+                  name="close-circle"
+                  size={22}
+                  color="#FFF"
+                />
 
                 <Text style={styles.modalBtnText}>
                   Reject
                 </Text>
-
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -820,39 +563,27 @@ export default function SaintDashboard() {
                   handlePopupAction('accept')
                 }
                 disabled={actionProcessing}
-                activeOpacity={0.8}
                 testID="popup-accept-button"
               >
-
-                {actionProcessing ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFF"
-                  />
-                ) : (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={22}
-                    color="#FFF"
-                  />
-                )}
+                <Ionicons
+                  name="checkmark-circle"
+                  size={22}
+                  color="#FFF"
+                />
 
                 <Text style={styles.modalBtnText}>
                   Accept
                 </Text>
-
               </TouchableOpacity>
 
             </View>
 
-            {/* DECIDE LATER */}
-
             <TouchableOpacity
               style={styles.modalLater}
-              onPress={handleDecideLater}
+              onPress={() =>
+                setPopupBooking(null)
+              }
               disabled={actionProcessing}
-              activeOpacity={0.7}
-              testID="popup-decide-later-button"
             >
               <Text style={styles.modalLaterText}>
                 Decide Later
@@ -860,18 +591,13 @@ export default function SaintDashboard() {
             </TouchableOpacity>
 
           </View>
-
         </View>
       </Modal>
 
-      {/* ================================
-          HEADER
-      ================================= */}
-
+      {/* HEADER */}
       <View style={styles.header}>
 
         <View>
-
           <Text style={styles.greeting}>
             Welcome,
           </Text>
@@ -879,14 +605,12 @@ export default function SaintDashboard() {
           <Text style={styles.userName}>
             {user?.name}
           </Text>
-
         </View>
 
         <View style={styles.headerActions}>
 
           {newBookingsCount > 0 && (
             <View style={styles.notificationWrapper}>
-
               <Ionicons
                 name="notifications"
                 size={24}
@@ -894,15 +618,10 @@ export default function SaintDashboard() {
               />
 
               <View style={styles.notificationBadge}>
-
-                <Text
-                  style={styles.notificationBadgeText}
-                >
+                <Text style={styles.notificationBadgeText}>
                   {newBookingsCount}
                 </Text>
-
               </View>
-
             </View>
           )}
 
@@ -919,12 +638,7 @@ export default function SaintDashboard() {
           </TouchableOpacity>
 
         </View>
-
       </View>
-
-      {/* ================================
-          MAIN CONTENT
-      ================================= */}
 
       <ScrollView
         style={styles.content}
@@ -951,16 +665,13 @@ export default function SaintDashboard() {
             </Text>
 
             <Text style={styles.emptySubtitle}>
-              Set up your profile to start receiving
-              bookings
+              Set up your profile to start receiving bookings
             </Text>
 
             <TouchableOpacity
               style={styles.createButton}
               onPress={() =>
-                router.push(
-                  '/saint/profile-setup'
-                )
+                router.push('/saint/profile-setup')
               }
               testID="create-profile-button"
             >
@@ -975,55 +686,40 @@ export default function SaintDashboard() {
 
           <>
 
-            {/* NOTIFICATION */}
-
+            {/* NOTIFICATION BANNER */}
             {newBookingsCount > 0 && (
               <TouchableOpacity
                 style={styles.notificationBanner}
                 onPress={markAllAsSeen}
               >
-
                 <Ionicons
                   name="notifications"
                   size={20}
                   color="#FFF"
                 />
 
-                <Text
-                  style={
-                    styles.notificationBannerText
-                  }
-                >
-                  You have {newBookingsCount} new
-                  booking
-                  {newBookingsCount > 1
-                    ? 's'
-                    : ''}!
+                <Text style={styles.notificationBannerText}>
+                  You have {newBookingsCount} new booking
+                  {newBookingsCount > 1 ? 's' : ''}!
                 </Text>
 
-                <Text
-                  style={styles.markReadText}
-                >
+                <Text style={styles.markReadText}>
                   Tap to mark as read
                 </Text>
-
               </TouchableOpacity>
             )}
 
             {/* PROFILE CARD */}
-
             <View style={styles.profileCard}>
 
               <View style={styles.profileHeader}>
 
                 <View style={styles.avatar}>
-
                   <Ionicons
                     name="person"
                     size={40}
                     color="#FF6B35"
                   />
-
                 </View>
 
                 <View style={styles.profileInfo}>
@@ -1032,15 +728,11 @@ export default function SaintDashboard() {
                     {profile.name}
                   </Text>
 
-                  <Text
-                    style={styles.profileLocation}
-                  >
+                  <Text style={styles.profileLocation}>
                     {profile.location}
                   </Text>
 
-                  <View
-                    style={styles.approvalStatus}
-                  >
+                  <View style={styles.approvalStatus}>
 
                     <Ionicons
                       name="checkmark-circle"
@@ -1048,22 +740,18 @@ export default function SaintDashboard() {
                       color="#4CAF50"
                     />
 
-                    <Text
-                      style={styles.approvedText}
-                    >
+                    <Text style={styles.approvedText}>
                       Live & Verified
                     </Text>
 
                   </View>
 
                 </View>
-
               </View>
 
               <View style={styles.statsRow}>
 
                 <View style={styles.statBox}>
-
                   <Text style={styles.statValue}>
                     {Number(
                       profile.rating ?? 0
@@ -1073,11 +761,9 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Rating
                   </Text>
-
                 </View>
 
                 <View style={styles.statBox}>
-
                   <Text style={styles.statValue}>
                     {paidBookings.length}
                   </Text>
@@ -1085,11 +771,9 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Bookings
                   </Text>
-
                 </View>
 
                 <View style={styles.statBox}>
-
                   <Text style={styles.statValue}>
                     ₹{totalEarnings}
                   </Text>
@@ -1097,7 +781,6 @@ export default function SaintDashboard() {
                   <Text style={styles.statLabel}>
                     Earnings
                   </Text>
-
                 </View>
 
               </View>
@@ -1105,7 +788,6 @@ export default function SaintDashboard() {
             </View>
 
             {/* ACTIONS */}
-
             <View style={styles.actionsCard}>
 
               <TouchableOpacity
@@ -1117,7 +799,6 @@ export default function SaintDashboard() {
                 }
                 testID="edit-profile-button"
               >
-
                 <Ionicons
                   name="create-outline"
                   size={24}
@@ -1133,7 +814,6 @@ export default function SaintDashboard() {
                   size={20}
                   color="#999"
                 />
-
               </TouchableOpacity>
 
               <View style={styles.divider} />
@@ -1157,19 +837,15 @@ export default function SaintDashboard() {
                   />
 
                   <View>
-
                     <Text style={styles.actionText}>
                       Profile Status
                     </Text>
 
-                    <Text
-                      style={styles.toggleSubtext}
-                    >
+                    <Text style={styles.toggleSubtext}>
                       {profile.is_active
                         ? 'Active'
                         : 'Inactive'}
                     </Text>
-
                   </View>
 
                 </View>
@@ -1183,7 +859,6 @@ export default function SaintDashboard() {
                   onPress={handleToggleActive}
                   testID="toggle-active-button"
                 >
-
                   <View
                     style={[
                       styles.toggleCircle,
@@ -1191,7 +866,6 @@ export default function SaintDashboard() {
                         styles.toggleCircleActive,
                     ]}
                   />
-
                 </TouchableOpacity>
 
               </View>
@@ -1203,7 +877,6 @@ export default function SaintDashboard() {
                 onPress={handleDeleteProfile}
                 testID="delete-profile-button"
               >
-
                 <Ionicons
                   name="trash-outline"
                   size={24}
@@ -1224,13 +897,11 @@ export default function SaintDashboard() {
                   size={20}
                   color="#999"
                 />
-
               </TouchableOpacity>
 
             </View>
 
             {/* BOOKINGS */}
-
             <View style={styles.section}>
 
               <View style={styles.sectionHeader}>
@@ -1243,9 +914,7 @@ export default function SaintDashboard() {
                   <TouchableOpacity
                     onPress={markAllAsSeen}
                   >
-                    <Text
-                      style={styles.markAllText}
-                    >
+                    <Text style={styles.markAllText}>
                       Mark all read
                     </Text>
                   </TouchableOpacity>
@@ -1263,17 +932,11 @@ export default function SaintDashboard() {
                     color="#CCC"
                   />
 
-                  <Text
-                    style={styles.emptyBookingsText}
-                  >
+                  <Text style={styles.emptyBookingsText}>
                     No bookings yet
                   </Text>
 
-                  <Text
-                    style={
-                      styles.emptyBookingsSubtext
-                    }
-                  >
+                  <Text style={styles.emptyBookingsSubtext}>
                     New bookings will appear here
                   </Text>
 
@@ -1305,36 +968,19 @@ export default function SaintDashboard() {
                     >
 
                       {isNew && (
-                        <View
-                          style={styles.newBadge}
-                        >
-                          <Text
-                            style={
-                              styles.newBadgeText
-                            }
-                          >
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>
                             NEW
                           </Text>
                         </View>
                       )}
 
-                      <View
-                        style={
-                          styles.bookingCardHeader
-                        }
-                      >
+                      <View style={styles.bookingCardHeader}>
 
-                        <View
-                          style={{ flex: 1 }}
-                        >
+                        <View style={{ flex: 1 }}>
 
-                          <Text
-                            style={
-                              styles.bookingPoojaName
-                            }
-                          >
-                            {booking.pooja_name ||
-                              'Pooja not available'}
+                          <Text style={styles.bookingPoojaName}>
+                            {booking.pooja_name}
                           </Text>
 
                           <View
@@ -1386,8 +1032,7 @@ export default function SaintDashboard() {
 
                           </View>
 
-                          {saintAction ===
-                            'accepted' && (
+                          {saintAction === 'accepted' && (
                             <View
                               style={[
                                 styles.paymentPill,
@@ -1408,10 +1053,7 @@ export default function SaintDashboard() {
                               <Text
                                 style={[
                                   styles.paymentPillText,
-                                  {
-                                    color:
-                                      '#2196F3',
-                                  },
+                                  { color: '#2196F3' },
                                 ]}
                               >
                                 You Accepted
@@ -1420,8 +1062,7 @@ export default function SaintDashboard() {
                             </View>
                           )}
 
-                          {saintAction ===
-                            'rejected' && (
+                          {saintAction === 'rejected' && (
                             <View
                               style={[
                                 styles.paymentPill,
@@ -1442,10 +1083,7 @@ export default function SaintDashboard() {
                               <Text
                                 style={[
                                   styles.paymentPillText,
-                                  {
-                                    color:
-                                      '#F44336',
-                                  },
+                                  { color: '#F44336' },
                                 ]}
                               >
                                 You Rejected
@@ -1456,42 +1094,24 @@ export default function SaintDashboard() {
 
                         </View>
 
-                        <View
-                          style={styles.priceTag}
-                        >
+                        <View style={styles.priceTag}>
 
-                          <Text
-                            style={styles.priceTagLabel}
-                          >
+                          <Text style={styles.priceTagLabel}>
                             You earn
                           </Text>
 
-                          <Text
-                            style={styles.priceTagValue}
-                          >
-                            ₹
-                            {Number(
-                              booking.base_price ?? 0
-                            )}
+                          <Text style={styles.priceTagValue}>
+                            ₹{booking.base_price}
                           </Text>
 
                         </View>
 
                       </View>
 
-                      {/* BOOKING DETAILS */}
+                      <View style={styles.detailsGrid}>
 
-                      <View
-                        style={styles.detailsGrid}
-                      >
-
-                        <View
-                          style={styles.detailRow}
-                        >
-
-                          <View
-                            style={styles.detailIcon}
-                          >
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIcon}>
                             <Ionicons
                               name="person"
                               size={16}
@@ -1499,38 +1119,19 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View
-                            style={{ flex: 1 }}
-                          >
-
-                            <Text
-                              style={
-                                styles.detailLabel
-                              }
-                            >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>
                               Customer Name
                             </Text>
 
-                            <Text
-                              style={
-                                styles.detailValue
-                              }
-                            >
-                              {booking.customer_name ||
-                                'Not available'}
+                            <Text style={styles.detailValue}>
+                              {booking.customer_name}
                             </Text>
-
                           </View>
-
                         </View>
 
-                        <View
-                          style={styles.detailRow}
-                        >
-
-                          <View
-                            style={styles.detailIcon}
-                          >
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIcon}>
                             <Ionicons
                               name="call"
                               size={16}
@@ -1538,38 +1139,19 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View
-                            style={{ flex: 1 }}
-                          >
-
-                            <Text
-                              style={
-                                styles.detailLabel
-                              }
-                            >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>
                               Mobile Number
                             </Text>
 
-                            <Text
-                              style={
-                                styles.detailValue
-                              }
-                            >
-                              {booking.customer_phone ||
-                                'Not available'}
+                            <Text style={styles.detailValue}>
+                              {booking.customer_phone}
                             </Text>
-
                           </View>
-
                         </View>
 
-                        <View
-                          style={styles.detailRow}
-                        >
-
-                          <View
-                            style={styles.detailIcon}
-                          >
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIcon}>
                             <Ionicons
                               name="calendar"
                               size={16}
@@ -1577,41 +1159,21 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View
-                            style={{ flex: 1 }}
-                          >
-
-                            <Text
-                              style={
-                                styles.detailLabel
-                              }
-                            >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>
                               Date & Day
                             </Text>
 
-                            <Text
-                              style={
-                                styles.detailValue
-                              }
-                            >
-                              {booking.booking_date
-                                ? formatDateWithDay(
-                                    booking.booking_date
-                                  )
-                                : 'Not available'}
+                            <Text style={styles.detailValue}>
+                              {formatDateWithDay(
+                                booking.booking_date
+                              )}
                             </Text>
-
                           </View>
-
                         </View>
 
-                        <View
-                          style={styles.detailRow}
-                        >
-
-                          <View
-                            style={styles.detailIcon}
-                          >
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIcon}>
                             <Ionicons
                               name="time"
                               size={16}
@@ -1619,38 +1181,19 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View
-                            style={{ flex: 1 }}
-                          >
-
-                            <Text
-                              style={
-                                styles.detailLabel
-                              }
-                            >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>
                               Time
                             </Text>
 
-                            <Text
-                              style={
-                                styles.detailValue
-                              }
-                            >
-                              {booking.booking_time ||
-                                'Not available'}
+                            <Text style={styles.detailValue}>
+                              {booking.booking_time}
                             </Text>
-
                           </View>
-
                         </View>
 
-                        <View
-                          style={styles.detailRow}
-                        >
-
-                          <View
-                            style={styles.detailIcon}
-                          >
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIcon}>
                             <Ionicons
                               name="location"
                               size={16}
@@ -1658,42 +1201,21 @@ export default function SaintDashboard() {
                             />
                           </View>
 
-                          <View
-                            style={{ flex: 1 }}
-                          >
-
-                            <Text
-                              style={
-                                styles.detailLabel
-                              }
-                            >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.detailLabel}>
                               Address
                             </Text>
 
-                            <Text
-                              style={
-                                styles.detailValue
-                              }
-                              numberOfLines={10}
-                            >
-                              {booking.address ||
-                                'Not available'}
+                            <Text style={styles.detailValue}>
+                              {booking.address}
                             </Text>
-
                           </View>
-
                         </View>
 
                       </View>
 
-                      {/* ACCEPT / REJECT BUTTONS */}
-
                       {canAction && (
-                        <View
-                          style={
-                            styles.actionButtonsRow
-                          }
-                        >
+                        <View style={styles.actionButtonsRow}>
 
                           <TouchableOpacity
                             style={[
@@ -1709,24 +1231,17 @@ export default function SaintDashboard() {
                               )
                             }
                             disabled={actionProcessing}
-                            activeOpacity={0.8}
                             testID={`reject-booking-${booking.id}`}
                           >
-
                             <Ionicons
                               name="close-circle"
                               size={20}
                               color="#FFF"
                             />
 
-                            <Text
-                              style={
-                                styles.actionBtnText
-                              }
-                            >
+                            <Text style={styles.actionBtnText}>
                               Reject
                             </Text>
-
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1743,33 +1258,26 @@ export default function SaintDashboard() {
                               )
                             }
                             disabled={actionProcessing}
-                            activeOpacity={0.8}
                             testID={`accept-booking-${booking.id}`}
                           >
-
                             <Ionicons
                               name="checkmark-circle"
                               size={20}
                               color="#FFF"
                             />
 
-                            <Text
-                              style={
-                                styles.actionBtnText
-                              }
-                            >
+                            <Text style={styles.actionBtnText}>
                               Accept
                             </Text>
-
                           </TouchableOpacity>
 
                         </View>
                       )}
 
                     </View>
-
                   );
                 })
+
               )}
 
             </View>
@@ -1785,7 +1293,6 @@ export default function SaintDashboard() {
 }
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
@@ -1902,7 +1409,7 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 16,
@@ -1950,9 +1457,9 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2281,10 +1788,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* ================================
-     POPUP STYLES
-  ================================= */
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -2296,24 +1799,24 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 20,
-    padding: 16,
+    padding: 20,
     width: '100%',
-    maxHeight: '94%',
+    maxHeight: '90%',
   },
 
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
   },
 
   bellIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
 
   modalTitle: {
@@ -2330,38 +1833,29 @@ const styles = StyleSheet.create({
   },
 
   modalScroll: {
-    maxHeight: 520,
-    marginBottom: 10,
-  },
-
-  bookingInfoHeading: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#555',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    maxHeight: 400,
+    marginBottom: 16,
   },
 
   modalPoojaCard: {
     backgroundColor: '#FFF5F0',
     borderRadius: 12,
-    padding: 10,
-    marginBottom: 10,
+    padding: 14,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#FF6B35',
     alignItems: 'center',
   },
 
   modalPoojaName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 2,
+    marginBottom: 4,
   },
 
   modalPoojaEarn: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#4CAF50',
   },
@@ -2370,8 +1864,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    marginBottom: 7,
-    padding: 8,
+    marginBottom: 12,
+    padding: 10,
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
   },
@@ -2388,11 +1882,10 @@ const styles = StyleSheet.create({
   },
 
   modalDetailValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
     fontWeight: '500',
     marginTop: 2,
-    lineHeight: 19,
   },
 
   modalActions: {
@@ -2438,5 +1931,4 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
   },
-
 });
