@@ -749,9 +749,39 @@ export default function BookingScreen() {
           {/* VISIT DATE */}
           <TouchableOpacity
             style={styles.dateTimeButton}
-            onPress={() =>
-              setShowDatePicker(true)
-            }
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                const input = document.createElement('input');
+                input.type = 'date';
+                input.value = visitDate.toISOString().split('T')[0];
+                input.min = new Date().toISOString().split('T')[0];
+                input.style.position = 'fixed';
+                input.style.left = '-9999px';
+                document.body.appendChild(input);
+                input.onchange = () => {
+                  if (input.value) {
+                    const [year, month, day] = input.value.split('-').map(Number);
+                    const selected = new Date(
+                      year,
+                      month - 1,
+                      day,
+                      visitDate.getHours(),
+                      visitDate.getMinutes()
+                    );
+                    setVisitDate(selected);
+                  }
+                  document.body.removeChild(input);
+                };
+                input.onblur = () => {
+                  if (document.body.contains(input)) {
+                    document.body.removeChild(input);
+                  }
+                };
+                input.click();
+              } else {
+                setShowDatePicker(true);
+              }
+            }}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -793,9 +823,37 @@ export default function BookingScreen() {
           {/* VISIT TIME */}
           <TouchableOpacity
             style={styles.dateTimeButton}
-            onPress={() =>
-              setShowTimePicker(true)
-            }
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                const input = document.createElement('input');
+                input.type = 'time';
+                input.value = visitTime.toLocaleTimeString('en-GB', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                });
+                input.style.position = 'fixed';
+                input.style.left = '-9999px';
+                document.body.appendChild(input);
+                input.onchange = () => {
+                  if (input.value) {
+                    const [hours, minutes] = input.value.split(':').map(Number);
+                    const selected = new Date(visitTime);
+                    selected.setHours(hours, minutes, 0, 0);
+                    setVisitTime(selected);
+                  }
+                  document.body.removeChild(input);
+                };
+                input.onblur = () => {
+                  if (document.body.contains(input)) {
+                    document.body.removeChild(input);
+                  }
+                };
+                input.click();
+              } else {
+                setShowTimePicker(true);
+              }
+            }}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -834,16 +892,13 @@ export default function BookingScreen() {
           </TouchableOpacity>
 
           {/* DATE PICKER */}
-          {showDatePicker && (
+          {showDatePicker && Platform.OS !== 'web' && (
             <DateTimePicker
               value={visitDate}
               mode="date"
               minimumDate={new Date()}
               display="default"
-              onChange={(
-                event,
-                date
-              ) => {
+              onChange={(event, date) => {
                 setShowDatePicker(false);
 
                 if (date) {
@@ -854,15 +909,12 @@ export default function BookingScreen() {
           )}
 
           {/* TIME PICKER */}
-          {showTimePicker && (
+          {showTimePicker && Platform.OS !== 'web' && (
             <DateTimePicker
               value={visitTime}
               mode="time"
               display="default"
-              onChange={(
-                event,
-                date
-              ) => {
+              onChange={(event, date) => {
                 setShowTimePicker(false);
 
                 if (date) {
