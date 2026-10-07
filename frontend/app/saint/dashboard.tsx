@@ -424,8 +424,13 @@ export default function SaintDashboard() {
             {popupBooking && (
               <ScrollView
                 style={styles.modalScroll}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 2 }}
               >
+
+                <Text style={styles.bookingInfoHeading}>
+                  Booking Details
+                </Text>
 
                 {/* POOJA */}
 
@@ -1679,7 +1684,7 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 16,
@@ -1727,9 +1732,9 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2073,24 +2078,24 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '94%',
   },
 
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
 
   bellIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
   modalTitle: {
@@ -2107,29 +2112,38 @@ const styles = StyleSheet.create({
   },
 
   modalScroll: {
-    maxHeight: 400,
-    marginBottom: 16,
+    maxHeight: 520,
+    marginBottom: 10,
+  },
+
+  bookingInfoHeading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#555',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   modalPoojaCard: {
     backgroundColor: '#FFF5F0',
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    padding: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#FF6B35',
     alignItems: 'center',
   },
 
   modalPoojaName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 2,
   },
 
   modalPoojaEarn: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#4CAF50',
   },
@@ -2138,8 +2152,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    marginBottom: 12,
-    padding: 10,
+    marginBottom: 7,
+    padding: 8,
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
   },
@@ -2156,11 +2170,11 @@ const styles = StyleSheet.create({
   },
 
   modalDetailValue: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#333',
     fontWeight: '500',
     marginTop: 2,
-    lineHeight: 21,
+    lineHeight: 19,
   },
 
   modalActions: {
