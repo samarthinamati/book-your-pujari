@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -85,32 +86,80 @@ export default function AdminDashboard() {
     fetchData();
   };
 
-  const handleRejectSaint = (saint: any) => {
+  const handleRejectSaint = async (saint: any) => {
+    if (!saint?.id) {
+      Alert.alert('Error', 'Saint ID is missing.');
+      return;
+    }
+
+    const rejectSaint = async () => {
+      try {
+        setRejectingSaintId(saint.id);
+
+        console.log('[Admin] Rejecting Saint:', saint.id);
+
+        const response = await apiClient.post('/admin/saints/approve', {
+          saint_id: saint.id,
+          approved: false,
+        });
+
+        console.log('[Admin] Reject response:', response);
+
+        setSaints((previousSaints) =>
+          previousSaints.filter((item) => item.id !== saint.id)
+        );
+
+        await fetchData();
+
+        if (Platform.OS === 'web') {
+          window.alert('Saint rejected successfully.');
+        } else {
+          Alert.alert('Success', 'Saint rejected successfully.');
+        }
+      } catch (error: any) {
+        console.error('[Admin] Reject Saint error:', error);
+
+        if (Platform.OS === 'web') {
+          window.alert(error?.message || 'Failed to reject Saint');
+        } else {
+          Alert.alert(
+            'Error',
+            error?.message || 'Failed to reject Saint'
+          );
+        }
+      } finally {
+        setRejectingSaintId(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Are you sure you want to reject ${
+          saint.name || 'this Saint'
+        }?\n\nThis Saint will no longer appear to customers.`
+      );
+
+      if (confirmed) {
+        await rejectSaint();
+      }
+
+      return;
+    }
+
     Alert.alert(
       'Reject Saint',
-      `Are you sure you want to reject ${saint?.name || 'this Saint'}? This Saint will no longer appear to customers.`,
+      `Are you sure you want to reject ${
+        saint.name || 'this Saint'
+      }?\n\nThis Saint will no longer appear to customers.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              setRejectingSaintId(saint.id);
-
-              await apiClient.post('/admin/saints/approve', {
-                saint_id: saint.id,
-                approved: false,
-              });
-
-              Alert.alert('Success', 'Saint rejected successfully.');
-              await fetchData();
-            } catch (error: any) {
-              Alert.alert('Error', error?.message || 'Failed to reject Saint');
-            } finally {
-              setRejectingSaintId(null);
-            }
-          },
+          onPress: rejectSaint,
         },
       ]
     );
