@@ -76,6 +76,57 @@ export default function BookingScreen() {
     setVisitTime(next);
   };
 
+  const openWebPicker = (type: 'date' | 'time') => {
+    if (Platform.OS !== 'web') return;
+
+    const input = document.createElement('input');
+    input.type = type;
+    input.value = type === 'date'
+      ? formatLocalDate(visitDate)
+      : formatLocalTime(visitTime);
+
+    if (type === 'date') {
+      input.min = formatLocalDate(new Date());
+    }
+
+    input.style.position = 'fixed';
+    input.style.left = '-10000px';
+    input.style.top = '0';
+    input.style.opacity = '0';
+
+    document.body.appendChild(input);
+
+    input.addEventListener('change', () => {
+      if (type === 'date') {
+        handleDateChange(input.value);
+      } else {
+        handleTimeChange(input.value);
+      }
+      input.remove();
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (input.parentNode) input.remove();
+      }, 100);
+    });
+
+    input.focus();
+
+    try {
+      const pickerInput = input as HTMLInputElement & {
+        showPicker?: () => void;
+      };
+      if (typeof pickerInput.showPicker === 'function') {
+        pickerInput.showPicker();
+      } else {
+        input.click();
+      }
+    } catch {
+      input.click();
+    }
+  };
+
   const [address, setAddress] = useState('');
 
   const [customerName, setCustomerName] = useState(
@@ -774,25 +825,29 @@ export default function BookingScreen() {
           </Text>
 
           {/* VISIT DATE */}
-          <View style={styles.dateTimeButton}>
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                openWebPicker('date');
+              } else {
+                setShowDatePicker(true);
+              }
+            }}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name="calendar-outline"
               size={22}
               color="#FF6B35"
             />
 
-            <View
-              style={styles.dateTimeInfo}
-            >
-              <Text
-                style={styles.dateTimeLabel}
-              >
+            <View style={styles.dateTimeInfo}>
+              <Text style={styles.dateTimeLabel}>
                 Visit Date
               </Text>
 
-              <Text
-                style={styles.dateTimeText}
-              >
+              <Text style={styles.dateTimeText}>
                 {visitDate.toLocaleDateString(
                   'en-IN',
                   {
@@ -809,47 +864,32 @@ export default function BookingScreen() {
               size={20}
               color="#999"
             />
-
-            {Platform.OS === 'web' &&
-              React.createElement('input', {
-                type: 'date',
-                value: formatLocalDate(visitDate),
-                min: formatLocalDate(new Date()),
-                onChange: (event: any) =>
-                  handleDateChange(event.target.value),
-                style: {
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                },
-              })}
-          </View>
+          </TouchableOpacity>
 
           {/* VISIT TIME */}
-          <View style={styles.dateTimeButton}>
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                openWebPicker('time');
+              } else {
+                setShowTimePicker(true);
+              }
+            }}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name="time-outline"
               size={22}
               color="#FF6B35"
             />
 
-            <View
-              style={styles.dateTimeInfo}
-            >
-              <Text
-                style={styles.dateTimeLabel}
-              >
+            <View style={styles.dateTimeInfo}>
+              <Text style={styles.dateTimeLabel}>
                 Visit Time
               </Text>
 
-              <Text
-                style={styles.dateTimeText}
-              >
+              <Text style={styles.dateTimeText}>
                 {visitTime.toLocaleTimeString(
                   'en-IN',
                   {
@@ -865,25 +905,7 @@ export default function BookingScreen() {
               size={20}
               color="#999"
             />
-
-            {Platform.OS === 'web' &&
-              React.createElement('input', {
-                type: 'time',
-                value: formatLocalTime(visitTime),
-                onChange: (event: any) =>
-                  handleTimeChange(event.target.value),
-                style: {
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                },
-              })}
-          </View>
+          </TouchableOpacity>
 
           {/* NATIVE DATE/TIME PICKERS */}
           {Platform.OS !== 'web' && showDatePicker && (
