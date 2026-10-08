@@ -401,9 +401,11 @@ export default function BookingScreen() {
            * Directly open the customer's
            * Bookings / Calendar dashboard.
            */
-          router.replace(
-            '/customer/bookings'
-          );
+        if (Platform.OS === 'web') {
+  window.location.href = '/customer/bookings';
+} else {
+  router.replace('/customer/bookings');
+}
 
         } catch (error: any) {
           console.error(
