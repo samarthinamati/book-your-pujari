@@ -1,5 +1,3 @@
-// frontend/app/customer/booking.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,13 +9,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { openRazorpayCheckout } from '@/src/utils/razorpay';
 
 export default function BookingScreen() {
@@ -45,22 +43,6 @@ export default function BookingScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-
-  // Custom date picker state.
-  // This works on both the Render website and the Android app.
-  const [calendarMonth, setCalendarMonth] = useState(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  );
-
-  const [selectedHour, setSelectedHour] = useState(
-    visitTime.getHours() % 12 || 12
-  );
-  const [selectedMinute, setSelectedMinute] = useState(
-    Math.floor(visitTime.getMinutes() / 15) * 15
-  );
-  const [selectedPeriod, setSelectedPeriod] = useState(
-    visitTime.getHours() >= 12 ? 'PM' : 'AM'
-  );
 
   const [address, setAddress] = useState('');
 
@@ -191,7 +173,6 @@ export default function BookingScreen() {
 
     const commission = base * 0.10;
 
-    // Round UP to the next whole rupee.
     const total = Math.ceil(base + commission);
 
     return {
@@ -199,111 +180,6 @@ export default function BookingScreen() {
       commission,
       total,
     };
-  };
-
-
-  const formatLocalDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-
-  const getCalendarDays = () => {
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const days: Array<number | null> = [];
-
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day);
-    }
-
-    return days;
-  };
-
-  const canGoToPreviousMonth = () => {
-    const today = new Date();
-    return (
-      calendarMonth.getFullYear() > today.getFullYear() ||
-      (
-        calendarMonth.getFullYear() === today.getFullYear() &&
-        calendarMonth.getMonth() > today.getMonth()
-      )
-    );
-  };
-
-  const openDateSelector = () => {
-    setCalendarMonth(
-      new Date(
-        visitDate.getFullYear(),
-        visitDate.getMonth(),
-        1
-      )
-    );
-    setShowDatePicker(true);
-  };
-
-  const selectDate = (day: number) => {
-    const selected = new Date(
-      calendarMonth.getFullYear(),
-      calendarMonth.getMonth(),
-      day
-    );
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (selected < today) {
-      return;
-    }
-
-    // Keep the current selected time when changing the date.
-    selected.setHours(
-      visitDate.getHours(),
-      visitDate.getMinutes(),
-      0,
-      0
-    );
-
-    setVisitDate(selected);
-    setShowDatePicker(false);
-  };
-
-  const openTimeSelector = () => {
-    const hours = visitTime.getHours();
-
-    setSelectedHour(hours % 12 || 12);
-    setSelectedMinute(
-      Math.floor(visitTime.getMinutes() / 15) * 15
-    );
-    setSelectedPeriod(hours >= 12 ? 'PM' : 'AM');
-    setShowTimePicker(true);
-  };
-
-  const saveSelectedTime = () => {
-    let hours = selectedHour % 12;
-
-    if (selectedPeriod === 'PM') {
-      hours += 12;
-    }
-
-    const updated = new Date(visitTime);
-    updated.setHours(hours, selectedMinute, 0, 0);
-
-    setVisitTime(updated);
-    setShowTimePicker(false);
   };
 
   const handleBooking = async () => {
@@ -352,7 +228,9 @@ export default function BookingScreen() {
           selectedPooja?.name || '',
 
         booking_date:
-          formatLocalDate(visitDate),
+          visitDate
+            .toISOString()
+            .split('T')[0],
 
         booking_time:
           visitTime.toLocaleTimeString(
@@ -427,13 +305,7 @@ export default function BookingScreen() {
       );
 
       /*
-       * WEB
-       *
-       * The backend payment amount is used here.
-       * For ₹6 pooja:
-       * ₹6 + 10% = ₹6.60
-       * Backend rounds UP = ₹7
-       * Razorpay amount = 700 paise
+       * WEB PAYMENT
        */
       if (Platform.OS === 'web') {
         const options = {
@@ -491,44 +363,58 @@ export default function BookingScreen() {
           );
 
           /*
-           * IMPORTANT:
-           * Verify payment with backend first.
-           * Only after successful verification
-           * show the success popup.
+           * VERIFY PAYMENT FIRST
            */
-          await apiClient.post(
-            '/payment/verify',
-            {
-              razorpay_payment_id:
-                paymentResult.razorpay_payment_id,
+          if (
+            !paymentResult?.razorpay_payment_id ||
+            !paymentResult?.razorpay_order_id ||
+            !paymentResult?.razorpay_signature
+          ) {
+            throw new Error(
+              'Payment was completed but payment details could not be verified.'
+            );
+          }
 
-              razorpay_order_id:
-                paymentResult.razorpay_order_id,
+          const verifyResult =
+            await apiClient.post(
+              '/payment/verify',
+              {
+                razorpay_payment_id:
+                  paymentResult.razorpay_payment_id,
 
-              razorpay_signature:
-                paymentResult.razorpay_signature,
+                razorpay_order_id:
+                  paymentResult.razorpay_order_id,
 
-              booking_id:
-                booking.id,
-            }
+                razorpay_signature:
+                  paymentResult.razorpay_signature,
+
+                booking_id:
+                  booking.id,
+              }
+            );
+
+          console.log(
+            '[Payment] VERIFY SUCCESS:',
+            verifyResult
           );
 
           /*
-           * CUSTOMER SUCCESS POPUP
+           * NO SUCCESS POPUP.
+           *
+           * Go directly to:
+           * Customer -> Bookings
            */
-          Alert.alert(
-            '✅ Saint Booked Successfully!',
-            'Your payment has been completed and your booking has been sent to the Saint.\n\nWaiting for Saint confirmation.\n\nFor further status updates, check the 📅 Calendar icon on the Saint Search page.',
-            [
-              {
-                text: 'OK',
-                onPress: () =>
-                  router.replace(
-                    '/customer/dashboard'
-                  ),
-              },
-            ]
-          );
+          if (
+            typeof window !== 'undefined'
+          ) {
+            window.location.replace(
+              `${window.location.origin}/customer/bookings`
+            );
+          } else {
+            router.replace(
+              '/customer/bookings'
+            );
+          }
         } catch (error: any) {
           console.error(
             '[Payment] Error:',
@@ -547,10 +433,11 @@ export default function BookingScreen() {
       }
 
       /*
-       * MOBILE
+       * MOBILE PAYMENT
        */
       router.push({
         pathname: '/customer/payment',
+
         params: {
           bookingId: String(
             booking.id
@@ -605,13 +492,17 @@ export default function BookingScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View
+        style={styles.centerContainer}
+      >
         <ActivityIndicator
           size="large"
           color="#FF6B35"
         />
 
-        <Text style={styles.loadingText}>
+        <Text
+          style={styles.loadingText}
+        >
           Loading booking details...
         </Text>
       </View>
@@ -620,15 +511,21 @@ export default function BookingScreen() {
 
   if (!saint) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContainer}>
+      <SafeAreaView
+        style={styles.container}
+      >
+        <View
+          style={styles.centerContainer}
+        >
           <Ionicons
             name="alert-circle-outline"
             size={60}
             color="#FF6B35"
           />
 
-          <Text style={styles.errorTitle}>
+          <Text
+            style={styles.errorTitle}
+          >
             Saint details unavailable
           </Text>
 
@@ -655,15 +552,21 @@ export default function BookingScreen() {
 
   if (!selectedPooja) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContainer}>
+      <SafeAreaView
+        style={styles.container}
+      >
+        <View
+          style={styles.centerContainer}
+        >
           <Ionicons
             name="alert-circle-outline"
             size={60}
             color="#FF6B35"
           />
 
-          <Text style={styles.errorTitle}>
+          <Text
+            style={styles.errorTitle}
+          >
             Pooja service unavailable
           </Text>
 
@@ -695,9 +598,11 @@ export default function BookingScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-
+    <SafeAreaView
+      style={styles.container}
+    >
       {/* HEADER */}
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -712,7 +617,9 @@ export default function BookingScreen() {
           />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
+        <Text
+          style={styles.headerTitle}
+        >
           Book Pooja
         </Text>
 
@@ -727,11 +634,10 @@ export default function BookingScreen() {
           false
         }
       >
-
         {/* SAINT DETAILS */}
+
         <View style={styles.saintCard}>
           <View style={styles.saintInfo}>
-
             <View
               style={styles.saintAvatar}
             >
@@ -783,6 +689,7 @@ export default function BookingScreen() {
         </View>
 
         {/* POOJA DETAILS */}
+
         <View style={styles.section}>
           <Text
             style={styles.sectionTitle}
@@ -832,7 +739,6 @@ export default function BookingScreen() {
               </View>
             ) : null}
 
-            {/* POOJA BASE PRICE */}
             <View
               style={styles.priceRow}
             >
@@ -852,9 +758,11 @@ export default function BookingScreen() {
         </View>
 
         {/* SAINT VISIT DATE & TIME */}
-        <View style={styles.section}>
 
-          <Text style={styles.sectionTitle}>
+        <View style={styles.section}>
+          <Text
+            style={styles.sectionTitle}
+          >
             When should the Saint visit?
           </Text>
 
@@ -866,9 +774,14 @@ export default function BookingScreen() {
           </Text>
 
           {/* VISIT DATE */}
+
           <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={openDateSelector}
+            style={
+              styles.dateTimeButton
+            }
+            onPress={() =>
+              setShowDatePicker(true)
+            }
             activeOpacity={0.7}
           >
             <Ionicons
@@ -881,13 +794,17 @@ export default function BookingScreen() {
               style={styles.dateTimeInfo}
             >
               <Text
-                style={styles.dateTimeLabel}
+                style={
+                  styles.dateTimeLabel
+                }
               >
                 Visit Date
               </Text>
 
               <Text
-                style={styles.dateTimeText}
+                style={
+                  styles.dateTimeText
+                }
               >
                 {visitDate.toLocaleDateString(
                   'en-IN',
@@ -908,9 +825,14 @@ export default function BookingScreen() {
           </TouchableOpacity>
 
           {/* VISIT TIME */}
+
           <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={openTimeSelector}
+            style={
+              styles.dateTimeButton
+            }
+            onPress={() =>
+              setShowTimePicker(true)
+            }
             activeOpacity={0.7}
           >
             <Ionicons
@@ -923,13 +845,17 @@ export default function BookingScreen() {
               style={styles.dateTimeInfo}
             >
               <Text
-                style={styles.dateTimeLabel}
+                style={
+                  styles.dateTimeLabel
+                }
               >
                 Visit Time
               </Text>
 
               <Text
-                style={styles.dateTimeText}
+                style={
+                  styles.dateTimeText
+                }
               >
                 {visitTime.toLocaleTimeString(
                   'en-IN',
@@ -949,342 +875,50 @@ export default function BookingScreen() {
           </TouchableOpacity>
 
           {/* DATE PICKER */}
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <View style={styles.pickerOverlay}>
-              <View style={styles.pickerModal}>
-                <View style={styles.pickerHeader}>
-                  <View>
-                    <Text style={styles.pickerTitle}>
-                      Select Visit Date
-                    </Text>
-                    <Text style={styles.pickerSubtitle}>
-                      Choose a date for the Saint visit
-                    </Text>
-                  </View>
 
-                  <TouchableOpacity
-                    style={styles.pickerCloseButton}
-                    onPress={() => setShowDatePicker(false)}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color="#555"
-                    />
-                  </TouchableOpacity>
-                </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={visitDate}
+              mode="date"
+              minimumDate={new Date()}
+              display="default"
+              onChange={(
+                event,
+                date
+              ) => {
+                setShowDatePicker(false);
 
-                <View style={styles.monthHeader}>
-                  <TouchableOpacity
-                    style={[
-                      styles.monthArrow,
-                      !canGoToPreviousMonth() &&
-                        styles.monthArrowDisabled,
-                    ]}
-                    onPress={() => {
-                      if (!canGoToPreviousMonth()) return;
-
-                      setCalendarMonth(
-                        new Date(
-                          calendarMonth.getFullYear(),
-                          calendarMonth.getMonth() - 1,
-                          1
-                        )
-                      );
-                    }}
-                    disabled={!canGoToPreviousMonth()}
-                  >
-                    <Ionicons
-                      name="chevron-back"
-                      size={22}
-                      color={
-                        canGoToPreviousMonth()
-                          ? '#FF6B35'
-                          : '#CCC'
-                      }
-                    />
-                  </TouchableOpacity>
-
-                  <Text style={styles.monthTitle}>
-                    {calendarMonth.toLocaleDateString(
-                      'en-US',
-                      {
-                        month: 'long',
-                        year: 'numeric',
-                      }
-                    )}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.monthArrow}
-                    onPress={() =>
-                      setCalendarMonth(
-                        new Date(
-                          calendarMonth.getFullYear(),
-                          calendarMonth.getMonth() + 1,
-                          1
-                        )
-                      )
-                    }
-                  >
-                    <Ionicons
-                      name="chevron-forward"
-                      size={22}
-                      color="#FF6B35"
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.weekRow}>
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(
-                    (day, index) => (
-                      <Text
-                        key={`${day}-${index}`}
-                        style={styles.weekDay}
-                      >
-                        {day}
-                      </Text>
-                    )
-                  )}
-                </View>
-
-                <View style={styles.calendarGrid}>
-                  {getCalendarDays().map((day, index) => {
-                    if (day === null) {
-                      return (
-                        <View
-                          key={`empty-${index}`}
-                          style={styles.calendarDay}
-                        />
-                      );
-                    }
-
-                    const dayDate = new Date(
-                      calendarMonth.getFullYear(),
-                      calendarMonth.getMonth(),
-                      day
-                    );
-
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    const disabled = dayDate < today;
-                    const selected = isSameDay(
-                      dayDate,
-                      visitDate
-                    );
-
-                    return (
-                      <TouchableOpacity
-                        key={`day-${day}`}
-                        style={[
-                          styles.calendarDay,
-                          selected &&
-                            styles.calendarDaySelected,
-                          disabled &&
-                            styles.calendarDayDisabled,
-                        ]}
-                        onPress={() => selectDate(day)}
-                        disabled={disabled}
-                      >
-                        <Text
-                          style={[
-                            styles.calendarDayText,
-                            selected &&
-                              styles.calendarDayTextSelected,
-                            disabled &&
-                              styles.calendarDayTextDisabled,
-                          ]}
-                        >
-                          {day}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.todayButton}
-                  onPress={() => {
-                    const today = new Date();
-                    setVisitDate(today);
-                    setCalendarMonth(
-                      new Date(
-                        today.getFullYear(),
-                        today.getMonth(),
-                        1
-                      )
-                    );
-                    setShowDatePicker(false);
-                  }}
-                >
-                  <Text style={styles.todayButtonText}>
-                    Today
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+                if (date) {
+                  setVisitDate(date);
+                }
+              }}
+            />
+          )}
 
           {/* TIME PICKER */}
-          <Modal
-            visible={showTimePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowTimePicker(false)}
-          >
-            <View style={styles.pickerOverlay}>
-              <View style={styles.pickerModal}>
-                <View style={styles.pickerHeader}>
-                  <View>
-                    <Text style={styles.pickerTitle}>
-                      Select Visit Time
-                    </Text>
-                    <Text style={styles.pickerSubtitle}>
-                      Choose a convenient time
-                    </Text>
-                  </View>
 
-                  <TouchableOpacity
-                    style={styles.pickerCloseButton}
-                    onPress={() => setShowTimePicker(false)}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color="#555"
-                    />
-                  </TouchableOpacity>
-                </View>
+          {showTimePicker && (
+            <DateTimePicker
+              value={visitTime}
+              mode="time"
+              display="default"
+              onChange={(
+                event,
+                date
+              ) => {
+                setShowTimePicker(false);
 
-                <View style={styles.selectedTimePreview}>
-                  <Ionicons
-                    name="time-outline"
-                    size={26}
-                    color="#FF6B35"
-                  />
-                  <Text style={styles.selectedTimeText}>
-                    {String(selectedHour).padStart(2, '0')}:
-                    {String(selectedMinute).padStart(2, '0')}{' '}
-                    {selectedPeriod}
-                  </Text>
-                </View>
-
-                <Text style={styles.timeSectionLabel}>
-                  Hour
-                </Text>
-
-                <View style={styles.timeGrid}>
-                  {Array.from(
-                    { length: 12 },
-                    (_, index) => index + 1
-                  ).map((hour) => (
-                    <TouchableOpacity
-                      key={hour}
-                      style={[
-                        styles.timeOption,
-                        selectedHour === hour &&
-                          styles.timeOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setSelectedHour(hour)
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.timeOptionText,
-                          selectedHour === hour &&
-                            styles.timeOptionTextSelected,
-                        ]}
-                      >
-                        {hour}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={styles.timeSectionLabel}>
-                  Minute
-                </Text>
-
-                <View style={styles.minuteRow}>
-                  {[0, 15, 30, 45].map((minute) => (
-                    <TouchableOpacity
-                      key={minute}
-                      style={[
-                        styles.minuteOption,
-                        selectedMinute === minute &&
-                          styles.timeOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setSelectedMinute(minute)
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.timeOptionText,
-                          selectedMinute === minute &&
-                            styles.timeOptionTextSelected,
-                        ]}
-                      >
-                        :{String(minute).padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={styles.timeSectionLabel}>
-                  AM / PM
-                </Text>
-
-                <View style={styles.periodRow}>
-                  {['AM', 'PM'].map((period) => (
-                    <TouchableOpacity
-                      key={period}
-                      style={[
-                        styles.periodOption,
-                        selectedPeriod === period &&
-                          styles.timeOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setSelectedPeriod(period)
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.timeOptionText,
-                          selectedPeriod === period &&
-                            styles.timeOptionTextSelected,
-                        ]}
-                      >
-                        {period}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TouchableOpacity
-                  style={styles.saveTimeButton}
-                  onPress={saveSelectedTime}
-                >
-                  <Text style={styles.saveTimeButtonText}>
-                    Select Time
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-
+                if (date) {
+                  setVisitTime(date);
+                }
+              }}
+            />
+          )}
         </View>
 
         {/* CUSTOMER DETAILS */}
-        <View style={styles.section}>
 
+        <View style={styles.section}>
           <Text
             style={styles.sectionTitle}
           >
@@ -1359,6 +993,7 @@ export default function BookingScreen() {
         </View>
 
         {/* TOTAL */}
+
         <View
           style={styles.totalSection}
         >
@@ -1382,7 +1017,9 @@ export default function BookingScreen() {
             </Text>
 
             <Text
-              style={styles.commissionText}
+              style={
+                styles.commissionText
+              }
             >
               Includes 10% platform commission
             </Text>
@@ -1390,6 +1027,7 @@ export default function BookingScreen() {
         </View>
 
         {/* PAYMENT */}
+
         <TouchableOpacity
           style={[
             styles.bookButton,
@@ -1423,10 +1061,43 @@ export default function BookingScreen() {
           )}
         </TouchableOpacity>
 
+        {/* CHECK BOOKINGS & STATUS */}
+
+        <TouchableOpacity
+          style={
+            styles.checkBookingsButton
+          }
+          onPress={() =>
+            router.push(
+              '/customer/bookings'
+            )
+          }
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={21}
+            color="#FF6B35"
+          />
+
+          <Text
+            style={
+              styles.checkBookingsText
+            }
+          >
+            Check Your Bookings & Status
+          </Text>
+
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color="#FF6B35"
+          />
+        </TouchableOpacity>
+
         <View
           style={styles.bottomSpace}
         />
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -1669,250 +1340,6 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
-  /* CUSTOM DATE & TIME PICKERS */
-
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-
-  pickerModal: {
-    width: '100%',
-    maxWidth: 430,
-    maxHeight: '90%',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-
-  pickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-
-  pickerTitle: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-
-  pickerSubtitle: {
-    fontSize: 13,
-    color: '#777',
-    marginTop: 4,
-  },
-
-  pickerCloseButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  monthHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-
-  monthArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF5F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  monthArrowDisabled: {
-    backgroundColor: '#F5F5F5',
-  },
-
-  monthTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-
-  weekRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-
-  weekDay: {
-    width: '14.2857%',
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#888',
-  },
-
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-
-  calendarDay: {
-    width: '14.2857%',
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    marginBottom: 4,
-  },
-
-  calendarDaySelected: {
-    backgroundColor: '#FF6B35',
-  },
-
-  calendarDayDisabled: {
-    opacity: 0.35,
-  },
-
-  calendarDayText: {
-    fontSize: 15,
-    color: '#333',
-  },
-
-  calendarDayTextSelected: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-
-  calendarDayTextDisabled: {
-    color: '#AAA',
-  },
-
-  todayButton: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#FF6B35',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-
-  todayButtonText: {
-    color: '#FF6B35',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  selectedTimePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF5F0',
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 16,
-    gap: 10,
-  },
-
-  selectedTimeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-
-  timeSectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
-  },
-
-  timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-
-  timeOption: {
-    width: '23%',
-    marginRight: '2.66%',
-    marginBottom: 8,
-    minHeight: 40,
-    borderRadius: 9,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  timeOptionSelected: {
-    backgroundColor: '#FF6B35',
-  },
-
-  timeOptionText: {
-    fontSize: 14,
-    color: '#444',
-    fontWeight: '600',
-  },
-
-  timeOptionTextSelected: {
-    color: '#FFF',
-  },
-
-  minuteRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-
-  minuteOption: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 9,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  periodRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-
-  periodOption: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 10,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveTimeButton: {
-    marginTop: 18,
-    backgroundColor: '#FF6B35',
-    borderRadius: 12,
-    minHeight: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveTimeButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
   /* CUSTOMER INPUTS */
 
   inputContainer: {
@@ -2001,6 +1428,30 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+
+  /* CHECK BOOKINGS */
+
+  checkBookingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#FF6B35',
+    borderRadius: 12,
+    height: 52,
+    marginHorizontal: 20,
+    marginTop: -8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+
+  checkBookingsText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FF6B35',
   },
 
   bottomSpace: {
