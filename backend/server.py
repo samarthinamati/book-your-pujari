@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -54,12 +55,14 @@ except Exception:
 
 class UserLogin(BaseModel):
     phone: str
-    password: str
+    password: Optional[str] = None
+    role: Optional[str] = None
+
 
 class UserRegister(BaseModel):
     name: str
     phone: str
-    password: str
+    password: Optional[str] = None
     role: str = "customer"
 
 
@@ -295,26 +298,47 @@ async def register(credentials: UserRegister):
     phone = credentials.phone.strip()
     name = credentials.name.strip()
     role = credentials.role if credentials.role in ["customer", "saint"] else "customer"
+    password = (credentials.password or "").strip()
 
-    if not name or not phone or len(credentials.password) < 4:
-        raise HTTPException(status_code=400, detail="Invalid registration details")
+    if not name or not phone:
+        raise HTTPException(
+            status_code=400,
+            detail="Name and phone number are required"
+        )
+
+    # Customers register with phone only. Saints must create a password.
+    if role == "saint" and len(password) < 4:
+        raise HTTPException(
+            status_code=400,
+            detail="Saint password must be at least 4 characters"
+        )
 
     existing = await db.users.find_one({"phone": phone})
     if existing:
-        raise HTTPException(status_code=400, detail="An account with this phone number already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="An account with this phone number already exists"
+        )
 
     user = {
         "name": name,
         "phone": phone,
         "email": "",
-        "password_hash": hash_password(credentials.password),
         "role": role,
         "created_at": datetime.utcnow().isoformat(),
     }
+
+    if role == "saint":
+        user["password_hash"] = hash_password(password)
+
     result = await db.users.insert_one(user)
     user_id = str(result.inserted_id)
 
-    token = create_access_token({"user_id": user_id, "role": role})
+    token = create_access_token({
+        "user_id": user_id,
+        "role": role
+    })
+
     return {
         "token": token,
         "user": {
@@ -329,40 +353,56 @@ async def register(credentials: UserRegister):
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
+    phone = credentials.phone.strip()
 
-    user = await db.users.find_one({
-        "phone": credentials.phone
-    })
+    if not phone:
+        raise HTTPException(
+            status_code=400,
+            detail="Phone number is required"
+        )
+
+    user = await db.users.find_one({"phone": phone})
 
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Invalid phone number or password"
+            detail="No account found for this phone number"
         )
 
-    password_hash = (
-        user.get("password_hash")
-        or user.get("password")
-    )
+    actual_role = user.get("role", "customer")
+    requested_role = (credentials.role or "").strip().lower()
 
-    if not password_hash:
+    if requested_role and requested_role != actual_role:
         raise HTTPException(
-            status_code=401,
-            detail="Password is not configured for this account"
+            status_code=403,
+            detail="This phone number is not registered for the selected account type"
         )
 
-    if not verify_password(
-        credentials.password,
-        password_hash
-    ):
+    # Customers use phone-only login.
+    # Saint and Admin passwords remain required.
+    if actual_role in ["saint", "admin"]:
+        password = credentials.password or ""
+        password_hash = user.get("password_hash") or user.get("password")
+
+        if (
+            not password
+            or not password_hash
+            or not verify_password(password, password_hash)
+        ):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid phone number or password"
+            )
+
+    elif actual_role != "customer":
         raise HTTPException(
-            status_code=401,
-            detail="Invalid phone number or password"
+            status_code=403,
+            detail="Unsupported account type"
         )
 
     token = create_access_token({
         "user_id": str(user["_id"]),
-        "role": user.get("role", "customer")
+        "role": actual_role
     })
 
     return {
@@ -372,7 +412,7 @@ async def login(credentials: UserLogin):
             "email": user.get("email", ""),
             "name": user.get("name", ""),
             "phone": user.get("phone", ""),
-            "role": user.get("role", "customer")
+            "role": actual_role
         }
     }
 
@@ -491,6 +531,7 @@ async def update_saint_profile(
 
     return updated_profile
 
+
 @api_router.delete("/saints/profile")
 async def delete_saint_profile(
     user: dict = Depends(get_current_user)
@@ -542,6 +583,7 @@ async def search_saints(
         saint["id"] = str(saint.pop("_id"))
 
     return saints
+
 
 @api_router.get("/saints/{saint_id}")
 async def get_saint_details(
@@ -600,11 +642,14 @@ async def create_booking(
             detail="This Saint is currently unavailable"
         )
 
-       # Find the price set by the Saint for the selected pooja
+    # Find the price set by the Saint for the selected pooja.
     selected_pooja = None
 
     for pooja in saint.get("poojas", []):
-        if str(pooja.get("name", "")).strip().lower() == booking.pooja_name.strip().lower():
+        if (
+            str(pooja.get("name", "")).strip().lower()
+            == booking.pooja_name.strip().lower()
+        ):
             selected_pooja = pooja
             break
 
@@ -625,12 +670,13 @@ async def create_booking(
             detail="Invalid price set for this pooja"
         )
 
-    # Platform commission = 10% of Saint's price
-    # Total is always rounded UP to the next whole rupee
+    # Platform commission = 10% of Saint's price.
+    # Total is rounded UP to the next whole rupee.
     import math
 
     total_price = math.ceil(base_price * 1.10)
     platform_commission = total_price - base_price
+
     booking_dict = {
         "customer_id": user["id"],
         "saint_id": booking.saint_id,
@@ -649,9 +695,7 @@ async def create_booking(
         "created_at": datetime.utcnow().isoformat()
     }
 
-    result = await db.bookings.insert_one(
-        booking_dict
-    )
+    result = await db.bookings.insert_one(booking_dict)
 
     booking_dict["id"] = str(result.inserted_id)
     booking_dict.pop("_id", None)
@@ -664,13 +708,11 @@ async def get_my_bookings(
     user: dict = Depends(get_current_user)
 ):
     if user.get("role") == "customer":
-        # Customer can see all their bookings
         query = {
             "customer_id": user["id"]
         }
 
     elif user.get("role") == "saint":
-        # Saint can see ONLY bookings that have been paid
         profile = await db.saint_profiles.find_one({
             "user_id": user["id"]
         })
@@ -698,22 +740,44 @@ async def get_my_bookings(
 
     return bookings
 
+
 # ==================== PAYMENT ROUTES ====================
 
-@api_router.post("/payment/create-order", response_model=PaymentOrderResponse)
+@api_router.post(
+    "/payment/create-order",
+    response_model=PaymentOrderResponse
+)
 async def create_payment_order(
     payload: PaymentOrderCreate,
     user: dict = Depends(get_current_user)
 ):
-    booking = await db.bookings.find_one({"_id": ObjectId(payload.booking_id)})
+    booking = await db.bookings.find_one({
+        "_id": ObjectId(payload.booking_id)
+    })
+
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.get("customer_id") != user["id"] and user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Unauthorized booking access")
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
+
+    if (
+        booking.get("customer_id") != user["id"]
+        and user.get("role") != "admin"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Unauthorized booking access"
+        )
+
     if razorpay_client is None:
-        raise HTTPException(status_code=500, detail="Payment service is not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="Payment service is not configured"
+        )
 
     amount = int(booking.get("total_price", 0) * 100)
+
     try:
         order = razorpay_client.order.create({
             "amount": amount,
@@ -723,12 +787,16 @@ async def create_payment_order(
         })
     except Exception as exc:
         logger.exception("Razorpay order creation failed")
-        raise HTTPException(status_code=502, detail="Unable to create payment order") from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to create payment order"
+        ) from exc
 
     await db.bookings.update_one(
         {"_id": booking["_id"]},
         {"$set": {"razorpay_order_id": order["id"]}}
     )
+
     return {
         "order_id": order["id"],
         "amount": amount,
@@ -743,13 +811,30 @@ async def verify_payment(
     payload: PaymentVerify,
     user: dict = Depends(get_current_user)
 ):
-    booking = await db.bookings.find_one({"_id": ObjectId(payload.booking_id)})
+    booking = await db.bookings.find_one({
+        "_id": ObjectId(payload.booking_id)
+    })
+
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.get("customer_id") != user["id"] and user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Unauthorized booking access")
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
+
+    if (
+        booking.get("customer_id") != user["id"]
+        and user.get("role") != "admin"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Unauthorized booking access"
+        )
+
     if razorpay_client is None:
-        raise HTTPException(status_code=500, detail="Payment service is not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="Payment service is not configured"
+        )
 
     try:
         razorpay_client.utility.verify_payment_signature({
@@ -758,7 +843,10 @@ async def verify_payment(
             "razorpay_signature": payload.razorpay_signature,
         })
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Payment verification failed") from exc
+        raise HTTPException(
+            status_code=400,
+            detail="Payment verification failed"
+        ) from exc
 
     await db.bookings.update_one(
         {"_id": booking["_id"]},
@@ -770,7 +858,11 @@ async def verify_payment(
             "paid_at": datetime.utcnow().isoformat(),
         }}
     )
-    return {"message": "Payment verified successfully", "booking_id": payload.booking_id}
+
+    return {
+        "message": "Payment verified successfully",
+        "booking_id": payload.booking_id
+    }
 
 
 # ==================== REVIEW ROUTES ====================
@@ -781,19 +873,42 @@ async def create_review(
     user: dict = Depends(get_current_user)
 ):
     if user.get("role") != "customer":
-        raise HTTPException(status_code=403, detail="Only customers can submit reviews")
+        raise HTTPException(
+            status_code=403,
+            detail="Only customers can submit reviews"
+        )
+
     if review.rating < 1 or review.rating > 5:
-        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+        raise HTTPException(
+            status_code=400,
+            detail="Rating must be between 1 and 5"
+        )
 
-    booking = await db.bookings.find_one({"_id": ObjectId(review.booking_id)})
+    booking = await db.bookings.find_one({
+        "_id": ObjectId(review.booking_id)
+    })
+
     if not booking or booking.get("customer_id") != user["id"]:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.get("payment_status") != "paid":
-        raise HTTPException(status_code=400, detail="Only paid bookings can be reviewed")
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
 
-    existing = await db.reviews.find_one({"booking_id": review.booking_id})
+    if booking.get("payment_status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Only paid bookings can be reviewed"
+        )
+
+    existing = await db.reviews.find_one({
+        "booking_id": review.booking_id
+    })
+
     if existing:
-        raise HTTPException(status_code=400, detail="Review already submitted")
+        raise HTTPException(
+            status_code=400,
+            detail="Review already submitted"
+        )
 
     review_doc = {
         "booking_id": review.booking_id,
@@ -803,9 +918,11 @@ async def create_review(
         "comment": review.comment.strip(),
         "created_at": datetime.utcnow().isoformat(),
     }
+
     result = await db.reviews.insert_one(review_doc)
     review_doc["id"] = str(result.inserted_id)
     review_doc.pop("_id", None)
+
     return review_doc
 
 
@@ -816,7 +933,10 @@ async def get_saint_reviews(
 ):
     reviews = await db.reviews.find(
         {"saint_id": saint_id}
-    ).sort("created_at", -1).to_list(1000)
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(1000)
 
     for review in reviews:
         review["id"] = str(review.pop("_id"))
@@ -833,54 +953,114 @@ async def saint_booking_action(
     user: dict = Depends(get_current_user)
 ):
     await require_role(user, ["saint"])
+
     if action.action not in ["accept", "reject"]:
-        raise HTTPException(status_code=400, detail="Invalid booking action")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid booking action"
+        )
+
     try:
-        booking = await db.bookings.find_one({"_id": ObjectId(booking_id)})
+        booking = await db.bookings.find_one({
+            "_id": ObjectId(booking_id)
+        })
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid booking ID")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid booking ID"
+        )
+
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-            # Customer must complete payment before Saint can accept or reject
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
+
+    # Customer must complete payment before Saint can accept or reject.
     if booking.get("payment_status") != "paid":
         raise HTTPException(
             status_code=400,
             detail="Customer has not completed payment yet"
         )
+
     if booking.get("saint_id") is None:
-        raise HTTPException(status_code=400, detail="Booking has no saint")
+        raise HTTPException(
+            status_code=400,
+            detail="Booking has no saint"
+        )
 
-    profile = await db.saint_profiles.find_one({"_id": ObjectId(booking["saint_id"])})
+    profile = await db.saint_profiles.find_one({
+        "_id": ObjectId(booking["saint_id"])
+    })
+
     if not profile or profile.get("user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="This booking is not assigned to you")
+        raise HTTPException(
+            status_code=403,
+            detail="This booking is not assigned to you"
+        )
 
-    status_value = "accepted" if action.action == "accept" else "rejected"
-    update = {"saint_action": status_value, "updated_at": datetime.utcnow().isoformat()}
+    status_value = (
+        "accepted" if action.action == "accept" else "rejected"
+    )
+
+    update = {
+        "saint_action": status_value,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+
     if action.action == "accept":
         update["booking_status"] = "confirmed"
     else:
         update["booking_status"] = "rejected"
 
-    await db.bookings.update_one({"_id": booking["_id"]}, {"$set": update})
-    return {"message": f"Booking {action.action}ed successfully", "booking_id": booking_id, "saint_action": status_value}
+    await db.bookings.update_one(
+        {"_id": booking["_id"]},
+        {"$set": update}
+    )
+
+    return {
+        "message": f"Booking {action.action}ed successfully",
+        "booking_id": booking_id,
+        "saint_action": status_value
+    }
 
 
 # ==================== ADMIN ROUTES ====================
 
 @api_router.get("/admin/analytics")
-async def admin_analytics(user: dict = Depends(get_current_user)):
+async def admin_analytics(
+    user: dict = Depends(get_current_user)
+):
     await require_role(user, ["admin"])
+
     total_bookings = await db.bookings.count_documents({})
-    paid_bookings = await db.bookings.count_documents({"payment_status": "paid"})
-    active_saints = await db.saint_profiles.count_documents({"is_active": True})
+    paid_bookings = await db.bookings.count_documents({
+        "payment_status": "paid"
+    })
+    active_saints = await db.saint_profiles.count_documents({
+        "is_active": True
+    })
     pending_saints = 0
     total_saints = await db.saint_profiles.count_documents({})
-    pending_bookings = await db.bookings.count_documents({"booking_status": "pending"})
+    pending_bookings = await db.bookings.count_documents({
+        "booking_status": "pending"
+    })
+
     revenue_result = await db.bookings.aggregate([
         {"$match": {"payment_status": "paid"}},
-        {"$group": {"_id": None, "total": {"$sum": "$platform_commission"}}}
+        {
+            "$group": {
+                "_id": None,
+                "total": {"$sum": "$platform_commission"}
+            }
+        }
     ]).to_list(1)
-    revenue = revenue_result[0].get("total", 0) if revenue_result else 0
+
+    revenue = (
+        revenue_result[0].get("total", 0)
+        if revenue_result else 0
+    )
+
     return {
         "total_bookings": total_bookings,
         "paid_bookings": paid_bookings,
@@ -893,12 +1073,18 @@ async def admin_analytics(user: dict = Depends(get_current_user)):
 
 
 @api_router.get("/admin/saints/pending")
-async def admin_pending_saints(user: dict = Depends(get_current_user)):
+async def admin_pending_saints(
+    user: dict = Depends(get_current_user)
+):
     await require_role(user, ["admin"])
 
-    # There is no approval step. This endpoint is kept for the existing
-    # frontend route, but now returns all active Saints.
-    saints = await db.saint_profiles.find({"is_active": True}).sort("created_at", -1).to_list(1000)
+    # Existing frontend endpoint; returns all active Saints.
+    saints = await db.saint_profiles.find({
+        "is_active": True
+    }).sort(
+        "created_at",
+        -1
+    ).to_list(1000)
 
     for saint in saints:
         saint["id"] = str(saint.pop("_id"))
@@ -906,8 +1092,12 @@ async def admin_pending_saints(user: dict = Depends(get_current_user)):
 
     return saints
 
+
 @api_router.post("/admin/saints/approve")
-async def admin_approve_saint(payload: AdminApprovalRequest, user: dict = Depends(get_current_user)):
+async def admin_approve_saint(
+    payload: AdminApprovalRequest,
+    user: dict = Depends(get_current_user)
+):
     await require_role(user, ["admin"])
 
     if payload.approved:
@@ -919,7 +1109,10 @@ async def admin_approve_saint(payload: AdminApprovalRequest, user: dict = Depend
     try:
         saint_id = ObjectId(payload.saint_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid saint ID")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid saint ID"
+        )
 
     result = await db.saint_profiles.update_one(
         {"_id": saint_id},
@@ -931,9 +1124,17 @@ async def admin_approve_saint(payload: AdminApprovalRequest, user: dict = Depend
     )
 
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Saint not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Saint not found"
+        )
 
-    return {"message": "Saint rejected", "approved": False, "is_active": False}
+    return {
+        "message": "Saint rejected",
+        "approved": False,
+        "is_active": False
+    }
+
 
 @api_router.get("/admin/dashboard")
 async def admin_dashboard(
@@ -999,7 +1200,11 @@ async def admin_get_bookings(
 ):
     await require_role(user, ["admin"])
 
-    bookings = await db.bookings.find().sort("created_at", -1).to_list(1000)
+    bookings = await db.bookings.find().sort(
+        "created_at",
+        -1
+    ).to_list(1000)
+
     result = []
 
     for booking in bookings:
@@ -1008,42 +1213,71 @@ async def admin_get_bookings(
         # Customer details
         customer = None
         customer_id = booking.get("customer_id")
+
         if customer_id:
             try:
-                customer = await db.users.find_one({"_id": ObjectId(customer_id)})
+                customer = await db.users.find_one({
+                    "_id": ObjectId(customer_id)
+                })
             except Exception:
                 customer = None
 
-        booking["customer_name"] = booking.get("customer_name") or (customer or {}).get("name", "")
-        booking["customer_phone"] = booking.get("customer_phone") or (customer or {}).get("phone", "")
-        booking["customer_email"] = (customer or {}).get("email", "")
+        booking["customer_name"] = (
+            booking.get("customer_name")
+            or (customer or {}).get("name", "")
+        )
+        booking["customer_phone"] = (
+            booking.get("customer_phone")
+            or (customer or {}).get("phone", "")
+        )
+        booking["customer_email"] = (
+            customer or {}
+        ).get("email", "")
 
         # Saint details
         saint = None
         saint_id = booking.get("saint_id")
+
         if saint_id:
             try:
-                saint = await db.saint_profiles.find_one({"_id": ObjectId(saint_id)})
+                saint = await db.saint_profiles.find_one({
+                    "_id": ObjectId(saint_id)
+                })
             except Exception:
                 saint = None
 
         if saint:
             booking["saint_name"] = saint.get("name", "Unknown")
             booking["saint_location"] = saint.get("location", "")
-            booking["saint_operating_areas"] = saint.get("operating_areas", [])
+            booking["saint_operating_areas"] = saint.get(
+                "operating_areas", []
+            )
             booking["saint_poojas"] = saint.get("poojas", [])
-            booking["saint_is_active"] = saint.get("is_active", False)
-            booking["saint_is_approved"] = saint.get("is_approved", True)
+            booking["saint_is_active"] = saint.get(
+                "is_active", False
+            )
+            booking["saint_is_approved"] = saint.get(
+                "is_approved", True
+            )
 
             saint_user = None
             saint_user_id = saint.get("user_id")
+
             if saint_user_id:
                 try:
-                    saint_user = await db.users.find_one({"_id": ObjectId(saint_user_id)})
+                    saint_user = await db.users.find_one({
+                        "_id": ObjectId(saint_user_id)
+                    })
                 except Exception:
                     saint_user = None
-            booking["saint_phone"] = (saint_user or {}).get("phone", "")
-            booking["saint_email"] = (saint_user or {}).get("email", "")
+
+            booking["saint_phone"] = (
+                saint_user or {}
+            ).get("phone", "")
+            booking["saint_email"] = (
+                saint_user or {}
+            ).get("email", "")
+
         else:
             booking["saint_name"] = "Saint not found"
             booking["saint_phone"] = ""
@@ -1058,6 +1292,7 @@ async def admin_get_bookings(
         result.append(booking)
 
     return result
+
 
 # ==================== STARTUP ====================
 
