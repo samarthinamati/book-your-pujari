@@ -130,6 +130,14 @@ export default function SaintProfileSetup() {
     setPoojas(updated);
   };
 
+  const navigateToDashboard = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.replace(`${window.location.origin}/saint/dashboard`);
+    } else {
+      router.replace('/saint/dashboard');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter your full name.');
@@ -190,18 +198,20 @@ export default function SaintProfileSetup() {
 
         console.log('Updated Saint Profile:', updatedProfile);
 
-        Alert.alert(
-  '🎉 Profile Created Successfully!',
-  'Your profile has been created and is now LIVE. Customers can now find and book your poojas.',
-  [
-    {
-      text: 'OK',
-      onPress: () => {
-        router.replace('/saint/dashboard');
-      },
-    },
-  ]
-);
+        if (Platform.OS === 'web') {
+          navigateToDashboard();
+        } else {
+          Alert.alert(
+            'Success',
+            'Profile updated successfully.',
+            [
+              {
+                text: 'OK',
+                onPress: navigateToDashboard,
+              },
+            ]
+          );
+        }
       } else {
         // CREATE NEW PROFILE
         const createdProfile = await apiClient.post(
@@ -211,18 +221,20 @@ export default function SaintProfileSetup() {
 
         console.log('Created Saint Profile:', createdProfile);
 
-        Alert.alert(
-          'Success',
-          'Your Saint profile has been created successfully. You are now live.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                router.replace('/saint/dashboard');
+        if (Platform.OS === 'web') {
+          navigateToDashboard();
+        } else {
+          Alert.alert(
+            '🎉 Profile Created Successfully!',
+            'Your profile has been created and is now LIVE. Customers can now find and book your poojas.',
+            [
+              {
+                text: 'OK',
+                onPress: navigateToDashboard,
               },
-            },
-          ]
-        );
+            ]
+          );
+        }
       }
     } catch (error: any) {
       console.error('Profile save error:', error);
