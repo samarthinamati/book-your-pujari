@@ -143,7 +143,7 @@ export default function BookingScreen() {
   };
 
   /*
-  PRICE CALCULATION
+  PRICE CALN
   Pujari amount + 10% platform commission.
   */
   const calculateTotal = () => {
@@ -759,13 +759,15 @@ export default function BookingScreen() {
 
           {/* VISIT DATE */}
           <TouchableOpacity
-            style={styles.dateTimeButton}
-            activeOpacity={0.7}
+            style={
+              styles.dateTimeButton
+            }
             onPress={() => {
               if (Platform.OS !== 'web') {
                 setShowDatePicker(true);
               }
             }}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="calendar-outline"
@@ -784,61 +786,65 @@ export default function BookingScreen() {
                 Visit Date
               </Text>
 
-              <Text
-                style={
-                  styles.dateTimeText
-                }
-              >
-                {visitDate.toLocaleDateString(
-                  'en-IN',
-                  {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
+              {Platform.OS === 'web' ? (
+                <input
+                  type="date"
+                  value={visitDate.toISOString().split('T')[0]}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e: any) => {
+                    if (e.target.value) {
+                      setVisitDate(new Date(e.target.value));
+                    }
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    outline: 'none',
+                    width: '100%',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.dateTimeText
                   }
-                )}
-              </Text>
+                >
+                  {visitDate.toLocaleDateString(
+                    'en-IN',
+                    {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    }
+                  )}
+                </Text>
+              )}
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#999"
-            />
-
-            {Platform.OS === 'web' && (
-              <input
-                type="date"
-                value={visitDate.toISOString().split('T')[0]}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e: any) => {
-                  if (e.target.value) {
-                    setVisitDate(new Date(e.target.value));
-                  }
-                }}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                } as any}
+            {Platform.OS !== 'web' && (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#999"
               />
             )}
           </TouchableOpacity>
 
           {/* VISIT TIME */}
           <TouchableOpacity
-            style={styles.dateTimeButton}
-            activeOpacity={0.7}
+            style={
+              styles.dateTimeButton
+            }
             onPress={() => {
               if (Platform.OS !== 'web') {
                 setShowTimePicker(true);
               }
             }}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="time-outline"
@@ -857,50 +863,52 @@ export default function BookingScreen() {
                 Visit Time
               </Text>
 
-              <Text
-                style={
-                  styles.dateTimeText
-                }
-              >
-                {visitTime.toLocaleTimeString(
-                  'en-IN',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
+              {Platform.OS === 'web' ? (
+                <input
+                  type="time"
+                  value={visitTime.toTimeString().slice(0, 5)}
+                  onChange={(e: any) => {
+                    if (e.target.value) {
+                      const [hours, minutes] = e.target.value.split(':');
+                      const newTime = new Date();
+                      newTime.setHours(parseInt(hours, 10));
+                      newTime.setMinutes(parseInt(minutes, 10));
+                      setVisitTime(newTime);
+                    }
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    outline: 'none',
+                    width: '100%',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.dateTimeText
                   }
-                )}
-              </Text>
+                >
+                  {visitTime.toLocaleTimeString(
+                    'en-IN',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }
+                  )}
+                </Text>
+              )}
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#999"
-            />
-
-            {Platform.OS === 'web' && (
-              <input
-                type="time"
-                value={visitTime.toTimeString().slice(0, 5)}
-                onChange={(e: any) => {
-                  if (e.target.value) {
-                    const [hours, minutes] = e.target.value.split(':');
-                    const newTime = new Date();
-                    newTime.setHours(parseInt(hours, 10));
-                    newTime.setMinutes(parseInt(minutes, 10));
-                    setVisitTime(newTime);
-                  }
-                }}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                } as any}
+            {Platform.OS !== 'web' && (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#999"
               />
             )}
           </TouchableOpacity>
@@ -1331,7 +1339,6 @@ const styles = StyleSheet.create({
 
   /* DATE & TIME */
   dateTimeButton: {
-    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
@@ -1341,7 +1348,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
-    overflow: 'hidden',
   },
 
   dateTimeInfo: {
