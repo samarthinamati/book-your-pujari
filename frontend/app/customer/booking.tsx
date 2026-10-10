@@ -143,7 +143,7 @@ export default function BookingScreen() {
   };
 
   /*
-  PRICE CALCULATION
+  PRICE CALN
   Pujari amount + 10% platform commission.
   */
   const calculateTotal = () => {
@@ -758,45 +758,22 @@ export default function BookingScreen() {
           </Text>
 
           {/* VISIT DATE */}
-          <View style={styles.dateTimeButton}>
-            <TouchableOpacity
-              style={styles.largeIconContainer}
-              activeOpacity={0.7}
-              onPress={() => {
-                if (Platform.OS !== 'web') {
-                  setShowDatePicker(true);
-                }
-              }}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={26}
-                color="#FF6B35"
-              />
-
-              {Platform.OS === 'web' && (
-                <input
-                  type="date"
-                  value={visitDate.toISOString().split('T')[0]}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e: any) => {
-                    if (e.target.value) {
-                      setVisitDate(new Date(e.target.value));
-                    }
-                  }}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: 'pointer',
-                    zIndex: 99,
-                  } as any}
-                />
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={
+              styles.dateTimeButton
+            }
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                setShowDatePicker(true);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={22}
+              color="#FF6B35"
+            />
 
             <View
               style={styles.dateTimeInfo}
@@ -809,47 +786,84 @@ export default function BookingScreen() {
                 Visit Date
               </Text>
 
-              <Text
-                style={
-                  styles.dateTimeText
-                }
-              >
-                {visitDate.toLocaleDateString(
-                  'en-IN',
-                  {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
+              {Platform.OS === 'web' ? (
+                <input
+                  type="date"
+                  value={visitDate.toISOString().split('T')[0]}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e: any) => {
+                    if (e.target.value) {
+                      setVisitDate(new Date(e.target.value));
+                    }
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    outline: 'none',
+                    width: '100%',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.dateTimeText
                   }
-                )}
-              </Text>
+                >
+                  {visitDate.toLocaleDateString(
+                    'en-IN',
+                    {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    }
+                  )}
+                </Text>
+              )}
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#999"
-            />
-          </View>
+            {Platform.OS !== 'web' && (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#999"
+              />
+            )}
+          </TouchableOpacity>
 
           {/* VISIT TIME */}
-          <View style={styles.dateTimeButton}>
-            <TouchableOpacity
-              style={styles.largeIconContainer}
-              activeOpacity={0.7}
-              onPress={() => {
-                if (Platform.OS !== 'web') {
-                  setShowTimePicker(true);
-                }
-              }}
-            >
-              <Ionicons
-                name="time-outline"
-                size={26}
-                color="#FF6B35"
-              />
+          <TouchableOpacity
+            style={
+              styles.dateTimeButton
+            }
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                setShowTimePicker(true);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="time-outline"
+              size={22}
+              color="#FF6B35"
+            />
 
-              {Platform.OS === 'web' && (
+            <View
+              style={styles.dateTimeInfo}
+            >
+              <Text
+                style={
+                  styles.dateTimeLabel
+                }
+              >
+                Visit Time
+              </Text>
+
+              {Platform.OS === 'web' ? (
                 <input
                   type="time"
                   value={visitTime.toTimeString().slice(0, 5)}
@@ -863,51 +877,41 @@ export default function BookingScreen() {
                     }
                   }}
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#333',
+                    outline: 'none',
                     width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: 'pointer',
-                    zIndex: 99,
-                  } as any}
+                    fontFamily: 'inherit',
+                  }}
                 />
-              )}
-            </TouchableOpacity>
-
-            <View
-              style={styles.dateTimeInfo}
-            >
-              <Text
-                style={
-                  styles.dateTimeLabel
-                }
-              >
-                Visit Time
-              </Text>
-
-              <Text
-                style={
-                  styles.dateTimeText
-                }
-              >
-                {visitTime.toLocaleTimeString(
-                  'en-IN',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
+              ) : (
+                <Text
+                  style={
+                    styles.dateTimeText
                   }
-                )}
-              </Text>
+                >
+                  {visitTime.toLocaleTimeString(
+                    'en-IN',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }
+                  )}
+                </Text>
+              )}
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#999"
-            />
-          </View>
+            {Platform.OS !== 'web' && (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#999"
+              />
+            )}
+          </TouchableOpacity>
 
           {/* DATE PICKER (Fallback for Native) */}
           {showDatePicker && Platform.OS !== 'web' && (
@@ -1344,17 +1348,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
-  },
-
-  largeIconContainer: {
-    position: 'relative',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF5F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
 
   dateTimeInfo: {
