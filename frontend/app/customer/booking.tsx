@@ -1,3 +1,727 @@
+// frontend/app/customer/booking.tsx
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '@/src/api/client';
+import { useAuth } from '@/src/context/AuthContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { openRazorpayCheckout } from '@/src/utils/razorpay';
+
+type WebDateTimeInputProps = {
+  mode: 'date' | 'time';
+  value: Date;
+  onChange: (value: Date) => void;
+};
+
+/**
+ * HTML date/time inputs for Expo Web. The native DateTimePicker is kept
+ * for Android and iOS below.
+ */
+function WebDateTimeInput({
+  mode,
+  value,
+  onChange,
+}: WebDateTimeInputProps) {
+  const pad = (number: number) => String(number).padStart(2, '0');
+  const inputValue = mode === 'date'
+    ? `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+    : `${pad(value.getHours())}:${pad(value.getMinutes())}`;
+  const today = new Date();
+  const minimumDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  return React.createElement('input' as any, {
+    type: mode,
+    value: inputValue,
+    min: mode === 'date' ? minimumDate : undefined,
+    'aria-label': mode === 'date' ? 'Visit date' : 'Visit time',
+    onChange: (event: any) => {
+      const rawValue = event?.target?.value;
+      if (!rawValue) return;
+
+      const nextValue = new Date(value);
+      if (mode === 'date') {
+        const parts = rawValue.split('-').map(Number);
+        if (parts.length !== 3 || parts.some((part: number) => !Number.isFinite(part))) return;
+        nextValue.setFullYear(parts[0], parts[1] - 1, parts[2]);
+      } else {
+        const parts = rawValue.split(':').map(Number);
+        if (parts.length < 2 || parts.some((part: number) => !Number.isFinite(part))) return;
+        nextValue.setHours(parts[0], parts[1], 0, 0);
+      }
+      onChange(nextValue);
+    },
+    style: {
+      width: '100%',
+      boxSizing: 'border-box',
+      padding: '12px',
+      marginTop: '4px',
+      marginBottom: '12px',
+      border: '1px solid #E5E5E5',
+      borderRadius: '8px',
+      backgroundColor: '#F5F5F5',
+      color: '#333333',
+      fontSize: '16px',
+    },
+  });
+}
+
+export default function BookingScreen() {
+  const params = useLocalSearchParams();
+
+  const saintId = Array.isArray(params.saintId)
+    ? params.saintId[0]
+    : params.saintId;
+
+  const poojaNameParam = Array.isArray(params.poojaName)
+    ? params.poojaName[0]
+    : params.poojaName;
+
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const [saint, setSaint] = useState<any>(null);
+  const [selectedPooja, setSelectedPooja] = useState<any>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [visitDate, setVisitDate] = useState(new Date());
+  const [visitTime, setVisitTime] = useState(new Date());
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const [address, setAddress] = useState('');
+
+  const [customerName, setCustomerName] = useState(
+    user?.name || ''
+  );
+
+  const [customerPhone, setCustomerPhone] = useState(
+    user?.phone || ''
+  );
+
+  useEffect(() => {
+    if (!saintId) {
+      setLoading(false);
+
+      Alert.alert(
+        'Error',
+        'Saint information is missing.',
+        [
+          {
+            text: 'Go Back',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+
+      return;
+    }
+
+    fetchSaintDetails();
+  }, [saintId, poojaNameParam]);
+
+  const fetchSaintDetails = async () => {
+    try {
+      console.log('[Booking] Saint ID:', saintId);
+      console.log('[Booking] Pooja:', poojaNameParam);
+
+      const data = await apiClient.get(
+        `/saints/${encodeURIComponent(String(saintId))}`
+      );
+
+      console.log('[Booking] Saint response:', data);
+
+      if (!data) {
+        throw new Error('Saint details not found');
+      }
+
+      setSaint(data);
+
+      const poojas = Array.isArray(data.poojas)
+        ? data.poojas
+        : [];
+
+      let decodedPoojaName = '';
+
+      if (poojaNameParam) {
+        try {
+          decodedPoojaName = decodeURIComponent(
+            String(poojaNameParam)
+          );
+        } catch {
+          decodedPoojaName = String(poojaNameParam);
+        }
+      }
+
+      const pooja = poojas.find(
+        (p: any) =>
+          String(p?.name || '') === decodedPoojaName
+      );
+
+      if (pooja) {
+        setSelectedPooja(pooja);
+      } else if (poojas.length > 0) {
+        setSelectedPooja(poojas[0]);
+      } else {
+        setSelectedPooja(null);
+      }
+    } catch (error: any) {
+      console.error(
+        '[Booking] Failed to load:',
+        error
+      );
+
+      Alert.alert(
+        'Error',
+        error?.message ||
+          'Failed to load booking details.',
+        [
+          {
+            text: 'Go Back',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*
+   * PRICE CALCULATION
+   *
+   * Pujari amount + 10% platform commission.
+   *
+   * Examples:
+   * ₹6   -> ₹6.60 -> ₹7
+   * ₹50  -> ₹55
+   * ₹101 -> ₹111.10 -> ₹112
+   */
+  const calculateTotal = () => {
+    if (!selectedPooja) {
+      return {
+        base: 0,
+        commission: 0,
+        total: 0,
+      };
+    }
+
+    const base = Number(selectedPooja?.price ?? 0);
+
+    if (!Number.isFinite(base) || base < 0) {
+      return {
+        base: 0,
+        commission: 0,
+        total: 0,
+      };
+    }
+
+    const commission = base * 0.10;
+
+    // Round UP to the next whole rupee.
+    const total = Math.ceil(base + commission);
+
+    return {
+      base,
+      commission,
+      total,
+    };
+  };
+
+  const handleBooking = async () => {
+    if (!saintId) {
+      Alert.alert(
+        'Error',
+        'Saint information is missing.'
+      );
+      return;
+    }
+
+    if (!selectedPooja) {
+      Alert.alert(
+        'Error',
+        'Please select a pooja service.'
+      );
+      return;
+    }
+
+    if (!address.trim()) {
+      Alert.alert(
+        'Error',
+        'Please enter your home address.'
+      );
+      return;
+    }
+
+    if (
+      !customerName.trim() ||
+      !customerPhone.trim()
+    ) {
+      Alert.alert(
+        'Error',
+        'Please enter your name and phone number.'
+      );
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const bookingData = {
+        saint_id: String(saintId),
+
+        pooja_name:
+          selectedPooja?.name || '',
+
+        booking_date:
+          visitDate
+            .toISOString()
+            .split('T')[0],
+
+        booking_time:
+          visitTime.toLocaleTimeString(
+            'en-US',
+            {
+              hour: '2-digit',
+              minute: '2-digit',
+            }
+          ),
+
+        address: address.trim(),
+
+        customer_name:
+          customerName.trim(),
+
+        customer_phone:
+          customerPhone.trim(),
+      };
+
+      console.log(
+        '[Booking] Creating home visit booking:',
+        bookingData
+      );
+
+      const booking =
+        await apiClient.post(
+          '/bookings',
+          bookingData
+        );
+
+      console.log(
+        '[Booking] Created:',
+        booking
+      );
+
+      if (!booking?.id) {
+        throw new Error(
+          'Booking was not created correctly.'
+        );
+      }
+
+      let paymentOrder;
+
+      try {
+        paymentOrder =
+          await apiClient.post(
+            '/payment/create-order',
+            {
+              booking_id: booking.id,
+            }
+          );
+      } catch (error: any) {
+        Alert.alert(
+          'Payment Setup Failed',
+          error?.message ||
+            'Unable to initialize payment. Please try again.',
+          [{ text: 'OK' }]
+        );
+
+        return;
+      }
+
+      if (!paymentOrder?.order_id) {
+        throw new Error(
+          'Payment order could not be created.'
+        );
+      }
+
+      console.log(
+        '[Payment] Backend payment order:',
+        paymentOrder
+      );
+
+      /*
+       * WEB
+       *
+       * The backend payment amount is used here.
+       * For ₹6 pooja:
+       * ₹6 + 10% = ₹6.60
+       * Backend rounds UP = ₹7
+       * Razorpay amount = 700 paise
+       */
+      if (Platform.OS === 'web') {
+        const options = {
+          description: `${
+            selectedPooja?.name ||
+            'Pooja'
+          } by ${
+            saint?.name ||
+            'Saint'
+          }`,
+
+          image:
+            'https://i.imgur.com/3g7nmJC.png',
+
+          currency:
+            paymentOrder.currency ||
+            'INR',
+
+          key:
+            paymentOrder.key_id,
+
+          amount:
+            String(
+              paymentOrder.amount
+            ),
+
+          name:
+            'Book Your Pujari',
+
+          order_id:
+            paymentOrder.order_id,
+
+          prefill: {
+            email: `${customerPhone.trim()}@bookyourpujari.com`,
+            contact:
+              customerPhone.trim(),
+            name:
+              customerName.trim(),
+          },
+
+          theme: {
+            color: '#FF6B35',
+          },
+        };        try {
+          const paymentResult =
+            await openRazorpayCheckout(
+              options
+            );
+
+          console.log(
+            '[Payment] Result:',
+            paymentResult
+          );
+
+          /*
+           * IMPORTANT:
+           * Verify payment with backend first.
+           * Only after successful verification
+           * redirect to the Bookings / Calendar page.
+           */
+          await apiClient.post(
+            '/payment/verify',
+            {
+              razorpay_payment_id:
+                paymentResult.razorpay_payment_id,
+
+              razorpay_order_id:
+                paymentResult.razorpay_order_id,
+
+              razorpay_signature:
+                paymentResult.razorpay_signature,
+
+              booking_id:
+                booking.id,
+            }
+          );
+
+          /*
+           * PAYMENT SUCCESS
+           *
+           * No success popup.
+           * Directly open the customer's
+           * Bookings / Calendar dashboard.
+           */
+          if (Platform.OS === 'web') {
+            window.location.href = '/customer/bookings';
+          } else {
+            router.replace('/customer/bookings');
+          }
+
+        } catch (error: any) {
+          console.error(
+            '[Payment] Error:',
+            error
+          );
+
+          Alert.alert(
+            'Payment Failed',
+            error?.description ||
+              error?.message ||
+              'Your payment was cancelled or failed.'
+          );
+        }
+
+        return;
+      }
+
+      /*
+       * MOBILE
+       */
+      router.push({
+        pathname: '/customer/payment',
+        params: {
+          bookingId: String(
+            booking.id
+          ),
+
+          orderId: String(
+            paymentOrder.order_id
+          ),
+
+          amount: String(
+            paymentOrder.amount
+          ),
+
+          currency:
+            paymentOrder.currency ||
+            'INR',
+
+          keyId:
+            paymentOrder.key_id ||
+            '',
+
+          customerName:
+            customerName.trim(),
+
+          customerPhone:
+            customerPhone.trim(),
+
+          description: `${
+            selectedPooja?.name ||
+            'Pooja'
+          } by ${
+            saint?.name ||
+            'Saint'
+          }`,
+        },
+      });
+    } catch (error: any) {
+      console.error(
+        '[Booking] Error:',
+        error
+      );
+
+      Alert.alert(
+        'Booking Failed',
+        error?.message ||
+          'Unable to create booking. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator
+          size="large"
+          color="#FF6B35"
+        />
+
+        <Text style={styles.loadingText}>
+          Loading booking details...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!saint) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={60}
+            color="#FF6B35"
+          />
+
+          <Text style={styles.errorTitle}>
+            Saint details unavailable
+          </Text>
+
+          <TouchableOpacity
+            style={
+              styles.backToDashboardButton
+            }
+            onPress={() =>
+              router.back()
+            }
+          >
+            <Text
+              style={
+                styles.backToDashboardText
+              }
+            >
+              Go Back
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!selectedPooja) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={60}
+            color="#FF6B35"
+          />
+
+          <Text style={styles.errorTitle}>
+            Pooja service unavailable
+          </Text>
+
+          <TouchableOpacity
+            style={
+              styles.backToDashboardButton
+            }
+            onPress={() =>
+              router.back()
+            }
+          >
+            <Text
+              style={
+                styles.backToDashboardText
+              }
+            >
+              Go Back
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const pricing = calculateTotal();
+
+  const saintRating = Number(
+    saint?.rating ?? 0
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+
+      {/* HEADER */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() =>
+            router.back()
+          }
+        >
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#333"
+          />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>
+          Book Pooja
+        </Text>
+
+        <View
+          style={styles.headerSpacer}
+        />
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={
+          false
+        }
+      >
+
+        {/* SAINT DETAILS */}
+        <View style={styles.saintCard}>
+          <View style={styles.saintInfo}>
+
+            <View
+              style={styles.saintAvatar}
+            >
+              <Ionicons
+                name="person"
+                size={32}
+                color="#FF6B35"
+              />
+            </View>
+
+            <View
+              style={styles.saintDetails}
+            >
+              <Text
+                style={styles.saintName}
+              >
+                {saint.name ||
+                  'Saint'}
+              </Text>
+
+              <Text
+                style={
+                  styles.saintLocation
+                }
+              >
+                {saint.location ||
+                  'Location not available'}
+              </Text>
+
+              <View
+                style={styles.saintRating}
+              >
+                <Ionicons
+                  name="star"
+                  size={14}
+                  color="#FFB800"
+                />
+
+                <Text
+                  style={
+                    styles.ratingText
+                  }
+                >
+                  {saintRating.toFixed(1)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* POOJA DETAILS */}
+        <View style={styles.section}>
+          <Text
+            style={styles.sectionTitle}
+          >
+            Pooja Details
           </Text>
 
           <View
@@ -42,6 +766,7 @@
               </View>
             ) : null}
 
+            {/* POOJA BASE PRICE */}
             <View
               style={styles.priceRow}
             >
@@ -61,11 +786,9 @@
         </View>
 
         {/* SAINT VISIT DATE & TIME */}
-
         <View style={styles.section}>
-          <Text
-            style={styles.sectionTitle}
-          >
+
+          <Text style={styles.sectionTitle}>
             When should the Saint visit?
           </Text>
 
@@ -77,18 +800,11 @@
           </Text>
 
           {/* VISIT DATE */}
-
           <TouchableOpacity
-            style={
-              styles.dateTimeButton
+            style={styles.dateTimeButton}
+            onPress={() =>
+              setShowDatePicker(true)
             }
-            onPress={() => {
-  if (Platform.OS === 'web') {
-    openWebPicker('date');
-  } else {
-    setShowDatePicker(true);
-  }
-}}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -101,17 +817,13 @@
               style={styles.dateTimeInfo}
             >
               <Text
-                style={
-                  styles.dateTimeLabel
-                }
+                style={styles.dateTimeLabel}
               >
                 Visit Date
               </Text>
 
               <Text
-                style={
-                  styles.dateTimeText
-                }
+                style={styles.dateTimeText}
               >
                 {visitDate.toLocaleDateString(
                   'en-IN',
@@ -132,18 +844,10 @@
           </TouchableOpacity>
 
           {/* VISIT TIME */}
-
           <TouchableOpacity
-            style={
-              styles.dateTimeButton
-            }
-            onPress={() => {
-  if (Platform.OS === 'web') {
-    openWebPicker('time');
-  } else {
-    setShowTimePicker(true);
-  }
-}}
+            style={styles.dateTimeButton}
+            onPress={() =>
+              setShowTimePicker(true)
             }
             activeOpacity={0.7}
           >
@@ -157,17 +861,13 @@
               style={styles.dateTimeInfo}
             >
               <Text
-                style={
-                  styles.dateTimeLabel
-                }
+                style={styles.dateTimeLabel}
               >
                 Visit Time
               </Text>
 
               <Text
-                style={
-                  styles.dateTimeText
-                }
+                style={styles.dateTimeText}
               >
                 {visitTime.toLocaleTimeString(
                   'en-IN',
@@ -186,62 +886,60 @@
             />
           </TouchableOpacity>
 
-          
-{/* DATE PICKER */}
-{showDatePicker &&
-  (Platform.OS === 'web' ? (
-    <WebDateTimeInput
-      mode="date"
-      value={visitDate}
-      onChange={(date) => {
-        setVisitDate(date);
-        setShowDatePicker(false);
-      }}
-    />
-  ) : (
-    <DateTimePicker
-      value={visitDate}
-      mode="date"
-      minimumDate={new Date()}
-      display="default"
-      onChange={(event, date) => {
-        setShowDatePicker(false);
-        if (date) {
-          setVisitDate(date);
-        }
-      }}
-    />
-  ))}
+          {/* DATE PICKER: HTML input on web, native picker on mobile */}
+          {showDatePicker && (
+            Platform.OS === 'web' ? (
+              <WebDateTimeInput
+                mode="date"
+                value={visitDate}
+                onChange={(date) => {
+                  setVisitDate(date);
+                  setShowDatePicker(false);
+                }}
+              />
+            ) : (              />
+            ) : (
+              <DateTimePicker
+                value={visitDate}
+                mode="date"
+                minimumDate={new Date()}
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setVisitDate(date);
+                }}
+              />
+            )
+          )}
 
-{/* TIME PICKER */}
-{showTimePicker &&
-  (Platform.OS === 'web' ? (
-    <WebDateTimeInput
-      mode="time"
-      value={visitTime}
-      onChange={(time) => {
-        setVisitTime(time);
-        setShowTimePicker(false);
-      }}
-    />
-  ) : (
-    <DateTimePicker
-      value={visitTime}
-      mode="time"
-      display="default"
-      onChange={(event, date) => {
-        setShowTimePicker(false);
-        if (date) {
-          setVisitTime(date);
-        }
-      }}
-    />
-  ))}
+          {/* TIME PICKER: HTML input on web, native picker on mobile */}
+          {showTimePicker && (
+            Platform.OS === 'web' ? (
+              <WebDateTimeInput
+                mode="time"
+                value={visitTime}
+                onChange={(time) => {
+                  setVisitTime(time);
+                  setShowTimePicker(false);
+                }}
+              />
+            ) : (
+              <DateTimePicker
+                value={visitTime}
+                mode="time"
+                display="default"
+                onChange={(event, date) => {
+                  setShowTimePicker(false);
+                  if (date) setVisitTime(date);
+                }}
+              />
+            )
+          )}
         </View>
 
         {/* CUSTOMER DETAILS */}
-
         <View style={styles.section}>
+
           <Text
             style={styles.sectionTitle}
           >
@@ -316,7 +1014,6 @@
         </View>
 
         {/* TOTAL */}
-
         <View
           style={styles.totalSection}
         >
@@ -340,9 +1037,7 @@
             </Text>
 
             <Text
-              style={
-                styles.commissionText
-              }
+              style={styles.commissionText}
             >
               Includes 10% platform commission
             </Text>
@@ -350,7 +1045,6 @@
         </View>
 
         {/* PAYMENT */}
-
         <TouchableOpacity
           style={[
             styles.bookButton,
@@ -385,16 +1079,9 @@
         </TouchableOpacity>
 
         {/* CHECK BOOKINGS & STATUS */}
-
         <TouchableOpacity
-          style={
-            styles.checkBookingsButton
-          }
-          onPress={() =>
-            router.push(
-              '/customer/bookings'
-            )
-          }
+          style={styles.checkBookingsButton}
+          onPress={() => router.push('/customer/bookings')}
           activeOpacity={0.8}
         >
           <Ionicons
@@ -403,11 +1090,7 @@
             color="#FF6B35"
           />
 
-          <Text
-            style={
-              styles.checkBookingsText
-            }
-          >
+          <Text style={styles.checkBookingsText}>
             Check Your Bookings & Status
           </Text>
 
@@ -421,6 +1104,7 @@
         <View
           style={styles.bottomSpace}
         />
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -762,11 +1446,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FF6B35',
     borderRadius: 12,
-    height: 52,
+    minHeight: 52,
     marginHorizontal: 20,
     marginTop: -8,
     marginBottom: 4,
     paddingHorizontal: 16,
+    paddingVertical: 12,
   },
 
   checkBookingsText: {
