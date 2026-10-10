@@ -17,7 +17,58 @@ import { apiClient } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { openRazorpayCheckout } from '@/src/utils/razorpay';
+function WebDateTimeInput({
+  mode,
+  value,
+  onChange,
+}: {
+  mode: 'date' | 'time';
+  value: Date;
+  onChange: (date: Date) => void;
+}) {
+  const pad = (n: number) => String(n).padStart(2, '0');
 
+  const inputValue =
+    mode === 'date'
+      ? `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+      : `${pad(value.getHours())}:${pad(value.getMinutes())}`;
+
+  const today = new Date();
+  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  return React.createElement('input', {
+    type: mode,
+    value: inputValue,
+    min: mode === 'date' ? minDate : undefined,
+    onChange: (event: any) => {
+      const selected = event.currentTarget.value;
+      if (!selected) return;
+
+      const next = new Date(value);
+
+      if (mode === 'date') {
+        const [year, month, day] = selected.split('-').map(Number);
+        next.setFullYear(year, month - 1, day);
+      } else {
+        const [hours, minutes] = selected.split(':').map(Number);
+        next.setHours(hours, minutes, 0, 0);
+      }
+
+      onChange(next);
+    },
+    style: {
+      width: '100%',
+      minHeight: 44,
+      padding: 8,
+      fontSize: 16,
+      border: '1px solid #E5E5E5',
+      borderRadius: 8,
+      backgroundColor: '#FFFFFF',
+      color: '#333333',
+      boxSizing: 'border-box',
+    },
+  });
+}
 export default function BookingScreen() {
   const params = useLocalSearchParams();
 
@@ -874,46 +925,57 @@ export default function BookingScreen() {
             />
           </TouchableOpacity>
 
-          {/* DATE PICKER */}
+          
+{/* DATE PICKER */}
+{showDatePicker &&
+  (Platform.OS === 'web' ? (
+    <WebDateTimeInput
+      mode="date"
+      value={visitDate}
+      onChange={(date) => {
+        setVisitDate(date);
+        setShowDatePicker(false);
+      }}
+    />
+  ) : (
+    <DateTimePicker
+      value={visitDate}
+      mode="date"
+      minimumDate={new Date()}
+      display="default"
+      onChange={(event, date) => {
+        setShowDatePicker(false);
+        if (date) {
+          setVisitDate(date);
+        }
+      }}
+    />
+  ))}
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={visitDate}
-              mode="date"
-              minimumDate={new Date()}
-              display="default"
-              onChange={(
-                event,
-                date
-              ) => {
-                setShowDatePicker(false);
-
-                if (date) {
-                  setVisitDate(date);
-                }
-              }}
-            />
-          )}
-
-          {/* TIME PICKER */}
-
-          {showTimePicker && (
-            <DateTimePicker
-              value={visitTime}
-              mode="time"
-              display="default"
-              onChange={(
-                event,
-                date
-              ) => {
-                setShowTimePicker(false);
-
-                if (date) {
-                  setVisitTime(date);
-                }
-              }}
-            />
-          )}
+{/* TIME PICKER */}
+{showTimePicker &&
+  (Platform.OS === 'web' ? (
+    <WebDateTimeInput
+      mode="time"
+      value={visitTime}
+      onChange={(time) => {
+        setVisitTime(time);
+        setShowTimePicker(false);
+      }}
+    />
+  ) : (
+    <DateTimePicker
+      value={visitTime}
+      mode="time"
+      display="default"
+      onChange={(event, date) => {
+        setShowTimePicker(false);
+        if (date) {
+          setVisitTime(date);
+        }
+      }}
+    />
+  ))}
         </View>
 
         {/* CUSTOMER DETAILS */}
