@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,9 @@ import { openRazorpayCheckout } from '@/src/utils/razorpay';
 
 export default function BookingScreen() {
   const params = useLocalSearchParams();
+
+  const dateInputRef = useRef<any>(null);
+  const timeInputRef = useRef<any>(null);
 
   const saintId = Array.isArray(params.saintId)
     ? params.saintId[0]
@@ -763,7 +766,15 @@ export default function BookingScreen() {
               styles.dateTimeButton
             }
             onPress={() => {
-              if (Platform.OS !== 'web') {
+              if (Platform.OS === 'web') {
+                if (dateInputRef.current) {
+                  if (typeof dateInputRef.current.showPicker === 'function') {
+                    dateInputRef.current.showPicker();
+                  } else {
+                    dateInputRef.current.click();
+                  }
+                }
+              } else {
                 setShowDatePicker(true);
               }
             }}
@@ -810,6 +821,7 @@ export default function BookingScreen() {
 
             {Platform.OS === 'web' && (
               <input
+                ref={dateInputRef}
                 type="date"
                 value={visitDate.toISOString().split('T')[0]}
                 min={new Date().toISOString().split('T')[0]}
@@ -818,7 +830,7 @@ export default function BookingScreen() {
                     setVisitDate(new Date(e.target.value));
                   }
                 }}
-                style={styles.fullInputOverlay as any}
+                style={styles.hiddenInput as any}
               />
             )}
           </TouchableOpacity>
@@ -829,7 +841,15 @@ export default function BookingScreen() {
               styles.dateTimeButton
             }
             onPress={() => {
-              if (Platform.OS !== 'web') {
+              if (Platform.OS === 'web') {
+                if (timeInputRef.current) {
+                  if (typeof timeInputRef.current.showPicker === 'function') {
+                    timeInputRef.current.showPicker();
+                  } else {
+                    timeInputRef.current.click();
+                  }
+                }
+              } else {
                 setShowTimePicker(true);
               }
             }}
@@ -875,6 +895,7 @@ export default function BookingScreen() {
 
             {Platform.OS === 'web' && (
               <input
+                ref={timeInputRef}
                 type="time"
                 value={visitTime.toTimeString().slice(0, 5)}
                 onChange={(e: any) => {
@@ -886,7 +907,7 @@ export default function BookingScreen() {
                     setVisitTime(newTime);
                   }
                 }}
-                style={styles.fullInputOverlay as any}
+                style={styles.hiddenInput as any}
               />
             )}
           </TouchableOpacity>
@@ -1327,7 +1348,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
-    overflow: 'hidden',
   },
 
   dateTimeInfo: {
@@ -1347,17 +1367,14 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
-  fullInputOverlay: {
+  hiddenInput: {
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
+    width: 0,
+    height: 0,
     opacity: 0,
-    cursor: 'pointer',
-    zIndex: 10,
+    pointerEvents: 'none',
   },
 
   /* CUSTOMER INPUTS */
