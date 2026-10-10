@@ -758,7 +758,15 @@ export default function BookingScreen() {
           </Text>
 
           {/* VISIT DATE */}
-          <View style={styles.dateTimeButton}>
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                setShowDatePicker(true);
+              }
+            }}
+          >
             <Ionicons
               name="calendar-outline"
               size={22}
@@ -798,7 +806,7 @@ export default function BookingScreen() {
               color="#999"
             />
 
-            {Platform.OS === 'web' ? (
+            {Platform.OS === 'web' && (
               <input
                 type="date"
                 value={visitDate.toISOString().split('T')[0]}
@@ -816,19 +824,22 @@ export default function BookingScreen() {
                   height: '100%',
                   opacity: 0,
                   cursor: 'pointer',
-                  zIndex: 99,
+                  zIndex: 10,
                 } as any}
               />
-            ) : (
-              <TouchableOpacity
-                style={StyleSheet.absoluteFill}
-                onPress={() => setShowDatePicker(true)}
-              />
             )}
-          </View>
+          </TouchableOpacity>
 
           {/* VISIT TIME */}
-          <View style={styles.dateTimeButton}>
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                setShowTimePicker(true);
+              }
+            }}
+          >
             <Ionicons
               name="time-outline"
               size={22}
@@ -867,7 +878,7 @@ export default function BookingScreen() {
               color="#999"
             />
 
-            {Platform.OS === 'web' ? (
+            {Platform.OS === 'web' && (
               <input
                 type="time"
                 value={visitTime.toTimeString().slice(0, 5)}
@@ -888,16 +899,11 @@ export default function BookingScreen() {
                   height: '100%',
                   opacity: 0,
                   cursor: 'pointer',
-                  zIndex: 99,
+                  zIndex: 10,
                 } as any}
               />
-            ) : (
-              <TouchableOpacity
-                style={StyleSheet.absoluteFill}
-                onPress={() => setShowTimePicker(true)}
-              />
             )}
-          </View>
+          </TouchableOpacity>
 
           {/* DATE PICKER (Fallback for Native) */}
           {showDatePicker && Platform.OS !== 'web' && (
