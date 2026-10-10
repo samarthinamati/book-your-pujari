@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,6 +47,9 @@ export default function SaintProfileSetup() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
+
+  // Success Modal State
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -130,12 +134,9 @@ export default function SaintProfileSetup() {
     setPoojas(updated);
   };
 
-  const navigateToDashboard = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.location.replace(`${window.location.origin}/saint/dashboard`);
-    } else {
-      router.replace('/saint/dashboard');
-    }
+  const handleGoToDashboard = () => {
+    setShowSuccessModal(false);
+    router.replace('/saint/dashboard');
   };
 
   const handleSubmit = async () => {
@@ -197,21 +198,6 @@ export default function SaintProfileSetup() {
         );
 
         console.log('Updated Saint Profile:', updatedProfile);
-
-        if (Platform.OS === 'web') {
-          navigateToDashboard();
-        } else {
-          Alert.alert(
-            'Success',
-            'Profile updated successfully.',
-            [
-              {
-                text: 'OK',
-                onPress: navigateToDashboard,
-              },
-            ]
-          );
-        }
       } else {
         // CREATE NEW PROFILE
         const createdProfile = await apiClient.post(
@@ -220,22 +206,10 @@ export default function SaintProfileSetup() {
         );
 
         console.log('Created Saint Profile:', createdProfile);
-
-        if (Platform.OS === 'web') {
-          navigateToDashboard();
-        } else {
-          Alert.alert(
-            '🎉 Profile Created Successfully!',
-            'Your profile has been created and is now LIVE. Customers can now find and book your poojas.',
-            [
-              {
-                text: 'OK',
-                onPress: navigateToDashboard,
-              },
-            ]
-          );
-        }
       }
+
+      // SHOW CUSTOM POPUP MODAL
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Profile save error:', error);
 
@@ -525,6 +499,44 @@ export default function SaintProfileSetup() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* SUCCESS MODAL POPUP */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconContainer}>
+              <Ionicons
+                name="checkmark-circle"
+                size={64}
+                color="#4CAF50"
+              />
+            </View>
+
+            <Text style={styles.modalTitle}>
+              {isEdit ? 'Profile Updated!' : '🎉 Profile Created!'}
+            </Text>
+
+            <Text style={styles.modalDescription}>
+              {isEdit
+                ? 'Your changes have been saved successfully.'
+                : 'Your Pujari profile is now created and live. Customers can now search and book your poojas.'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleGoToDashboard}
+            >
+              <Text style={styles.modalButtonText}>
+                Go Back to Dashboard
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -673,5 +685,63 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+
+  /* MODAL STYLES */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+
+  modalContent: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+
+  successIconContainer: {
+    marginBottom: 12,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+
+  modalDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+
+  modalButton: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+
+  modalButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
