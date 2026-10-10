@@ -1,27 +1,31 @@
+
 import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
 
 export default function Index() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, userToken, userRole } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        if (user.role === 'customer') {
-          router.replace('/customer/dashboard');
-        } else if (user.role === 'saint') {
-          router.replace('/saint/dashboard');
-        } else if (user.role === 'admin') {
-          router.replace('/admin/dashboard');
-        }
-      } else {
-        router.replace('/auth/login');
-      }
+    if (isLoading) return;
+
+    if (!userToken || !user) {
+      router.replace('/auth/login');
+      return;
     }
-  }, [user, isLoading]);
+
+    if (userRole === 'customer') {
+      router.replace('/customer/dashboard');
+    } else if (userRole === 'saint') {
+      router.replace('/saint/dashboard');
+    } else if (userRole === 'admin') {
+      router.replace('/admin/dashboard');
+    } else {
+      router.replace('/auth/login');
+    }
+  }, [user, userToken, userRole, isLoading, router]);
 
   return (
     <View style={styles.container}>
@@ -38,4 +42,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-
