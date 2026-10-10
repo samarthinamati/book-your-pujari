@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,9 +20,6 @@ import { openRazorpayCheckout } from '@/src/utils/razorpay';
 
 export default function BookingScreen() {
   const params = useLocalSearchParams();
-
-  const dateInputRef = useRef<any>(null);
-  const timeInputRef = useRef<any>(null);
 
   const saintId = Array.isArray(params.saintId)
     ? params.saintId[0]
@@ -761,25 +758,7 @@ export default function BookingScreen() {
           </Text>
 
           {/* VISIT DATE */}
-          <TouchableOpacity
-            style={
-              styles.dateTimeButton
-            }
-            onPress={() => {
-              if (Platform.OS === 'web') {
-                if (dateInputRef.current) {
-                  if (typeof dateInputRef.current.showPicker === 'function') {
-                    dateInputRef.current.showPicker();
-                  } else {
-                    dateInputRef.current.click();
-                  }
-                }
-              } else {
-                setShowDatePicker(true);
-              }
-            }}
-            activeOpacity={0.7}
-          >
+          <View style={styles.dateTimeButton}>
             <Ionicons
               name="calendar-outline"
               size={22}
@@ -819,9 +798,8 @@ export default function BookingScreen() {
               color="#999"
             />
 
-            {Platform.OS === 'web' && (
+            {Platform.OS === 'web' ? (
               <input
-                ref={dateInputRef}
                 type="date"
                 value={visitDate.toISOString().split('T')[0]}
                 min={new Date().toISOString().split('T')[0]}
@@ -830,31 +808,27 @@ export default function BookingScreen() {
                     setVisitDate(new Date(e.target.value));
                   }
                 }}
-                style={styles.hiddenInput as any}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer',
+                  zIndex: 99,
+                } as any}
+              />
+            ) : (
+              <TouchableOpacity
+                style={StyleSheet.absoluteFill}
+                onPress={() => setShowDatePicker(true)}
               />
             )}
-          </TouchableOpacity>
+          </View>
 
           {/* VISIT TIME */}
-          <TouchableOpacity
-            style={
-              styles.dateTimeButton
-            }
-            onPress={() => {
-              if (Platform.OS === 'web') {
-                if (timeInputRef.current) {
-                  if (typeof timeInputRef.current.showPicker === 'function') {
-                    timeInputRef.current.showPicker();
-                  } else {
-                    timeInputRef.current.click();
-                  }
-                }
-              } else {
-                setShowTimePicker(true);
-              }
-            }}
-            activeOpacity={0.7}
-          >
+          <View style={styles.dateTimeButton}>
             <Ionicons
               name="time-outline"
               size={22}
@@ -893,9 +867,8 @@ export default function BookingScreen() {
               color="#999"
             />
 
-            {Platform.OS === 'web' && (
+            {Platform.OS === 'web' ? (
               <input
-                ref={timeInputRef}
                 type="time"
                 value={visitTime.toTimeString().slice(0, 5)}
                 onChange={(e: any) => {
@@ -907,10 +880,24 @@ export default function BookingScreen() {
                     setVisitTime(newTime);
                   }
                 }}
-                style={styles.hiddenInput as any}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer',
+                  zIndex: 99,
+                } as any}
+              />
+            ) : (
+              <TouchableOpacity
+                style={StyleSheet.absoluteFill}
+                onPress={() => setShowTimePicker(true)}
               />
             )}
-          </TouchableOpacity>
+          </View>
 
           {/* DATE PICKER (Fallback for Native) */}
           {showDatePicker && Platform.OS !== 'web' && (
@@ -1348,6 +1335,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    overflow: 'hidden',
   },
 
   dateTimeInfo: {
@@ -1365,16 +1353,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-  },
-
-  hiddenInput: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 0,
-    height: 0,
-    opacity: 0,
-    pointerEvents: 'none',
   },
 
   /* CUSTOMER INPUTS */
