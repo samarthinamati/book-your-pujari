@@ -1440,3 +1440,37 @@ buttonDisabled: {
 opacity: 0.6,
 },
 
+bookButtonText: {
+color: '#FFF',
+fontSize: 18,
+fontWeight: '600',
+},
+
+/* CHECK BOOKINGS */
+
+checkBookingsButton: {
+flexDirection: 'row',
+alignItems: 'center',
+backgroundColor: '#FFF',
+borderWidth: 1.5,
+borderColor: '#FF6B35',
+borderRadius: 12,
+height: 52,
+marginHorizontal: 20,
+marginTop: -8,
+marginBottom: 4,
+paddingHorizontal: 16,
+},
+
+checkBookingsText: {
+flex: 1,
+marginLeft: 10,
+fontSize: 15,
+fontWeight: '600',
+color: '#FF6B35',
+},
+
+bottomSpace: {
+height: 30
+},
+});  
