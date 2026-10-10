@@ -897,7 +897,29 @@ export default function BookingScreen() {
                   setShowDatePicker(false);
                 }}
               />
-            ) : (              />
+           
+                value={visitDate}
+                mode="date"
+                minimumDate={new Date()}
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setVisitDate(date);
+                }}
+              />
+            )
+          )}
+          {/* DATE PICKER: HTML input on web, native picker on mobile */}
+          {showDatePicker && (
+            Platform.OS === 'web' ? (
+              <WebDateTimeInput
+                mode="date"
+                value={visitDate}
+                onChange={(date) => {
+                  setVisitDate(date);
+                  setShowDatePicker(false);
+                }}
+              />
             ) : (
               <DateTimePicker
                 value={visitDate}
@@ -911,31 +933,7 @@ export default function BookingScreen() {
               />
             )
           )}
-
-          {/* TIME PICKER: HTML input on web, native picker on mobile */}
-          {showTimePicker && (
-            Platform.OS === 'web' ? (
-              <WebDateTimeInput
-                mode="time"
-                value={visitTime}
-                onChange={(time) => {
-                  setVisitTime(time);
-                  setShowTimePicker(false);
-                }}
-              />
-            ) : (
-              <DateTimePicker
-                value={visitTime}
-                mode="time"
-                display="default"
-                onChange={(event, date) => {
-                  setShowTimePicker(false);
-                  if (date) setVisitTime(date);
-                }}
-              />
-            )
-          )}
-        </View>
+                  </View>
 
         {/* CUSTOMER DETAILS */}
         <View style={styles.section}>
