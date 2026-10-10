@@ -143,7 +143,7 @@ export default function BookingScreen() {
   };
 
   /*
-  PRICE CALN
+  PRICE CALCULATION
   Pujari amount + 10% platform commission.
   */
   const calculateTotal = () => {
@@ -786,50 +786,39 @@ export default function BookingScreen() {
                 Visit Date
               </Text>
 
-              {Platform.OS === 'web' ? (
-                <input
-                  type="date"
-                  value={visitDate.toISOString().split('T')[0]}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e: any) => {
-                    if (e.target.value) {
-                      setVisitDate(new Date(e.target.value));
-                    }
-                  }}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#333',
-                    outline: 'none',
-                    width: '100%',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              ) : (
-                <Text
-                  style={
-                    styles.dateTimeText
+              <Text
+                style={
+                  styles.dateTimeText
+                }
+              >
+                {visitDate.toLocaleDateString(
+                  'en-IN',
+                  {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
                   }
-                >
-                  {visitDate.toLocaleDateString(
-                    'en-IN',
-                    {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    }
-                  )}
-                </Text>
-              )}
+                )}
+              </Text>
             </View>
 
-            {Platform.OS !== 'web' && (
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color="#999"
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#999"
+            />
+
+            {Platform.OS === 'web' && (
+              <input
+                type="date"
+                value={visitDate.toISOString().split('T')[0]}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e: any) => {
+                  if (e.target.value) {
+                    setVisitDate(new Date(e.target.value));
+                  }
+                }}
+                style={styles.fullInputOverlay as any}
               />
             )}
           </TouchableOpacity>
@@ -863,52 +852,41 @@ export default function BookingScreen() {
                 Visit Time
               </Text>
 
-              {Platform.OS === 'web' ? (
-                <input
-                  type="time"
-                  value={visitTime.toTimeString().slice(0, 5)}
-                  onChange={(e: any) => {
-                    if (e.target.value) {
-                      const [hours, minutes] = e.target.value.split(':');
-                      const newTime = new Date();
-                      newTime.setHours(parseInt(hours, 10));
-                      newTime.setMinutes(parseInt(minutes, 10));
-                      setVisitTime(newTime);
-                    }
-                  }}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#333',
-                    outline: 'none',
-                    width: '100%',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              ) : (
-                <Text
-                  style={
-                    styles.dateTimeText
+              <Text
+                style={
+                  styles.dateTimeText
+                }
+              >
+                {visitTime.toLocaleTimeString(
+                  'en-IN',
+                  {
+                    hour: '2-digit',
+                    minute: '2-digit',
                   }
-                >
-                  {visitTime.toLocaleTimeString(
-                    'en-IN',
-                    {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }
-                  )}
-                </Text>
-              )}
+                )}
+              </Text>
             </View>
 
-            {Platform.OS !== 'web' && (
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color="#999"
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#999"
+            />
+
+            {Platform.OS === 'web' && (
+              <input
+                type="time"
+                value={visitTime.toTimeString().slice(0, 5)}
+                onChange={(e: any) => {
+                  if (e.target.value) {
+                    const [hours, minutes] = e.target.value.split(':');
+                    const newTime = new Date();
+                    newTime.setHours(parseInt(hours, 10));
+                    newTime.setMinutes(parseInt(minutes, 10));
+                    setVisitTime(newTime);
+                  }
+                }}
+                style={styles.fullInputOverlay as any}
               />
             )}
           </TouchableOpacity>
@@ -1339,6 +1317,7 @@ const styles = StyleSheet.create({
 
   /* DATE & TIME */
   dateTimeButton: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
@@ -1348,6 +1327,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    overflow: 'hidden',
   },
 
   dateTimeInfo: {
@@ -1365,6 +1345,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+
+  fullInputOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0,
+    cursor: 'pointer',
+    zIndex: 10,
   },
 
   /* CUSTOMER INPUTS */
