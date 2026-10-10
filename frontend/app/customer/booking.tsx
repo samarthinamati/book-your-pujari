@@ -904,9 +904,13 @@ const openWebPicker = (type: 'date' | 'time') => {
             style={
               styles.dateTimeButton
             }
-            onPress={() =>
-              setShowDatePicker(true)
-            }
+            onPress={() => {
+  if (Platform.OS === 'web') {
+    openWebPicker('date');
+  } else {
+    setShowDatePicker(true);
+  }
+}}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -955,8 +959,13 @@ const openWebPicker = (type: 'date' | 'time') => {
             style={
               styles.dateTimeButton
             }
-            onPress={() =>
-              setShowTimePicker(true)
+            onPress={() => {
+  if (Platform.OS === 'web') {
+    openWebPicker('time');
+  } else {
+    setShowTimePicker(true);
+  }
+}}
             }
             activeOpacity={0.7}
           >
