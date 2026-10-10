@@ -95,6 +95,80 @@ export default function BookingScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatLocalTime = (date: Date) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const openWebPicker = (type: 'date' | 'time') => {
+  if (Platform.OS !== 'web') return;
+
+  const input = document.createElement('input');
+  input.type = type;
+  input.value =
+    type === 'date'
+      ? formatLocalDate(visitDate)
+      : formatLocalTime(visitTime);
+
+  if (type === 'date') {
+    input.min = formatLocalDate(new Date());
+  }
+
+  input.style.position = 'fixed';
+  input.style.left = '0';
+  input.style.top = '0';
+  input.style.width = '1px';
+  input.style.height = '1px';
+  input.style.opacity = '0';
+
+  document.body.appendChild(input);
+
+  input.addEventListener('change', () => {
+    const value = input.value;
+
+    if (value && type === 'date') {
+      const [year, month, day] = value.split('-').map(Number);
+      const next = new Date(visitDate);
+      next.setFullYear(year, month - 1, day);
+      setVisitDate(next);
+    }
+
+    if (value && type === 'time') {
+      const [hours, minutes] = value.split(':').map(Number);
+      const next = new Date(visitTime);
+      next.setHours(hours, minutes, 0, 0);
+      setVisitTime(next);
+    }
+
+    input.remove();
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => input.remove(), 300);
+  });
+
+  try {
+    const picker = input as HTMLInputElement & {
+      showPicker?: () => void;
+    };
+
+    if (picker.showPicker) {
+      picker.showPicker();
+    } else {
+      input.click();
+    }
+  } catch {
+    input.click();
+  }
+};
   const [address, setAddress] = useState('');
 
   const [customerName, setCustomerName] = useState(
