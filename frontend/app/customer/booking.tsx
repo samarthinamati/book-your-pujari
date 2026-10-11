@@ -1480,4 +1480,4 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 30,
   },
-});
+}); 
