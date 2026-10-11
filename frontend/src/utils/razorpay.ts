@@ -11,6 +11,7 @@ interface RazorpayOptions {
   order_id: string;
   prefill: { name?: string; email?: string; contact?: string };
   theme?: { color?: string };
+  config?: any;
 }
 
 interface RazorpayResponse {
@@ -21,8 +22,14 @@ interface RazorpayResponse {
 
 const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    if (typeof window === 'undefined') { resolve(false); return; }
-    if ((window as any).Razorpay) { resolve(true); return; }
+    if (typeof window === 'undefined') {
+      resolve(false);
+      return;
+    }
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = () => resolve(true);
@@ -31,28 +38,67 @@ const loadRazorpayScript = (): Promise<boolean> => {
   });
 };
 
-export const openRazorpayCheckout = async (options: RazorpayOptions): Promise<RazorpayResponse> => {
+export const openRazorpayCheckout = async (
+  options: RazorpayOptions
+): Promise<RazorpayResponse> => {
   if (Platform.OS === 'web') {
     const loaded = await loadRazorpayScript();
     if (!loaded) throw new Error('Failed to load Razorpay SDK');
+
     return new Promise((resolve, reject) => {
       const rzpOptions = {
         ...options,
+        // Explicitly enable UPI methods & QR fallback for Web/Median
+        config: options.config || {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI / QR',
+                instruments: [
+                  {
+                    method: 'upi',
+                  },
+                ],
+              },
+              other: {
+                name: 'Cards & Netbanking',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' },
+                ],
+              },
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
         handler: (response: RazorpayResponse) => resolve(response),
         modal: {
-          ondismiss: () => reject({ code: 'PAYMENT_CANCELLED', description: 'Payment cancelled by user' }),
+          ondismiss: () =>
+            reject({
+              code: 'PAYMENT_CANCELLED',
+              description: 'Payment cancelled by user',
+            }),
         },
       };
+
       const rzp = new (window as any).Razorpay(rzpOptions);
+
       rzp.on('payment.failed', (response: any) => {
         reject({
           code: response.error?.code || 'PAYMENT_FAILED',
-          description: response.error?.description || 'Payment failed',
+          description:
+            response.error?.description || 'Payment failed',
         });
       });
+
       rzp.open();
     });
   }
+
   const RazorpayCheckout = require('react-native-razorpay').default;
   return RazorpayCheckout.open(options);
 };
