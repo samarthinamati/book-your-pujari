@@ -392,17 +392,7 @@ export default function BookingScreen() {
             verifyResult
           );
 
-          if (
-            typeof window !== 'undefined'
-          ) {
-            window.location.replace(
-              `${window.location.origin}/customer/bookings`
-            );
-          } else {
-            router.replace(
-              '/customer/bookings'
-            );
-          }
+             router.replace('/customer/bookings');
         } catch (error: any) {
           console.error(
             '[Payment] Error:',
