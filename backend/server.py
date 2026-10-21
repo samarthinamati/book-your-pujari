@@ -1708,6 +1708,78 @@ async def create_store_payment_order(
         "currency": "INR"
     }
 
+@api_router.post("/store/payment/verify")
+async def verify_store_payment(
+    payload: StorePaymentVerify,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+
+    try:
+        store_order_object_id = ObjectId(payload.store_order_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid store order ID")
+
+    store_order = await db.store_orders.find_one({
+        "_id": store_order_object_id,
+        "customer_id": user["id"]
+    })
+
+    if not store_order:
+        raise HTTPException(status_code=404, detail="Store order not found")
+
+    if store_order.get("payment_status") == "paid":
+        return {"message": "Payment already verified", "payment_status": "paid"}
+
+    if not store_order.get("razorpay_order_id"):
+        raise HTTPException(status_code=400, detail="Create the payment order first")
+
+    if payload.razorpay_order_id != store_order["razorpay_order_id"]:
+        raise HTTPException(status_code=400, detail="Payment order ID mismatch")
+
+    if not razorpay_client or RAZORPAY_KEY_SECRET == "dummy_secret":
+        raise HTTPException(status_code=503, detail="Payment service is not configured")
+
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            "razorpay_order_id": payload.razorpay_order_id,
+            "razorpay_payment_id": payload.razorpay_payment_id,
+            "razorpay_signature": payload.razorpay_signature
+        })
+    except Exception:
+        raise HTTPException(status_code=400, detail="Payment verification failed")
+
+    result = await db.store_orders.update_one(
+        {
+            "_id": store_order_object_id,
+            "customer_id": user["id"],
+            "payment_status": {"$ne": "paid"},
+            "razorpay_order_id": payload.razorpay_order_id
+        },
+        {
+            "$set": {
+                "payment_status": "paid",
+                "order_status": "Order Placed",
+                "razorpay_payment_id": payload.razorpay_payment_id,
+                "razorpay_signature": payload.razorpay_signature,
+                "paid_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+        }
+    )
+
+    if result.modified_count == 0:
+        latest_order = await db.store_orders.find_one({"_id": store_order_object_id})
+        if latest_order and latest_order.get("payment_status") == "paid":
+            return {"message": "Payment already verified", "payment_status": "paid"}
+        raise HTTPException(status_code=409, detail="Could not update payment status")
+
+    return {
+        "message": "Store payment verified successfully",
+        "payment_status": "paid",
+        "store_order_id": payload.store_order_id
+    }
+
 
 app.include_router(api_router)
 
