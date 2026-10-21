@@ -86,6 +86,23 @@ const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
     }
   };
 
+const fetchStoreOrders = async () => {
+  try {
+    setLoadingStoreOrders(true);
+
+    const response = await apiClient.request('/store/admin/orders');
+
+    setStoreOrders(Array.isArray(response) ? response : []);
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Unable to load store orders.'
+    );
+  } finally {
+    setLoadingStoreOrders(false);
+  }
+};
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
