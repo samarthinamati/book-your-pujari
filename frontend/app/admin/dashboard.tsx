@@ -797,6 +797,8 @@ export default function AdminDashboard() {
           </>
         )}
       </ScrollView>
+              </>
+    )}
     </SafeAreaView>
   );
 }
