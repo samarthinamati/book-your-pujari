@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   Platform,
+  import * as ImagePicker from 'expo-image-picker';
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
