@@ -1365,3 +1365,72 @@ async def create_store_product(
     product["_id"] = result.inserted_id
 
     return serialize_store_product(product)
+
+class StoreProductUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    category: Optional[str] = Field(default=None, max_length=80)
+    price: Optional[float] = Field(default=None, gt=0, le=100000)
+    image_url: Optional[str] = Field(default=None, max_length=2000)
+    stock: Optional[int] = Field(default=None, ge=0, le=100000)
+    is_available: Optional[bool] = None
+
+
+@api_router.put("/store/admin/products/{product_id}")
+async def update_store_product(
+    product_id: str,
+    payload: StoreProductUpdate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    try:
+        object_id = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+
+    updates = payload.dict(exclude_unset=True)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No changes provided")
+
+    updates["updated_at"] = datetime.utcnow().isoformat()
+
+    result = await db.store_products.update_one(
+        {"_id": object_id},
+        {"$set": updates}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product = await db.store_products.find_one({"_id": object_id})
+    return serialize_store_product(product)
+
+
+@api_router.delete("/store/admin/products/{product_id}")
+async def delete_store_product(
+    product_id: str,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    try:
+        object_id = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+
+    result = await db.store_products.update_one(
+        {"_id": object_id},
+        {
+            "$set": {
+                "is_available": False,
+                "updated_at": datetime.utcnow().isoformat()
+            }
+        }
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return {"message": "Product marked unavailable"}
