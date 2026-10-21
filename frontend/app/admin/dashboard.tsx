@@ -583,7 +583,8 @@ export default function AdminDashboard() {
         </TouchableOpacity>
       </View>
     )}
-
+    {showAdminSection === 'pujaris' && (
+      <>
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
