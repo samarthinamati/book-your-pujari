@@ -51,6 +51,14 @@ export default function AdminDashboard() {
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [storeOrders, setStoreOrders] = useState<any[]>([]);
 const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+const [productName, setProductName] = useState('');
+const [productDescription, setProductDescription] = useState('');
+const [productCategory, setProductCategory] = useState('Puja Samagri');
+const [productPrice, setProductPrice] = useState('');
+const [productImageUrl, setProductImageUrl] = useState('');
+const [productStock, setProductStock] = useState('10');
+const [savingProduct, setSavingProduct] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showAdminSection, setShowAdminSection] = useState<
   'store' | 'pujaris' | null
