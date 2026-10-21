@@ -1443,6 +1443,7 @@ class StoreOrderCreate(BaseModel):
     pincode: str = Field(..., min_length=6, max_length=10)
 
 
+
 def serialize_store_order(order: dict) -> dict:
     return {
         "id": str(order["_id"]),
@@ -1457,6 +1458,7 @@ def serialize_store_order(order: dict) -> dict:
         "order_status": order.get("order_status", "Order Placed"),
         "courier": order.get("courier", ""),
         "tracking_number": order.get("tracking_number", ""),
+        "tracking_url": order.get("tracking_url", ""),
         "created_at": order.get("created_at", ""),
     }
 
