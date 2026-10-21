@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { openRazorpayCheckout } from '@/src/utils/razorpay';
 import { apiClient } from '@/src/api/client';
 
 type Product = {
