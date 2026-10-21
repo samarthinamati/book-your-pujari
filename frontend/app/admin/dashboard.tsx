@@ -569,7 +569,10 @@ const fetchStoreOrders = async () => {
       <View style={{ padding: 16, gap: 16 }}>
         <TouchableOpacity
           style={styles.quickCard}
-          onPress={() => setShowAdminSection('store')}
+          onPress={() => {
+  setShowAdminSection('store');
+  fetchStoreOrders();
+}}
           activeOpacity={0.8}
         >
           <Ionicons name="cart-outline" size={28} color="#FF9800" />
