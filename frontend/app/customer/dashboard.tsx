@@ -41,7 +41,8 @@ export default function CustomerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchLocation, setSearchLocation] = useState('');
   const [searchPooja, setSearchPooja] = useState('');
-
+// ADD THIS LINE
+const [showPujariSection, setShowPujariSection] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
 
