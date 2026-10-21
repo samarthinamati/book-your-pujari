@@ -682,4 +682,35 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  bookingOptions: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 14,
+  },
+  bookingOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E5ED',
+  },
+  bookingOptionText: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  bookingOptionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#222222',
+  },
+  bookingOptionSubtitle: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 5,
+  },
+
 });
