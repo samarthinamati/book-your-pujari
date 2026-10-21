@@ -808,7 +808,7 @@ const updateStoreOrderTracking = async (
 )}
 
     {showAdminSection === 'pujaris' && (
-      
+      <>
       <TouchableOpacity
         onPress={() => setShowAdminSection(null)}
         style={{
