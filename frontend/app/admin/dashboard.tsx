@@ -790,14 +790,70 @@ const updateStoreOrderTracking = async (
       style={productInputStyle}
     />
 
-    <TextInput
-      placeholder="Product image URL (optional)"
-      value={productImageUrl}
-      onChangeText={setProductImageUrl}
-      autoCapitalize="none"
-      style={productInputStyle}
+    <TouchableOpacity
+  onPress={async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission required',
+          'Please allow gallery access to choose a product photo.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setProductImageUrl(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not open your photo gallery.');
+    }
+  }}
+  style={{
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#E0A040',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  }}
+>
+  <Text style={{ color: '#8A4B08', fontWeight: 'bold' }}>
+    📷 Choose Product Photo from Gallery
+  </Text>
+</TouchableOpacity>
+
+{productImageUrl ? (
+  <View style={{ alignItems: 'center', gap: 8 }}>
+    <Image
+      source={{ uri: productImageUrl }}
+      style={{
+        width: 160,
+        height: 160,
+        borderRadius: 10,
+        backgroundColor: '#EEEEEE',
+      }}
+      resizeMode="cover"
     />
 
+    <TouchableOpacity
+      onPress={() => setProductImageUrl('')}
+    >
+      <Text style={{ color: '#C62828', fontWeight: 'bold' }}>
+        Remove Photo
+      </Text>
+    </TouchableOpacity>
+  </View>
+) : null}
     <TextInput
       placeholder="Stock quantity"
       value={productStock}
