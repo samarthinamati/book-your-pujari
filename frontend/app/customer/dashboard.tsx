@@ -188,8 +188,8 @@ const [showPujariSection, setShowPujariSection] = useState(false);
 </View>
 
         {showPujariSection && (
-  </>
-  <View style={styles.searchSection}>
+  <>
+    <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Find Your Pujari</Text>
 
           {/* LOCATION SEARCH */}
