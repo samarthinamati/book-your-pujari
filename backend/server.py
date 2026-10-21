@@ -1309,3 +1309,59 @@ app.include_router(api_router)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# ==================== PUJARIGO SAMAGRI STORE ====================
+
+from pydantic import ConfigDict
+from bson import ObjectId
+
+
+class StoreProductCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    description: str = Field(default="", max_length=2000)
+    category: str = Field(default="Puja Samagri", max_length=80)
+    price: float = Field(..., gt=0, le=100000)
+    image_url: str = Field(default="", max_length=2000)
+    stock: int = Field(default=0, ge=0, le=100000)
+    is_available: bool = True
+
+
+def serialize_store_product(product: dict) -> dict:
+    return {
+        "id": str(product["_id"]),
+        "name": product.get("name", ""),
+        "description": product.get("description", ""),
+        "category": product.get("category", "Puja Samagri"),
+        "price": product.get("price", 0),
+        "image_url": product.get("image_url", ""),
+        "stock": product.get("stock", 0),
+        "is_available": product.get("is_available", True),
+        "created_at": product.get("created_at", ""),
+    }
+
+
+@api_router.get("/store/products")
+async def list_store_products():
+    products = await db.store_products.find({
+        "is_available": True,
+        "stock": {"$gt": 0}
+    }).sort("created_at", -1).to_list(200)
+
+    return [serialize_store_product(p) for p in products]
+
+
+@api_router.post("/store/admin/products")
+async def create_store_product(
+    payload: StoreProductCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    product = payload.dict()
+    product["created_at"] = datetime.utcnow().isoformat()
+    product["updated_at"] = datetime.utcnow().isoformat()
+
+    result = await db.store_products.insert_one(product)
+    product["_id"] = result.inserted_id
+
+    return serialize_store_product(product)
