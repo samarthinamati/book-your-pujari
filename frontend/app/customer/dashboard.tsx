@@ -256,6 +256,8 @@ const [showPujariSection, setShowPujariSection] = useState(false);
         </View>
 
         <View style={styles.saintsSection}>
+          </View>
+)}
           <Text style={styles.sectionTitle}>
             {saints.length} Available Pujaris
           </Text>
