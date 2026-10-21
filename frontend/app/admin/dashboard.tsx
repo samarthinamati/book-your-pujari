@@ -757,12 +757,7 @@ const updateStoreOrderTracking = async (
     </Text>
   </TouchableOpacity>
 ) : null}
-
-          </View>
-        ))
-      )}
-      
-<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
   {[
     'Preparing',
     'Shipped',
@@ -787,6 +782,11 @@ const updateStoreOrderTracking = async (
     </TouchableOpacity>
   ))}
 </View>
+
+          </View>
+        ))
+      )}
+      
 
 
       <TouchableOpacity
