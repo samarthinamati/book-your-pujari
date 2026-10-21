@@ -50,6 +50,9 @@ export default function AdminDashboard() {
   const [saints, setSaints] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showAdminSection, setShowAdminSection] = useState<
+  'store' | 'pujaris' | null
+>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rejectingSaintId, setRejectingSaintId] = useState<string | null>(null);
