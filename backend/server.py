@@ -1546,16 +1546,20 @@ async def get_my_store_orders(
     }).sort("created_at", -1).to_list(200)
 
     return [serialize_store_order(order) for order in orders]
-    
-    class StorePaymentCreate(BaseModel):
+
+
+class StorePaymentCreate(BaseModel):
     store_order_id: str
 
 
-   class StorePaymentVerify(BaseModel):
+class StorePaymentVerify(BaseModel):
     store_order_id: str
     razorpay_order_id: str
     razorpay_payment_id: str
-    razorpay_signature: str  
+    razorpay_signature: str
+
+
+
 # ==================== ADMIN STORE ORDER TRACKING ====================
 
 class StoreOrderTrackingUpdate(BaseModel):
