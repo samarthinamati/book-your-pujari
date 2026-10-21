@@ -187,7 +187,8 @@ const [showPujariSection, setShowPujariSection] = useState(false);
   </TouchableOpacity>
 </View>
 
-        <View style={styles.searchSection}>
+        {showPujariSection && (
+  <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Find Your Pujari</Text>
 
           {/* LOCATION SEARCH */}
