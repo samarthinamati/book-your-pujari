@@ -584,6 +584,22 @@ export default function AdminDashboard() {
       </View>
     )}
     {showAdminSection === 'pujaris' && (
+      
+      <TouchableOpacity
+        onPress={() => setShowAdminSection(null)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 12,
+          backgroundColor: '#FFF',
+        }}
+      >
+        <Ionicons name="arrow-back" size={22} color="#FF6B35" />
+        <Text style={{ marginLeft: 8, fontWeight: 'bold', color: '#333' }}>
+          Back to Admin Menu
+        </Text>
+      </TouchableOpacity>
+
       <>
       <View style={styles.tabs}>
         <TouchableOpacity
