@@ -396,6 +396,8 @@ const [showPujariSection, setShowPujariSection] = useState(false);
             ))
           )}
         </View>
+          </>
+    )}
       </ScrollView>
     </SafeAreaView>
   );
