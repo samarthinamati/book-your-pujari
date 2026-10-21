@@ -1434,3 +1434,120 @@ async def delete_store_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     return {"message": "Product marked unavailable"}
+
+# ==================== SAMAGRI STORE ORDERS ====================
+
+class StoreOrderItem(BaseModel):
+    product_id: str
+    quantity: int = Field(..., ge=1, le=50)
+
+
+class StoreOrderCreate(BaseModel):
+    items: List[StoreOrderItem]
+    customer_name: str = Field(..., min_length=2, max_length=120)
+    customer_phone: str = Field(..., min_length=5, max_length=20)
+    delivery_address: str = Field(..., min_length=5, max_length=1000)
+    city: str = Field(..., min_length=2, max_length=100)
+    pincode: str = Field(..., min_length=6, max_length=10)
+
+
+def serialize_store_order(order: dict) -> dict:
+    return {
+        "id": str(order["_id"]),
+        "items": order.get("items", []),
+        "customer_name": order.get("customer_name", ""),
+        "customer_phone": order.get("customer_phone", ""),
+        "delivery_address": order.get("delivery_address", ""),
+        "city": order.get("city", ""),
+        "pincode": order.get("pincode", ""),
+        "total_amount": order.get("total_amount", 0),
+        "payment_status": order.get("payment_status", "pending"),
+        "order_status": order.get("order_status", "Order Placed"),
+        "courier": order.get("courier", ""),
+        "tracking_number": order.get("tracking_number", ""),
+        "created_at": order.get("created_at", ""),
+    }
+
+
+@api_router.post("/store/orders")
+async def create_store_order(
+    payload: StoreOrderCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    order_items = []
+    total_amount = 0
+
+    for item in payload.items:
+        try:
+            product_id = ObjectId(item.product_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+
+        product = await db.store_products.find_one({
+            "_id": product_id,
+            "is_available": True
+        })
+
+        if not product:
+            raise HTTPException(
+                status_code=404,
+                detail="A product is unavailable"
+            )
+
+        if product.get("stock", 0) < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough stock for {product['name']}"
+            )
+
+        unit_price = float(product["price"])
+        line_total = round(unit_price * item.quantity, 2)
+        total_amount += line_total
+
+        order_items.append({
+            "product_id": str(product["_id"]),
+            "name": product["name"],
+            "unit_price": unit_price,
+            "quantity": item.quantity,
+            "line_total": line_total,
+            "image_url": product.get("image_url", "")
+        })
+
+    order = {
+        "customer_id": user["id"],
+        "items": order_items,
+        "customer_name": payload.customer_name.strip(),
+        "customer_phone": payload.customer_phone.strip(),
+        "delivery_address": payload.delivery_address.strip(),
+        "city": payload.city.strip(),
+        "pincode": payload.pincode.strip(),
+        "total_amount": round(total_amount, 2),
+        "payment_status": "pending",
+        "order_status": "Awaiting Payment",
+        "courier": "",
+        "tracking_number": "",
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    result = await db.store_orders.insert_one(order)
+    order["_id"] = result.inserted_id
+
+    return serialize_store_order(order)
+
+
+@api_router.get("/store/orders/my-orders")
+async def get_my_store_orders(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+
+    orders = await db.store_orders.find({
+        "customer_id": user["id"]
+    }).sort("created_at", -1).to_list(200)
+
+    return [serialize_store_order(order) for order in orders]
