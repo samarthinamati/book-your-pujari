@@ -727,7 +727,20 @@ const updateStoreOrderTracking = async (
       <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 16 }}>
         Store Orders
       </Text>
-
+<TouchableOpacity
+  onPress={() => setShowAddProduct(!showAddProduct)}
+  style={{
+    backgroundColor: '#2E7D32',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  }}
+>
+  <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+    {showAddProduct ? 'Cancel Add Product' : '+ Add New Product'}
+  </Text>
+</TouchableOpacity>
       {loadingStoreOrders ? (
         <ActivityIndicator size="large" color="#FF6B35" />
       ) : storeOrders.length === 0 ? (
