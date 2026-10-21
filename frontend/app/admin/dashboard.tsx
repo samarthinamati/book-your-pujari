@@ -741,6 +741,32 @@ const updateStoreOrderTracking = async (
             <Text>
               Tracking number: {order.tracking_number || 'Not added'}
             </Text>
+            
+{order.tracking_url ? (
+  <TouchableOpacity
+    onPress={() => {
+      if (Platform.OS === 'web') {
+        window.open(order.tracking_url, '_blank');
+      } else {
+        Alert.alert(
+          'Tracking URL',
+          order.tracking_url
+        );
+      }
+    }}
+    style={{
+      backgroundColor: '#E8F5E9',
+      padding: 10,
+      borderRadius: 6,
+      marginTop: 8,
+    }}
+  >
+    <Text style={{ color: '#2E7D32', fontWeight: 'bold' }}>
+      View Tracking Link
+    </Text>
+  </TouchableOpacity>
+) : null}
+
           </View>
         ))
       )}
