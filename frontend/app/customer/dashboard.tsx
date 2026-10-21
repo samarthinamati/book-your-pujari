@@ -150,20 +150,42 @@ const [showPujariSection, setShowPujariSection] = useState(false);
         }
       >
         
-        <TouchableOpacity
-          style={styles.storeButton}
-          onPress={() => router.push('/customer/store')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="cart-outline" size={26} color="#FFFFFF" />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.storeButtonTitle}>Buy Puja Items</Text>
-            <Text style={styles.storeButtonSubtitle}>
-              Shop puja essentials from our store
-            </Text>
-          </View>
-          <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        
+<View style={styles.bookingOptions}>
+  <TouchableOpacity
+    style={styles.bookingOption}
+    onPress={() => router.push('/customer/store')}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="cart-outline" size={28} color="#2874F0" />
+    <View style={styles.bookingOptionText}>
+      <Text style={styles.bookingOptionTitle}>Booking Items</Text>
+      <Text style={styles.bookingOptionSubtitle}>
+        Shop puja essentials
+      </Text>
+    </View>
+    <Ionicons name="arrow-forward" size={20} color="#2874F0" />
+  </TouchableOpacity>
+
+  <TouchableOpacity
+    style={styles.bookingOption}
+    onPress={() => setShowPujariSection(!showPujariSection)}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="person-outline" size={28} color="#C45A16" />
+    <View style={styles.bookingOptionText}>
+      <Text style={styles.bookingOptionTitle}>Booking Saint / Pujari</Text>
+      <Text style={styles.bookingOptionSubtitle}>
+        Find and book your Pujari
+      </Text>
+    </View>
+    <Ionicons
+      name={showPujariSection ? 'chevron-up' : 'arrow-forward'}
+      size={20}
+      color="#C45A16"
+    />
+  </TouchableOpacity>
+</View>
 
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Find Your Pujari</Text>
