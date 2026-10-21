@@ -1200,7 +1200,15 @@ const updateStoreOrderTracking = async (
     </SafeAreaView>
   );
 }
-
+const productInputStyle = {
+  borderWidth: 1,
+  borderColor: '#CCCCCC',
+  borderRadius: 8,
+  padding: 12,
+  fontSize: 15,
+  color: '#222222',
+  backgroundColor: '#FFFFFF',
+};
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
