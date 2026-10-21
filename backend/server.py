@@ -1301,14 +1301,6 @@ async def startup_event():
     await ensure_admin_account()
 
 
-# ==================== INCLUDE ROUTER ====================
-
-
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
 
 # ==================== PUJARIGO SAMAGRI STORE ====================
 
@@ -1657,5 +1649,65 @@ async def get_my_store_order(
             detail="Order not found"
         )
 
+    
     return serialize_store_order(order)
+
+
+# ==================== STORE RAZORPAY PAYMENT ====================
+
+@api_router.post("/store/payment/create-order")
+async def create_store_payment_order(
+    payload: StorePaymentVerify,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+
+    try:
+        store_order_object_id = ObjectId(payload.store_order_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid store order ID")
+
+    store_order = await db.store_orders.find_one({
+        "_id": store_order_object_id,
+        "customer_id": user["id"]
+    })
+
+    if not store_order:
+        raise HTTPException(status_code=404, detail="Store order not found")
+
+    if store_order.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="Order is already paid")
+
+    if not razorpay_client or RAZORPAY_KEY_ID == "dummy_key":
+        raise HTTPException(status_code=503, detail="Payment service is not configured")
+
+    amount_paise = int(round(float(store_order["total_amount"]) * 100))
+
+    try:
+        razorpay_order = razorpay_client.order.create({
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": str(store_order["_id"])
+        })
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not create payment order")
+
+    await db.store_orders.update_one(
+        {"_id": store_order_object_id},
+        {"$set": {
+            "razorpay_order_id": razorpay_order["id"],
+            "updated_at": datetime.utcnow().isoformat()
+        }}
+    )
+
+    return {
+        "key_id": RAZORPAY_KEY_ID,
+        "razorpay_order_id": razorpay_order["id"],
+        "store_order_id": str(store_order["_id"]),
+        "amount": amount_paise,
+        "currency": "INR"
+    }
+
+
 app.include_router(api_router)
+
