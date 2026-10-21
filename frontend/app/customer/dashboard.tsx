@@ -148,6 +148,22 @@ export default function CustomerDashboard() {
           />
         }
       >
+        
+        <TouchableOpacity
+          style={styles.storeButton}
+          onPress={() => router.push('/customer/store')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="cart-outline" size={26} color="#FFFFFF" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.storeButtonTitle}>Buy Puja Items</Text>
+            <Text style={styles.storeButtonSubtitle}>
+              Shop puja essentials from our store
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>Find Your Pujari</Text>
 
