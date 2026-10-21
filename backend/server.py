@@ -1,4 +1,5 @@
 
+
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -1546,11 +1547,15 @@ async def get_my_store_orders(
 
     return [serialize_store_order(order) for order in orders]
     
+  class StorePaymentCreate(BaseModel):
+    store_order_id: str
+
+
 class StorePaymentVerify(BaseModel):
     store_order_id: str
     razorpay_order_id: str
     razorpay_payment_id: str
-    razorpay_signature: str
+    razorpay_signature: str  
 # ==================== ADMIN STORE ORDER TRACKING ====================
 
 class StoreOrderTrackingUpdate(BaseModel):
