@@ -1303,7 +1303,7 @@ async def startup_event():
 
 # ==================== INCLUDE ROUTER ====================
 
-app.include_router(api_router)
+
 
 
 @app.on_event("shutdown")
@@ -1653,3 +1653,4 @@ async def get_my_store_order(
         )
 
     return serialize_store_order(order)
+app.include_router(api_router)
