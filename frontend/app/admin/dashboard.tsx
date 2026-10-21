@@ -705,6 +705,33 @@ const updateStoreOrderTracking = async (
           </View>
         ))
       )}
+      
+<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+  {[
+    'Preparing',
+    'Shipped',
+    'Out for Delivery',
+    'Delivered',
+    'Cancelled',
+  ].map((status) => (
+    <TouchableOpacity
+      key={status}
+      onPress={() => updateStoreOrderTracking(order, status)}
+      style={{
+        backgroundColor:
+          order.order_status === status ? '#2E7D32' : '#FF6B35',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 6,
+      }}
+    >
+      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
+        {status}
+      </Text>
+    </TouchableOpacity>
+  ))}
+</View>
+
 
       <TouchableOpacity
         onPress={fetchStoreOrders}
