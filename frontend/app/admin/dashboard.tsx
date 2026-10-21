@@ -49,6 +49,8 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [saints, setSaints] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]);
+  const [storeOrders, setStoreOrders] = useState<any[]>([]);
+const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showAdminSection, setShowAdminSection] = useState<
   'store' | 'pujaris' | null
