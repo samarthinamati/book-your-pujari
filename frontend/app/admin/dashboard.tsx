@@ -770,13 +770,24 @@ const updateStoreOrderTracking = async (
     />
 
     <TextInput
-      placeholder="Description"
-      value={productDescription}
-      onChangeText={setProductDescription}
-      multiline
-      style={[productInputStyle, { minHeight: 70 }]}
-    />
-
+  placeholder="Description"
+  value={productDescription}
+  onChangeText={setProductDescription}
+  multiline
+  scrollEnabled={false}
+  style={[
+    productInputStyle,
+    {
+      minHeight: 45,
+      maxHeight: 120,
+      height: Math.min(
+        45 + productDescription.split('\n').length * 20,
+        120
+      ),
+      textAlignVertical: 'top',
+    },
+  ]}
+/>
     <TextInput
       placeholder="Category (e.g. Puja Samagri)"
       value={productCategory}
