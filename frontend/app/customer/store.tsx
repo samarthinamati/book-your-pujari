@@ -614,14 +614,11 @@ export default function CustomerStoreScreen() {
             {placingOrder ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.orderButtonText}>Create Order</Text>
+              <Text style={styles.orderButtonText}>Pay Now</Text>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.paymentNote}>
-            Payment is not completed by creating an order. Online checkout
-            will be connected after the order flow is tested.
-          </Text>
+
         </View>
       </ScrollView>
     </View>
