@@ -741,6 +741,86 @@ const updateStoreOrderTracking = async (
     {showAddProduct ? 'Cancel Add Product' : '+ Add New Product'}
   </Text>
 </TouchableOpacity>
+      
+{showAddProduct && (
+  <View
+    style={{
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#DDDDDD',
+      marginBottom: 20,
+      gap: 12,
+    }}
+  >
+    <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#222' }}>
+      Add New Puja Product
+    </Text>
+
+    <TextInput
+      placeholder="Product name *"
+      value={productName}
+      onChangeText={setProductName}
+      style={productInputStyle}
+    />
+
+    <TextInput
+      placeholder="Description"
+      value={productDescription}
+      onChangeText={setProductDescription}
+      multiline
+      style={[productInputStyle, { minHeight: 70 }]}
+    />
+
+    <TextInput
+      placeholder="Category (e.g. Puja Samagri)"
+      value={productCategory}
+      onChangeText={setProductCategory}
+      style={productInputStyle}
+    />
+
+    <TextInput
+      placeholder="Price in ₹ *"
+      value={productPrice}
+      onChangeText={setProductPrice}
+      keyboardType="decimal-pad"
+      style={productInputStyle}
+    />
+
+    <TextInput
+      placeholder="Product image URL (optional)"
+      value={productImageUrl}
+      onChangeText={setProductImageUrl}
+      autoCapitalize="none"
+      style={productInputStyle}
+    />
+
+    <TextInput
+      placeholder="Stock quantity"
+      value={productStock}
+      onChangeText={setProductStock}
+      keyboardType="number-pad"
+      style={productInputStyle}
+    />
+
+    <TouchableOpacity
+      disabled={savingProduct}
+      onPress={saveStoreProduct}
+      style={{
+        backgroundColor: savingProduct ? '#999999' : '#2E7D32',
+        padding: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+        {savingProduct ? 'Saving Product...' : 'Save Product'}
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
+
       {loadingStoreOrders ? (
         <ActivityIndicator size="large" color="#FF6B35" />
       ) : storeOrders.length === 0 ? (
