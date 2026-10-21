@@ -147,17 +147,6 @@ const updateStoreOrderTracking = async (
   }
 };
 
-    Alert.alert('Success', 'Order status updated.');
-    await fetchStoreOrders();
-  } catch (error: any) {
-    Alert.alert(
-      'Error',
-      error?.message || 'Could not update order status.'
-    );
-  }
-};
-
-  
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
