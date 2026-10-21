@@ -545,6 +545,44 @@ export default function AdminDashboard() {
           <Ionicons name="log-out-outline" size={22} color="#F44336" />
         </TouchableOpacity>
       </View>
+       
+    {showAdminSection === null && (
+      <View style={{ padding: 16, gap: 16 }}>
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => setShowAdminSection('store')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="cart-outline" size={28} color="#FF9800" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#222' }}>
+              Manage Store
+            </Text>
+            <Text style={{ color: '#666', marginTop: 4 }}>
+              Manage puja products and store orders
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color="#888" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => setShowAdminSection('pujaris')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="people-outline" size={28} color="#4CAF50" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#222' }}>
+              Manage Pujaris & Bookings
+            </Text>
+            <Text style={{ color: '#666', marginTop: 4 }}>
+              Manage pujaris, customer bookings and revenue
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color="#888" />
+        </TouchableOpacity>
+      </View>
+    )}
 
       <View style={styles.tabs}>
         <TouchableOpacity
