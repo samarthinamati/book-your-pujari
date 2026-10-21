@@ -128,6 +128,7 @@ export default function CustomerStoreScreen() {
     0
   );
 
+  
   const placeOrder = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Your cart is empty', 'Please select some products.');
@@ -153,6 +154,7 @@ export default function CustomerStoreScreen() {
     setPlacingOrder(true);
 
     try {
+      // Step 1: Create the Store order.
       const order = await apiClient.post('/store/orders', {
         items: cartItems.map((item) => ({
           product_id: item.product.id,
@@ -165,22 +167,104 @@ export default function CustomerStoreScreen() {
         pincode: pincode.trim(),
       });
 
-      Alert.alert(
-        'Order created',
-        `Order ID: ${order.id || order.order_id || 'Created'}\nPayment is not completed yet.`
+      const storeOrderId = String(
+        order.id || order.order_id || order._id || ''
       );
 
+      if (!storeOrderId) {
+        throw new Error(
+          'The order was created, but its ID was not returned. Please contact support before retrying.'
+        );
+      }
+
+      // Step 2: Ask the backend to create a Razorpay order.
+      const paymentOrder = await apiClient.post(
+        '/store/payment/create-order',
+        {
+          store_order_id: storeOrderId,
+        }
+      );
+
+      if (
+        !paymentOrder.key_id ||
+        !paymentOrder.razorpay_order_id ||
+        paymentOrder.amount == null
+      ) {
+        throw new Error('The payment order response is incomplete.');
+      }
+
+      // Step 3: Open Razorpay checkout.
+      const paymentResponse = await openRazorpayCheckout({
+        key: paymentOrder.key_id,
+        amount: String(paymentOrder.amount),
+        currency: paymentOrder.currency || 'INR',
+        name: 'PujariGo',
+        description: 'Puja Samagri Store Order',
+        order_id: paymentOrder.razorpay_order_id,
+        prefill: {
+          name: customerName.trim(),
+          contact: customerPhone.trim(),
+        },
+        theme: {
+          color: '#1746A2',
+        },
+      });
+
+      // Step 4: Verify payment securely with the backend.
+      const verification = await apiClient.post(
+        '/store/payment/verify',
+        {
+          store_order_id: storeOrderId,
+          razorpay_order_id: paymentResponse.razorpay_order_id,
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+        }
+      );
+
+      if (
+        verification.payment_status &&
+        verification.payment_status !== 'paid'
+      ) {
+        throw new Error(
+          'Payment verification is not complete. Please check your order status before trying again.'
+        );
+      }
+
+      // Step 5: Clear the cart only after payment verification succeeds.
       setCart({});
       setCustomerName('');
       setCustomerPhone('');
       setAddress('');
       setCity('');
       setPincode('');
-    } catch (e: any) {
+
       Alert.alert(
-        'Could not create order',
-        e?.message || 'Please try again.'
+        'Payment successful!',
+        `Your Samagri order has been paid successfully.\nOrder ID: ${storeOrderId}`
       );
+    } catch (e: any) {
+      const errorCode = e?.code;
+      const errorMessage =
+        typeof e?.description === 'string'
+          ? e.description
+          : typeof e?.message === 'string'
+            ? e.message
+            : 'Please check your order status and try again.';
+
+      if (
+        errorCode === 'PAYMENT_CANCELLED' ||
+        /payment cancelled|checkout cancelled/i.test(errorMessage)
+      ) {
+        Alert.alert(
+          'Payment cancelled',
+          'Your cart has been kept. You can try checkout again.'
+        );
+      } else {
+        Alert.alert(
+          'Payment or order issue',
+          `${errorMessage}\n\nIf money was deducted, check your order status before attempting another payment.`
+        );
+      }
     } finally {
       setPlacingOrder(false);
     }
