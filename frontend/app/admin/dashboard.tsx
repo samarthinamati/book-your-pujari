@@ -695,6 +695,37 @@ const updateStoreOrderTracking = async (
               Order #{String(order.id || order._id || index + 1)}
             </Text>
 
+<Text style={{ marginTop: 6 }}>
+  Customer: {order.customer_name || 'Not provided'}
+</Text>
+
+<Text>
+  Phone: {order.customer_phone || 'Not provided'}
+</Text>
+
+<Text>
+  Address: {order.delivery_address || 'Not provided'}
+</Text>
+
+<Text>
+  City: {order.city || '-'} - {order.pincode || '-'}
+</Text>
+
+<Text>
+  Payment: {order.payment_status || 'Pending'}
+</Text>
+
+<Text style={{ fontWeight: 'bold', marginTop: 6 }}>
+  Items:
+</Text>
+
+{Array.isArray(order.items) &&
+  order.items.map((item: any, itemIndex: number) => (
+    <Text key={String(item.product_id || itemIndex)}>
+      • {item.name || item.product_name || 'Puja item'} × {item.quantity || 1}
+    </Text>
+  ))}
+
             <Text style={{ marginTop: 6 }}>
               Status: {order.order_status || 'Order Placed'}
             </Text>
