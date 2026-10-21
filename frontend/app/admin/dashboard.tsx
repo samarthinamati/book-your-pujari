@@ -824,7 +824,6 @@ const updateStoreOrderTracking = async (
         </Text>
       </TouchableOpacity>
 
-      <>
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
