@@ -110,7 +110,64 @@ const fetchStoreOrders = async () => {
     setLoadingStoreOrders(false);
   }
 };
+const saveStoreProduct = async () => {
+  const name = productName.trim();
+  const price = Number(productPrice);
+  const stock = Number(productStock);
 
+  if (!name || name.length < 2) {
+    Alert.alert('Error', 'Enter a product name with at least 2 characters.');
+    return;
+  }
+
+  if (!productPrice.trim() || !Number.isFinite(price) || price <= 0) {
+    Alert.alert('Error', 'Enter a valid product price.');
+    return;
+  }
+
+  if (
+    !productStock.trim() ||
+    !Number.isInteger(stock) ||
+    stock < 0
+  ) {
+    Alert.alert('Error', 'Enter a valid stock quantity.');
+    return;
+  }
+
+  setSavingProduct(true);
+
+  try {
+    await apiClient.request('/store/admin/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description: productDescription.trim(),
+        category: productCategory.trim() || 'Puja Samagri',
+        price,
+        image_url: productImageUrl.trim(),
+        stock,
+        is_available: stock > 0,
+      }),
+    });
+
+    Alert.alert('Success', 'Product added successfully!');
+
+    setProductName('');
+    setProductDescription('');
+    setProductCategory('Puja Samagri');
+    setProductPrice('');
+    setProductImageUrl('');
+    setProductStock('10');
+    setShowAddProduct(false);
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not add product.'
+    );
+  } finally {
+    setSavingProduct(false);
+  }
+};
 
 
 const updateStoreOrderTracking = async (
