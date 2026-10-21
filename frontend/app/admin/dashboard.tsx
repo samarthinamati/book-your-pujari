@@ -104,6 +104,7 @@ const fetchStoreOrders = async () => {
 };
 
 
+
 const updateStoreOrderTracking = async (
   order: any,
   orderStatus: string
@@ -125,6 +126,16 @@ const updateStoreOrderTracking = async (
         tracking_url: order.tracking_url || '',
       }
     );
+
+    await fetchStoreOrders();
+    Alert.alert('Success', 'Order status updated.');
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not update order status.'
+    );
+  }
+};
 
     await fetchStoreOrders();
     Alert.alert('Success', 'Order status updated.');
