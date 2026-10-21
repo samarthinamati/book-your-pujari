@@ -1333,9 +1333,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingVertical: 16,
-    paddingBottom: 40,
-  },
+  paddingVertical: 16,
+  paddingBottom: 100,
+  flexGrow: 1,
+},
   welcomeCard: {
     backgroundColor: '#FFF5F0',
     marginHorizontal: 16,
