@@ -605,6 +605,89 @@ const fetchStoreOrders = async () => {
         </TouchableOpacity>
       </View>
     )}
+      
+{showAdminSection === 'store' && (
+  <>
+    <TouchableOpacity
+      onPress={() => setShowAdminSection(null)}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#FFF',
+      }}
+    >
+      <Ionicons name="arrow-back" size={22} color="#FF6B35" />
+      <Text style={{ marginLeft: 8, fontWeight: 'bold', color: '#333' }}>
+        Back to Admin Menu
+      </Text>
+    </TouchableOpacity>
+
+    <View style={{ padding: 16 }}>
+      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 16 }}>
+        Store Orders
+      </Text>
+
+      {loadingStoreOrders ? (
+        <ActivityIndicator size="large" color="#FF6B35" />
+      ) : storeOrders.length === 0 ? (
+        <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>
+          No store orders found.
+        </Text>
+      ) : (
+        storeOrders.map((order: any, index: number) => (
+          <View
+            key={String(order.id || order._id || index)}
+            style={{
+              backgroundColor: '#FFF',
+              padding: 14,
+              marginBottom: 12,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#EEE',
+            }}
+          >
+            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+              Order #{String(order.id || order._id || index + 1)}
+            </Text>
+
+            <Text style={{ marginTop: 6 }}>
+              Status: {order.order_status || 'Order Placed'}
+            </Text>
+
+            <Text>
+              Amount: ₹{Number(order.total_amount ?? order.amount ?? 0).toFixed(2)}
+            </Text>
+
+            <Text>
+              Courier: {order.courier || 'Not assigned'}
+            </Text>
+
+            <Text>
+              Tracking number: {order.tracking_number || 'Not added'}
+            </Text>
+          </View>
+        ))
+      )}
+
+      <TouchableOpacity
+        onPress={fetchStoreOrders}
+        style={{
+          backgroundColor: '#FF6B35',
+          padding: 14,
+          borderRadius: 8,
+          alignItems: 'center',
+          marginBottom: 24,
+        }}
+      >
+        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+          Refresh Orders
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </>
+)}
+
     {showAdminSection === 'pujaris' && (
       
       <TouchableOpacity
