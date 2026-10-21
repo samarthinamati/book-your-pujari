@@ -634,4 +634,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF6B35',
   },
+  
+  storeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B4513',
+    borderRadius: 14,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  storeButtonTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  storeButtonSubtitle: {
+    color: '#FBE7D4',
+    fontSize: 12,
+    marginTop: 4,
+  },
+
 });
