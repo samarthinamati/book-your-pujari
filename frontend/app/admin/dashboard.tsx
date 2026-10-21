@@ -103,6 +103,7 @@ const fetchStoreOrders = async () => {
   }
 };
 
+
 const updateStoreOrderTracking = async (
   order: any,
   orderStatus: string
@@ -115,18 +116,25 @@ const updateStoreOrderTracking = async (
   }
 
   try {
-    await apiClient.request(
+    await apiClient.put(
       `/store/admin/orders/${orderId}/tracking`,
       {
-        method: 'PUT',
-        body: JSON.stringify({
-          order_status: orderStatus,
-          courier: order.courier || 'DTDC',
-          tracking_number: order.tracking_number || '',
-          tracking_url: order.tracking_url || '',
-        }),
+        order_status: orderStatus,
+        courier: order.courier || 'DTDC',
+        tracking_number: order.tracking_number || '',
+        tracking_url: order.tracking_url || '',
       }
     );
+
+    await fetchStoreOrders();
+    Alert.alert('Success', 'Order status updated.');
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not update order status.'
+    );
+  }
+};
 
     Alert.alert('Success', 'Order status updated.');
     await fetchStoreOrders();
