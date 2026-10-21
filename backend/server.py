@@ -1551,3 +1551,105 @@ async def get_my_store_orders(
     }).sort("created_at", -1).to_list(200)
 
     return [serialize_store_order(order) for order in orders]
+
+# ==================== ADMIN STORE ORDER TRACKING ====================
+
+class StoreOrderTrackingUpdate(BaseModel):
+    order_status: str
+    courier: Optional[str] = "DTDC"
+    tracking_number: Optional[str] = ""
+    tracking_url: Optional[str] = ""
+
+
+ALLOWED_STORE_ORDER_STATUSES = {
+    "Order Placed",
+    "Preparing",
+    "Shipped",
+    "Out for Delivery",
+    "Delivered",
+    "Cancelled",
+}
+
+
+@api_router.get("/store/admin/orders")
+async def get_all_store_orders(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    orders = await db.store_orders.find().sort(
+        "created_at", -1
+    ).to_list(500)
+
+    return [serialize_store_order(order) for order in orders]
+
+
+@api_router.put("/store/admin/orders/{order_id}/tracking")
+async def update_store_order_tracking(
+    order_id: str,
+    payload: StoreOrderTrackingUpdate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    if payload.order_status not in ALLOWED_STORE_ORDER_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order status"
+        )
+
+    try:
+        object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order ID"
+        )
+
+    updates = {
+        "order_status": payload.order_status,
+        "courier": (payload.courier or "").strip(),
+        "tracking_number": (payload.tracking_number or "").strip(),
+        "tracking_url": (payload.tracking_url or "").strip(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await db.store_orders.update_one(
+        {"_id": object_id},
+        {"$set": updates}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Store order not found"
+        )
+
+    return {"message": "Order tracking updated successfully"}
+
+
+@api_router.get("/store/orders/{order_id}")
+async def get_my_store_order(
+    order_id: str,
+    user: dict = Depends(get_current_user)
+):
+    try:
+        object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order ID"
+        )
+
+    order = await db.store_orders.find_one({
+        "_id": object_id,
+        "customer_id": user["id"]
+    })
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found"
+        )
+
+    return serialize_store_order(order)
