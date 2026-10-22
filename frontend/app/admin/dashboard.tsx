@@ -1036,7 +1036,7 @@ const updateStoreOrderTracking = async (
           Refresh Orders
         </Text>
       </TouchableOpacity>
-    </View>
+     </ScrollView>
   </>
 )}
 
