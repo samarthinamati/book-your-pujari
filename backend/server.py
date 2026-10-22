@@ -1668,7 +1668,7 @@ async def get_my_store_order(
 
 @api_router.post("/store/payment/create-order")
 async def create_store_payment_order(
-    payload: StorePaymentcreate,
+    payload: StorePaymentCreate,
     user: dict = Depends(get_current_user)
 ):
     await require_role(user, ["customer"])
