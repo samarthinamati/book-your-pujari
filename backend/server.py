@@ -1839,6 +1839,14 @@ async def create_store_order(
             "image_url": product.get("image_url", "")
         })
 
+        payment_method = payload.payment_method.strip().lower()
+
+    if payment_method not in {"online", "cod"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid payment method. Choose online or cod."
+        )
+
     order = {
         "customer_id": user["id"],
         "items": order_items,
@@ -1848,10 +1856,16 @@ async def create_store_order(
         "city": payload.city.strip(),
         "pincode": payload.pincode.strip(),
         "total_amount": round(total_amount, 2),
+        "payment_method": payment_method,
         "payment_status": "pending",
-        "order_status": "Awaiting Payment",
+        "order_status": (
+            "Order Placed" if payment_method == "cod"
+            else "Awaiting Payment"
+        ),
         "courier": "",
         "tracking_number": "",
+        "tracking_url": "",
+        "return_status": "Not Requested",
         "created_at": datetime.utcnow().isoformat()
     }
 
