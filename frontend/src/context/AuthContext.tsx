@@ -8,7 +8,7 @@ type AuthContextType = {
   userToken: string | null;
   userRole: UserRole;
   user: any | null;
-  login: (token: string, user: any) => Promise<void>;
+  login: (token: string, user: any, redirect?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
 };
