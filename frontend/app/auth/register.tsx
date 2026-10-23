@@ -376,7 +376,9 @@ if (response.user.role === 'customer') {
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
+      <Text style={styles.buttonText}>
+  {role === 'seller' ? 'Apply as Seller' : 'Create Account'}
+</Text>
               )}
             </TouchableOpacity>
 
