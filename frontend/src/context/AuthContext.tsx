@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { storage } from '@/src/utils/storage';
 
-type UserRole = 'customer' | 'saint' | 'admin' | null;
+type UserRole = 'customer' | 'saint' | 'seller' | 'admin' | null;
 
 type AuthContextType = {
   userToken: string | null;
