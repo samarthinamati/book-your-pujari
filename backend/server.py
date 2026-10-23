@@ -1478,6 +1478,7 @@ class StoreProductCreate(BaseModel):
     is_available: bool = True
 
 
+
 def serialize_store_product(product: dict) -> dict:
     return {
         "id": str(product["_id"]),
@@ -1488,6 +1489,11 @@ def serialize_store_product(product: dict) -> dict:
         "image_url": product.get("image_url", ""),
         "stock": product.get("stock", 0),
         "is_available": product.get("is_available", True),
+        "seller_id": product.get("seller_id", ""),
+        "shop_name": product.get("shop_name", ""),
+        "pickup_address": product.get("pickup_address", ""),
+        "pickup_city": product.get("pickup_city", ""),
+        "pickup_pincode": product.get("pickup_pincode", ""),
         "created_at": product.get("created_at", ""),
     }
 
