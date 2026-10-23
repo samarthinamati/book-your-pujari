@@ -50,6 +50,28 @@ const [pincode, setPincode] = useState('');
   return;
 }
 
+    if (role === 'seller') {
+      if (
+        !shopName.trim() ||
+        !email.trim() ||
+        !shopAddress.trim() ||
+        !city.trim() ||
+        !pincode.trim()
+      ) {
+        Alert.alert('Missing Details', 'Please fill in all shop details.');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address.');
+        return;
+      }
+
+      if (!/^\d{6}$/.test(pincode.trim())) {
+        Alert.alert('Invalid PIN Code', 'Please enter a valid 6-digit PIN code.');
+        return;
+      }
+    }    
     setLoading(true);
 
     try {
