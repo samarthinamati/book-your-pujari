@@ -154,6 +154,29 @@ export default function RegisterScreen() {
                 Saint/Pujari
               </Text>
             </TouchableOpacity>
+                        <TouchableOpacity
+              style={[
+                styles.roleButton,
+                role === 'seller' && styles.roleButtonActive,
+              ]}
+              onPress={() => setRole('seller')}
+              disabled={loading}
+              testID="role-seller-button"
+            >
+              <Ionicons
+                name="storefront"
+                size={24}
+                color={role === 'seller' ? '#FFF' : '#666'}
+              />
+              <Text
+                style={[
+                  styles.roleText,
+                  role === 'seller' && styles.roleTextActive,
+                ]}
+              >
+                Seller
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.form}>
