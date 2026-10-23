@@ -138,6 +138,10 @@ class AdminApprovalRequest(BaseModel):
     saint_id: str
     approved: bool
 
+class SellerApprovalRequest(BaseModel):
+    application_id: str
+    approved: bool
+
 
 # ==================== AUTHENTICATION ====================
 
