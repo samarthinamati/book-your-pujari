@@ -49,11 +49,11 @@ export default function RegisterScreen() {
 
     try {
       const payload: {
-        name: string;
-        phone: string;
-        role: 'customer' | 'saint';
-        password?: string;
-      } = {
+  name: string;
+  phone: string;
+  role: 'customer' | 'saint';
+  password?: string;
+} = {
         name: cleanName,
         phone: cleanPhone,
         role,
