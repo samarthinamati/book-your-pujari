@@ -196,7 +196,22 @@ export default function CustomerStoreScreen() {
         })),
         payment_method: paymentMethod,
         customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),
+        customer_phone: customerPhone.trim(),if (paymentMethod === 'cod') {
+  setCart({});
+  setCustomerName('');
+  setCustomerPhone('');
+  setAddress('');
+  setCity('');
+  setPincode('');
+  setShowCart(false);
+
+  Alert.alert(
+    'Order placed successfully!',
+    `Your Cash on Delivery order has been placed.\nOrder ID: ${storeOrderId}\nAmount to pay on delivery: ₹${total.toFixed(2)}`
+  );
+
+  return;
+}
         delivery_address: address.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
@@ -211,6 +226,7 @@ export default function CustomerStoreScreen() {
           'The order was created, but its ID was not returned. Please contact support before retrying.'
         );
       }
+      
 
       const paymentOrder = await apiClient.post(
         '/store/payment/create-order',
