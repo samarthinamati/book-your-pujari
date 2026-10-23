@@ -96,23 +96,36 @@ const [pincode, setPincode] = useState('');
         throw new Error('Invalid response from server. Please try again.');
       }
 
+
 if (role === 'seller') {
-  await apiClient.request('/store/seller/apply', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${response.token}`,
-    },
-    body: JSON.stringify({
-      shop_name: shopName.trim(),
-      owner_name: cleanName,
-      phone: cleanPhone,
-      password: password.trim(),
-      email: email.trim(),
-      shop_address: shopAddress.trim(),
-      city: city.trim(),
-      pincode: pincode.trim(),
-    }),
-  });
+  const sellerResponse = await fetch(
+    `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/store/seller/apply`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${response.token}`,
+      },
+      body: JSON.stringify({
+        shop_name: shopName.trim(),
+        owner_name: cleanName,
+        phone: cleanPhone,
+        password: password.trim(),
+        email: email.trim(),
+        shop_address: shopAddress.trim(),
+        city: city.trim(),
+        pincode: pincode.trim(),
+      }),
+    }
+  );
+
+  const sellerData = await sellerResponse.json().catch(() => ({}));
+
+  if (!sellerResponse.ok) {
+    throw new Error(
+      sellerData.detail || `Seller application failed (${sellerResponse.status})`
+    );
+  }
 
   Alert.alert(
     'Application Submitted',
@@ -120,10 +133,7 @@ if (role === 'seller') {
     [
       {
         text: 'OK',
-        onPress: async () => {
-          await login(response.token, response.user);
-          router.replace('/auth/login');
-        },
+        onPress: () => router.replace('/auth/login'),
       },
     ]
   );
