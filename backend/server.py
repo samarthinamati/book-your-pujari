@@ -1612,6 +1612,38 @@ async def list_seller_products(
 
     return [serialize_store_product(p) for p in products]
 
+@api_router.post("/store/seller/products")
+async def create_seller_product(
+    payload: StoreProductCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    product = payload.dict()
+    product["seller_id"] = user["id"]
+    product["shop_name"] = application.get("shop_name", "")
+    product["pickup_address"] = application.get("shop_address", "")
+    product["pickup_city"] = application.get("city", "")
+    product["pickup_pincode"] = application.get("pincode", "")
+    product["created_at"] = datetime.utcnow().isoformat()
+    product["updated_at"] = datetime.utcnow().isoformat()
+
+    result = await db.store_products.insert_one(product)
+    product["_id"] = result.inserted_id
+
+    return serialize_store_product(product)
+
 # ==================== SAMAGRI STORE ORDERS ====================
 
 class StoreOrderItem(BaseModel):
