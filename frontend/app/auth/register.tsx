@@ -96,7 +96,7 @@ const [pincode, setPincode] = useState('');
         throw new Error('Invalid response from server. Please try again.');
       }
 
-      await login(response.token, response.user);
+      await login(response.token, response.user, role !== 'seller');
             if (role === 'seller') {
         await apiClient.post('/store/seller/apply', {
           shop_name: shopName.trim(),
