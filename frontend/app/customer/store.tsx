@@ -760,7 +760,35 @@ export default function CustomerStoreScreen() {
                   keyboardType="number-pad"
                   maxLength={6}
                 />
+                <Text style={styles.sectionTitle}>
+                  Choose Payment Method
+                </Text>
 
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === 'online' && styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMethod('online')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.paymentOptionText}>
+                    {paymentMethod === 'online' ? '🔘' : '⚪'} Pay Online (UPI / Razorpay)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === 'cod' && styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMethod('cod')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.paymentOptionText}>
+                    {paymentMethod === 'cod' ? '🔘' : '⚪'} Cash on Delivery
+                  </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.orderButton,
