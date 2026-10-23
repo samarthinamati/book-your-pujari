@@ -33,6 +33,23 @@ type CartItem = {
   quantity: number;
 };
 
+type StoreOrder = {
+  id: string;
+  order_status?: string;
+  payment_status?: string;
+  payment_method?: string;
+  total_amount?: number;
+  total?: number;
+  amount?: number;
+  created_at?: string;
+  courier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  return_status?: string;
+  replacement_status?: string;
+  items?: any[];
+};
+
 const BLUE = '#2874F0';
 const DARK_BLUE = '#1746A2';
 
@@ -50,17 +67,27 @@ const CATEGORY_ICONS: Record<string, string> = {
   default: '📿',
 };
 
+const getOrderId = (order: any): string =>
+  String(order?.id || order?.order_id || order?._id || '');
+
+const getOrderTotal = (order: StoreOrder): number =>
+  Number(order.total_amount ?? order.total ?? order.amount ?? 0);
+
 export default function CustomerStoreScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showCart, setShowCart] = useState(false);
+  const [showOrders, setShowOrders] = useState(false);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [ordersError, setOrdersError] = useState('');
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -79,12 +106,45 @@ export default function CustomerStoreScreen() {
           ? result.products
           : [];
 
-      setProducts(list);
+      setProducts(
+        list.map((item: any) => ({
+          ...item,
+          id: String(item.id || item._id || item.product_id || ''),
+        })).filter((item: Product) => Boolean(item.id))
+      );
     } catch (e: any) {
       setError(e?.message || 'Could not load products.');
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    setOrdersError('');
+
+    try {
+      const result = await apiClient.get('/store/orders/my-orders');
+      const list = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.orders)
+          ? result.orders
+          : [];
+
+      setOrders(
+        list.map((order: any) => ({
+          ...order,
+          id: getOrderId(order),
+        })).filter((order: StoreOrder) => Boolean(order.id))
+      );
+    } catch (e: any) {
+      setOrdersError(
+        e?.message ||
+          'Could not load your orders. Please try again.'
+      );
+    } finally {
+      setLoadingOrders(false);
     }
   }, []);
 
@@ -118,6 +178,18 @@ export default function CustomerStoreScreen() {
     });
   }, [products, search, selectedCategory]);
 
+  const cartItems = Object.values(cart);
+
+  const total = cartItems.reduce(
+    (sum, item) => sum + Number(item.product.price) * item.quantity,
+    0
+  );
+
+  const itemCount = cartItems.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
+
   const updateQuantity = (product: Product, change: number) => {
     const stock = Number(product.stock ?? 50);
 
@@ -141,22 +213,27 @@ export default function CustomerStoreScreen() {
     });
   };
 
-  const cartItems = Object.values(cart);
+  const resetCheckout = () => {
+    setCart({});
+    setCustomerName('');
+    setCustomerPhone('');
+    setAddress('');
+    setCity('');
+    setPincode('');
+    setShowCart(false);
+  };
 
-  const total = cartItems.reduce(
-    (sum, item) => sum + Number(item.product.price) * item.quantity,
-    0
-  );
-
-  const itemCount = cartItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
+  const openMyOrders = () => {
+    setShowCart(false);
+    setShowOrders(true);
+    loadOrders();
+  };
 
   const scrollToProducts = () => {
     setSearch('');
     setSelectedCategory('All');
     setShowCart(false);
+    setShowOrders(false);
   };
 
   const placeOrder = async () => {
@@ -188,6 +265,8 @@ export default function CustomerStoreScreen() {
 
     setPlacingOrder(true);
 
+    let storeOrderId = '';
+
     try {
       const order = await apiClient.post('/store/orders', {
         items: cartItems.map((item) => ({
@@ -196,37 +275,32 @@ export default function CustomerStoreScreen() {
         })),
         payment_method: paymentMethod,
         customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),if (paymentMethod === 'cod') {
-  setCart({});
-  setCustomerName('');
-  setCustomerPhone('');
-  setAddress('');
-  setCity('');
-  setPincode('');
-  setShowCart(false);
-
-  Alert.alert(
-    'Order placed successfully!',
-    `Your Cash on Delivery order has been placed.\nOrder ID: ${storeOrderId}\nAmount to pay on delivery: ₹${total.toFixed(2)}`
-  );
-
-  return;
-}
+        customer_phone: customerPhone.trim(),
         delivery_address: address.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
       });
 
-      const storeOrderId = String(
-        order.id || order.order_id || order._id || ''
-      );
+      storeOrderId = getOrderId(order);
 
       if (!storeOrderId) {
         throw new Error(
-          'The order was created, but its ID was not returned. Please contact support before retrying.'
+          'The order ID was not returned. Please check My Orders before placing another order.'
         );
       }
-      
+
+      // COD orders do not go through Razorpay.
+      if (paymentMethod === 'cod') {
+        resetCheckout();
+
+        Alert.alert(
+          'Order placed successfully!',
+          `Your Cash on Delivery order has been placed.\nOrder ID: ${storeOrderId}\nAmount to pay on delivery: ₹${total.toFixed(2)}`,
+          [{ text: 'View My Orders', onPress: openMyOrders }, { text: 'OK' }]
+        );
+
+        return;
+      }
 
       const paymentOrder = await apiClient.post(
         '/store/payment/create-order',
@@ -271,17 +345,12 @@ export default function CustomerStoreScreen() {
         );
       }
 
-      setCart({});
-      setCustomerName('');
-      setCustomerPhone('');
-      setAddress('');
-      setCity('');
-      setPincode('');
-      setShowCart(false);
+      resetCheckout();
 
       Alert.alert(
         'Payment successful!',
-        `Your Samagri order has been paid successfully.\nOrder ID: ${storeOrderId}`
+        `Your Samagri order has been paid successfully.\nOrder ID: ${storeOrderId}`,
+        [{ text: 'View My Orders', onPress: openMyOrders }, { text: 'OK' }]
       );
     } catch (e: any) {
       const errorCode = e?.code;
@@ -298,17 +367,142 @@ export default function CustomerStoreScreen() {
       ) {
         Alert.alert(
           'Payment cancelled',
-          'Your cart has been kept. You can try checkout again.'
+          'Your cart has been kept. If an order was created, check My Orders before trying again.'
         );
       } else {
         Alert.alert(
           'Payment or order issue',
-          `${errorMessage}\n\nIf money was deducted, check your order status before attempting another payment.`
+          `${errorMessage}\n\nIf an order was created or money was deducted, check My Orders before attempting another payment.`
         );
       }
     } finally {
       setPlacingOrder(false);
     }
+  };
+
+  const showComingSoon = (action: string, orderId: string) => {
+    Alert.alert(
+      `${action} — Coming Soon`,
+      `Order ID: ${orderId}\n\nThis button is ready in the store screen, but the backend request feature has not been connected yet. No ${action.toLowerCase()} request has been submitted.`
+    );
+  };
+
+  const renderOrder = (order: StoreOrder) => {
+    const status = order.order_status || 'Order status unavailable';
+    const paymentStatus = order.payment_status || 'Pending';
+    const method = (order.payment_method || 'online').toLowerCase();
+    const returnStatus = order.return_status || 'Not Requested';
+    const replacementStatus = order.replacement_status || 'Not Requested';
+
+    const delivered = status.toLowerCase() === 'delivered';
+    const cancelled = status.toLowerCase() === 'cancelled';
+
+    return (
+      <View key={order.id} style={styles.orderCard}>
+        <Text style={styles.orderTitle}>Order #{order.id}</Text>
+
+        {order.created_at ? (
+          <Text style={styles.orderMeta}>
+            Placed: {new Date(order.created_at).toLocaleDateString()}
+          </Text>
+        ) : null}
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Order status</Text>
+          <Text style={styles.orderValue}>{status}</Text>
+        </View>
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Payment</Text>
+          <Text style={styles.orderValue}>
+            {method === 'cod' ? 'Cash on Delivery' : 'Online'}
+          </Text>
+        </View>
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Payment status</Text>
+          <Text style={styles.orderValue}>{paymentStatus}</Text>
+        </View>
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Order total</Text>
+          <Text style={styles.orderTotal}>
+            ₹{getOrderTotal(order).toFixed(2)}
+          </Text>
+        </View>
+
+        <View style={styles.trackingBox}>
+          <Text style={styles.trackingTitle}>Delivery Tracking</Text>
+          <Text style={styles.trackingText}>
+            {order.courier ? `Courier: ${order.courier}\n` : ''}
+            {order.tracking_number
+              ? `Tracking number: ${order.tracking_number}`
+              : 'Tracking details will appear when provided by the store.'}
+          </Text>
+
+          {order.tracking_url ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => {
+                Alert.alert(
+                  'Tracking Link',
+                  order.tracking_url,
+                  [{ text: 'OK' }]
+                );
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>
+                View Tracking Link
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Return status</Text>
+          <Text style={styles.orderValue}>{returnStatus}</Text>
+        </View>
+
+        <View style={styles.orderInfoRow}>
+          <Text style={styles.orderLabel}>Replacement status</Text>
+          <Text style={styles.orderValue}>{replacementStatus}</Text>
+        </View>
+
+        <View style={styles.orderActions}>
+          {!cancelled && !delivered && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon('Cancel Order', order.id)}
+            >
+              <Text style={styles.actionButtonText}>Cancel Order</Text>
+            </TouchableOpacity>
+          )}
+
+          {delivered && (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => showComingSoon('Return Item', order.id)}
+              >
+                <Text style={styles.actionButtonText}>Return Item</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => showComingSoon('Replace Item', order.id)}
+              >
+                <Text style={styles.actionButtonText}>Replace Item</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        <Text style={styles.orderFootnote}>
+          Return, replacement and cancellation requests will be connected when
+          backend support is added.
+        </Text>
+      </View>
+    );
   };
 
   const renderProduct = (item: Product) => {
@@ -333,12 +527,10 @@ export default function CustomerStoreScreen() {
                 { text: 'Close', style: 'cancel' },
                 ...(unavailable
                   ? []
-                  : [
-                      {
-                        text: quantity > 0 ? 'Add one more' : 'Add to Cart',
-                        onPress: () => updateQuantity(item, 1),
-                      },
-                    ]),
+                  : [{
+                      text: quantity > 0 ? 'Add one more' : 'Add to Cart',
+                      onPress: () => updateQuantity(item, 1),
+                    }]),
               ]
             )
           }
@@ -430,17 +622,24 @@ export default function CustomerStoreScreen() {
             onRefresh={() => {
               setRefreshing(true);
               loadProducts();
+              if (showOrders) loadOrders();
             }}
             colors={[BLUE]}
           />
         }
       >
-        {/* FLIPKART-INSPIRED BLUE HEADER */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.back()}
+              onPress={() => {
+                if (showOrders || showCart) {
+                  setShowOrders(false);
+                  setShowCart(false);
+                } else {
+                  router.back();
+                }
+              }}
             >
               <Text style={styles.backArrow}>‹</Text>
             </TouchableOpacity>
@@ -461,193 +660,115 @@ export default function CustomerStoreScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchBox}>
-            <Text style={styles.searchIcon}>⌕</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search for products, puja kits..."
-              placeholderTextColor="#777777"
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Text style={styles.clearSearch}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* CATEGORY ICON ROW */}
-        <View style={styles.categorySection}>
-          <Text style={styles.sectionHeading}>Shop by Category</Text>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryList}
-          >
-            {categories.map((category) => {
-              const active = selectedCategory === category;
-              const icon =
-                CATEGORY_ICONS[category.toLowerCase()] ||
-                CATEGORY_ICONS.default;
-
-              return (
-                <TouchableOpacity
-                  key={category}
-                  style={styles.categoryItem}
-                  onPress={() => {
-                    setSelectedCategory(category);
-                    setShowCart(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View
-                    style={[
-                      styles.categoryCircle,
-                      active && styles.categoryCircleActive,
-                    ]}
-                  >
-                    <Text style={styles.categoryEmoji}>
-                      {icon}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      active && styles.categoryTextActive,
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {category}
-                  </Text>
-                  {active && <View style={styles.categoryUnderline} />}
+          {!showCart && !showOrders && (
+            <View style={styles.searchBox}>
+              <Text style={styles.searchIcon}>⌕</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search for products, puja kits..."
+                placeholderTextColor="#777777"
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Text style={styles.clearSearch}>✕</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* PROMOTIONAL SHOPPING BANNER */}
-        {!showCart && (
-          <View style={styles.promoBanner}>
-            <View style={styles.promoContent}>
-              <Text style={styles.promoEyebrow}>PUJARIGO SPECIAL</Text>
-              <Text style={styles.promoTitle}>
-                Everything for{'\n'}your Puja
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={openMyOrders}
+          >
+            <Text style={styles.quickActionIcon}>📦</Text>
+            <Text style={styles.quickActionText}>My Orders</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => {
+              setShowOrders(false);
+              setShowCart(true);
+            }}
+          >
+            <Text style={styles.quickActionIcon}>🛒</Text>
+            <Text style={styles.quickActionText}>
+              Cart ({itemCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() =>
+              Alert.alert(
+                'Returns & Replacements',
+                'You will be able to request a return or replacement for eligible delivered orders. Backend support is coming soon.'
+              )
+            }
+          >
+            <Text style={styles.quickActionIcon}>🔄</Text>
+            <Text style={styles.quickActionText}>Returns</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showOrders ? (
+          <View style={styles.ordersSection}>
+            <Text style={styles.pageTitle}>My Orders</Text>
+            <Text style={styles.pageSubtitle}>
+              View order status, payment and delivery tracking.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.refreshOrdersButton}
+              onPress={loadOrders}
+              disabled={loadingOrders}
+            >
+              <Text style={styles.refreshOrdersText}>
+                {loadingOrders ? 'Refreshing...' : 'Refresh Orders'}
               </Text>
-              <Text style={styles.promoSubtitle}>
-                Make every ceremony special
-              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.shopNowButton}
-                onPress={scrollToProducts}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.shopNowText}>EXPLORE NOW ›</Text>
-              </TouchableOpacity>
-            </View>
+            {loadingOrders && (
+              <ActivityIndicator
+                size="large"
+                color={BLUE}
+                style={{ marginVertical: 20 }}
+              />
+            )}
 
-            <View style={styles.promoIllustration}>
-              <Text style={styles.promoLamp}>🪔</Text>
-              <Text style={styles.promoFlowers}>🌼 🙏 🌼</Text>
-            </View>
-          </View>
-        )}
-
-        {/* SHOPPING BENEFITS STRIP */}
-        {!showCart && (
-          <View style={styles.benefitsStrip}>
-            <View style={styles.benefit}>
-              <Text style={styles.benefitIcon}>🪷</Text>
-              <Text style={styles.benefitText}>Puja Essentials</Text>
-            </View>
-            <View style={styles.benefitDivider} />
-            <View style={styles.benefit}>
-              <Text style={styles.benefitIcon}>📦</Text>
-              <Text style={styles.benefitText}>Home Delivery</Text>
-            </View>
-            <View style={styles.benefitDivider} />
-            <View style={styles.benefit}>
-              <Text style={styles.benefitIcon}>🔒</Text>
-              <Text style={styles.benefitText}>Secure Payment</Text>
-            </View>
-          </View>
-        )}
-
-        {/* PRODUCT LISTING */}
-        {!showCart ? (
-          <View style={styles.productsSection}>
-            <View style={styles.productsHeadingRow}>
-              <View style={styles.headingLeft}>
-                <Text style={styles.sectionHeading}>
-                  {search.trim()
-                    ? 'Search Results'
-                    : selectedCategory === 'All'
-                      ? 'Recommended for You'
-                      : selectedCategory}
-                </Text>
-                <Text style={styles.resultCount}>
-                  {filteredProducts.length} products
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setSearch('');
-                  setSelectedCategory('All');
-                }}
-              >
-                <Text style={styles.viewAll}>Clear filters</Text>
-              </TouchableOpacity>
-            </View>
-
-            {!!error && (
+            {!!ordersError && (
               <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity onPress={loadProducts}>
+                <Text style={styles.errorText}>{ordersError}</Text>
+                <TouchableOpacity onPress={loadOrders}>
                   <Text style={styles.retry}>Try again</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {!error && products.length === 0 && (
+            {!loadingOrders && !ordersError && orders.length === 0 && (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyIcon}>🛍️</Text>
-                <Text style={styles.emptyTitle}>Products coming soon</Text>
+                <Text style={styles.emptyIcon}>📦</Text>
+                <Text style={styles.emptyTitle}>No orders found</Text>
                 <Text style={styles.emptyText}>
-                  Please check again later.
-                </Text>
-              </View>
-            )}
-
-            {!error && products.length > 0 && filteredProducts.length === 0 && (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyIcon}>🔎</Text>
-                <Text style={styles.emptyTitle}>No matching products</Text>
-                <Text style={styles.emptyText}>
-                  Try another product name or category.
+                  Your placed orders will appear here.
                 </Text>
                 <TouchableOpacity
                   style={styles.resetButton}
                   onPress={scrollToProducts}
                 >
-                  <Text style={styles.resetButtonText}>Show all products</Text>
+                  <Text style={styles.resetButtonText}>Start Shopping</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {filteredProducts.length > 0 && (
-              <View style={styles.productGrid}>
-                {filteredProducts.map(renderProduct)}
-              </View>
-            )}
+            {orders.map(renderOrder)}
           </View>
-        ) : (
-          /* CART AND CHECKOUT */
+        ) : showCart ? (
           <>
             <View style={styles.cartPageHeader}>
               <TouchableOpacity
@@ -777,7 +898,8 @@ export default function CustomerStoreScreen() {
                   keyboardType="number-pad"
                   maxLength={6}
                 />
-                <Text style={styles.sectionTitle}>
+
+                <Text style={styles.sectionHeading}>
                   Choose Payment Method
                 </Text>
 
@@ -806,6 +928,7 @@ export default function CustomerStoreScreen() {
                     {paymentMethod === 'cod' ? '🔘' : '⚪'} Cash on Delivery
                   </Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     styles.orderButton,
@@ -817,29 +940,182 @@ export default function CustomerStoreScreen() {
                   {placingOrder ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-<Text style={styles.orderButtonText}>
-  {paymentMethod === 'cod'
-    ? `Place Order • ₹${total.toFixed(2)} (COD)`
-    : `Pay ₹${total.toFixed(2)} Securely`}
-</Text>
+                    <Text style={styles.orderButtonText}>
+                      {paymentMethod === 'cod'
+                        ? `Place Order • ₹${total.toFixed(2)} (COD)`
+                        : `Pay ₹${total.toFixed(2)} Securely`}
+                    </Text>
                   )}
                 </TouchableOpacity>
+
                 <Text style={styles.paymentNote}>
-                  Secure checkout powered by Razorpay.
+                  {paymentMethod === 'cod'
+                    ? 'Pay for your order when it is delivered.'
+                    : 'Secure online checkout powered by Razorpay.'}
                 </Text>
               </View>
             )}
           </>
+        ) : (
+          <>
+            <View style={styles.categorySection}>
+              <Text style={styles.sectionHeading}>Shop by Category</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryList}
+              >
+                {categories.map((category) => {
+                  const active = selectedCategory === category;
+                  const icon =
+                    CATEGORY_ICONS[category.toLowerCase()] ||
+                    CATEGORY_ICONS.default;
+
+                  return (
+                    <TouchableOpacity
+                      key={category}
+                      style={styles.categoryItem}
+                      onPress={() => setSelectedCategory(category)}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={[
+                          styles.categoryCircle,
+                          active && styles.categoryCircleActive,
+                        ]}
+                      >
+                        <Text style={styles.categoryEmoji}>{icon}</Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          active && styles.categoryTextActive,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {category}
+                      </Text>
+                      {active && <View style={styles.categoryUnderline} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.promoBanner}>
+              <View style={styles.promoContent}>
+                <Text style={styles.promoEyebrow}>PUJARIGO SPECIAL</Text>
+                <Text style={styles.promoTitle}>
+                  Everything for{'\n'}your Puja
+                </Text>
+                <Text style={styles.promoSubtitle}>
+                  Make every ceremony special
+                </Text>
+                <TouchableOpacity
+                  style={styles.shopNowButton}
+                  onPress={scrollToProducts}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.shopNowText}>EXPLORE NOW ›</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.promoIllustration}>
+                <Text style={styles.promoLamp}>🪔</Text>
+                <Text style={styles.promoFlowers}>🌼 🙏 🌼</Text>
+              </View>
+            </View>
+
+            <View style={styles.benefitsStrip}>
+              <View style={styles.benefit}>
+                <Text style={styles.benefitIcon}>🪷</Text>
+                <Text style={styles.benefitText}>Puja Essentials</Text>
+              </View>
+              <View style={styles.benefitDivider} />
+              <View style={styles.benefit}>
+                <Text style={styles.benefitIcon}>📦</Text>
+                <Text style={styles.benefitText}>Home Delivery</Text>
+              </View>
+              <View style={styles.benefitDivider} />
+              <View style={styles.benefit}>
+                <Text style={styles.benefitIcon}>🔒</Text>
+                <Text style={styles.benefitText}>Secure Payment</Text>
+              </View>
+            </View>
+
+            <View style={styles.productsSection}>
+              <View style={styles.productsHeadingRow}>
+                <View style={styles.headingLeft}>
+                  <Text style={styles.sectionHeading}>
+                    {search.trim()
+                      ? 'Search Results'
+                      : selectedCategory === 'All'
+                        ? 'Recommended for You'
+                        : selectedCategory}
+                  </Text>
+                  <Text style={styles.resultCount}>
+                    {filteredProducts.length} products
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearch('');
+                    setSelectedCategory('All');
+                  }}
+                >
+                  <Text style={styles.viewAll}>Clear filters</Text>
+                </TouchableOpacity>
+              </View>
+
+              {!!error && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                  <TouchableOpacity onPress={loadProducts}>
+                    <Text style={styles.retry}>Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!error && products.length === 0 && (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyIcon}>🛍️</Text>
+                  <Text style={styles.emptyTitle}>Products coming soon</Text>
+                  <Text style={styles.emptyText}>
+                    Please check again later.
+                  </Text>
+                </View>
+              )}
+
+              {!error && products.length > 0 && filteredProducts.length === 0 && (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyIcon}>🔎</Text>
+                  <Text style={styles.emptyTitle}>No matching products</Text>
+                  <Text style={styles.emptyText}>
+                    Try another product name or category.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.resetButton}
+                    onPress={scrollToProducts}
+                  >
+                    <Text style={styles.resetButtonText}>Show all products</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {filteredProducts.length > 0 && (
+                <View style={styles.productGrid}>
+                  {filteredProducts.map(renderProduct)}
+                </View>
+              )}
+            </View>
+          </>
         )}
       </ScrollView>
 
-      {/* STICKY BOTTOM SHOPPING BAR */}
-      {!showCart && (
+      {!showCart && !showOrders && (
         <View style={styles.bottomBar}>
           <View style={styles.bottomBarInfo}>
-            <Text style={styles.bottomBarTotal}>
-              ₹{total.toFixed(2)}
-            </Text>
+            <Text style={styles.bottomBarTotal}>₹{total.toFixed(2)}</Text>
             <Text style={styles.bottomBarCaption}>
               {itemCount} item(s) selected
             </Text>
@@ -863,13 +1139,8 @@ export default function CustomerStoreScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F1F3F6',
-  },
-  content: {
-    paddingBottom: 90,
-  },
+  screen: { flex: 1, backgroundColor: '#F1F3F6' },
+  content: { paddingBottom: 100 },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -877,12 +1148,8 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: '#F1F3F6',
   },
-  loadingText: {
-    marginTop: 12,
-    color: '#555555',
-  },
+  loadingText: { marginTop: 12, color: '#555555' },
 
-  /* Header */
   header: {
     backgroundColor: BLUE,
     paddingHorizontal: 14,
@@ -894,41 +1161,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  backButton: {
-    width: 34,
-    justifyContent: 'center',
-  },
-  backArrow: {
-    fontSize: 36,
-    lineHeight: 38,
-    color: '#FFFFFF',
-  },
-  headerTitleArea: {
-    flex: 1,
-  },
-  brandTitle: {
-    color: '#FFFFFF',
-    fontSize: 23,
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    color: '#E7EEFF',
-    fontSize: 10,
-    marginTop: 3,
-  },
-  headerAction: {
-    alignItems: 'center',
-    paddingLeft: 8,
-  },
-  headerActionIcon: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
-  headerActionText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    marginTop: 1,
-  },
+  backButton: { width: 34, justifyContent: 'center' },
+  backArrow: { fontSize: 36, lineHeight: 38, color: '#FFFFFF' },
+  headerTitleArea: { flex: 1 },
+  brandTitle: { color: '#FFFFFF', fontSize: 23, fontWeight: 'bold' },
+  headerSubtitle: { color: '#E7EEFF', fontSize: 10, marginTop: 3 },
+  headerAction: { alignItems: 'center', paddingLeft: 8 },
+  headerActionIcon: { fontSize: 24, color: '#FFFFFF' },
+  headerActionText: { fontSize: 10, color: '#FFFFFF', marginTop: 1 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -937,46 +1177,31 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 12,
   },
-  searchIcon: {
-    fontSize: 27,
-    color: BLUE,
-    marginRight: 9,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#222222',
-  },
-  clearSearch: {
-    fontSize: 17,
-    color: '#555555',
-    padding: 5,
-  },
+  searchIcon: { fontSize: 27, color: BLUE, marginRight: 9 },
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: '#222222' },
+  clearSearch: { fontSize: 17, color: '#555555', padding: 5 },
 
-  /* Category row */
+  quickActions: {
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    marginBottom: 9,
+  },
+  quickActionButton: { alignItems: 'center', flex: 1, gap: 4 },
+  quickActionIcon: { fontSize: 22 },
+  quickActionText: { fontSize: 11, color: '#333333', fontWeight: '600' },
+
   categorySection: {
     backgroundColor: '#FFFFFF',
     paddingTop: 16,
     paddingBottom: 8,
     marginBottom: 9,
-  },
-  sectionHeading: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#212121',
-  },
-  categoryList: {
     paddingHorizontal: 10,
-    paddingTop: 12,
-    paddingBottom: 5,
-    gap: 8,
   },
-  categoryItem: {
-    width: 78,
-    alignItems: 'center',
-    paddingBottom: 5,
-  },
+  sectionHeading: { fontSize: 17, fontWeight: 'bold', color: '#212121' },
+  categoryList: { paddingTop: 12, paddingBottom: 5, gap: 8 },
+  categoryItem: { width: 78, alignItems: 'center', paddingBottom: 5 },
   categoryCircle: {
     width: 55,
     height: 55,
@@ -992,9 +1217,7 @@ const styles = StyleSheet.create({
     borderColor: BLUE,
     borderWidth: 2,
   },
-  categoryEmoji: {
-    fontSize: 27,
-  },
+  categoryEmoji: { fontSize: 27 },
   categoryText: {
     color: '#333333',
     fontSize: 10,
@@ -1002,10 +1225,7 @@ const styles = StyleSheet.create({
     marginTop: 7,
     minHeight: 25,
   },
-  categoryTextActive: {
-    color: BLUE,
-    fontWeight: 'bold',
-  },
+  categoryTextActive: { color: BLUE, fontWeight: 'bold' },
   categoryUnderline: {
     height: 3,
     width: 28,
@@ -1014,7 +1234,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  /* Promotional banner */
   promoBanner: {
     backgroundColor: '#DCEBFF',
     marginHorizontal: 10,
@@ -1027,9 +1246,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  promoContent: {
-    flex: 1,
-  },
+  promoContent: { flex: 1 },
   promoEyebrow: {
     color: DARK_BLUE,
     fontSize: 10,
@@ -1043,11 +1260,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 30,
   },
-  promoSubtitle: {
-    color: '#46566F',
-    fontSize: 11,
-    marginTop: 7,
-  },
+  promoSubtitle: { color: '#46566F', fontSize: 11, marginTop: 7 },
   shopNowButton: {
     alignSelf: 'flex-start',
     backgroundColor: BLUE,
@@ -1056,25 +1269,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginTop: 12,
   },
-  shopNowText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  promoIllustration: {
-    width: 105,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promoLamp: {
-    fontSize: 68,
-  },
-  promoFlowers: {
-    fontSize: 18,
-    marginTop: 4,
-  },
+  shopNowText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  promoIllustration: { width: 105, alignItems: 'center', justifyContent: 'center' },
+  promoLamp: { fontSize: 68 },
+  promoFlowers: { fontSize: 18, marginTop: 4 },
 
-  /* Benefits */
   benefitsStrip: {
     backgroundColor: '#FFFFFF',
     marginBottom: 9,
@@ -1084,26 +1283,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
   },
-  benefit: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  benefitIcon: {
-    fontSize: 20,
-  },
-  benefitText: {
-    color: '#4A4A4A',
-    fontSize: 9,
-    textAlign: 'center',
-  },
-  benefitDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#E5E7EB',
-  },
+  benefit: { flex: 1, alignItems: 'center', gap: 4 },
+  benefitIcon: { fontSize: 20 },
+  benefitText: { color: '#4A4A4A', fontSize: 9, textAlign: 'center' },
+  benefitDivider: { width: 1, height: 30, backgroundColor: '#E5E7EB' },
 
-  /* Products */
   productsSection: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
@@ -1116,19 +1300,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  headingLeft: {
-    flex: 1,
-  },
-  resultCount: {
-    color: '#777777',
-    fontSize: 11,
-    marginTop: 4,
-  },
-  viewAll: {
-    color: BLUE,
-    fontSize: 11,
-    paddingLeft: 8,
-  },
+  headingLeft: { flex: 1 },
+  resultCount: { color: '#777777', fontSize: 11, marginTop: 4 },
+  viewAll: { color: BLUE, fontSize: 11, paddingLeft: 8 },
   productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1154,10 +1328,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productImage: {
-    width: '100%',
-    height: '100%',
-  },
+  productImage: { width: '100%', height: '100%' },
   imagePlaceholder: {
     flex: 1,
     width: '100%',
@@ -1165,14 +1336,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8FAFD',
   },
-  placeholderIcon: {
-    fontSize: 43,
-  },
-  placeholderLabel: {
-    fontSize: 10,
-    color: '#888888',
-    marginTop: 5,
-  },
+  placeholderIcon: { fontSize: 43 },
+  placeholderLabel: { fontSize: 10, color: '#888888', marginTop: 5 },
   productName: {
     color: '#212121',
     fontSize: 13,
@@ -1180,21 +1345,9 @@ const styles = StyleSheet.create({
     minHeight: 35,
     lineHeight: 17,
   },
-  productCategory: {
-    color: '#777777',
-    fontSize: 10,
-    marginTop: 3,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 7,
-  },
-  price: {
-    color: '#212121',
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
+  productCategory: { color: '#777777', fontSize: 10, marginTop: 3 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 7 },
+  price: { color: '#212121', fontSize: 17, fontWeight: 'bold' },
   deliveryText: {
     color: '#287C46',
     fontSize: 9,
@@ -1210,11 +1363,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonText: {
-    color: BLUE,
-    fontWeight: 'bold',
-    fontSize: 10,
-  },
+  addButtonText: { color: BLUE, fontWeight: 'bold', fontSize: 10 },
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1233,46 +1382,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quantityButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  quantity: {
-    color: '#212121',
-    fontWeight: 'bold',
-  },
-  unavailableButton: {
-    minHeight: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  unavailableText: {
-    color: '#B42318',
-    fontSize: 11,
-  },
+  quantityButtonText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' },
+  quantity: { color: '#212121', fontWeight: 'bold' },
+  unavailableButton: { minHeight: 35, justifyContent: 'center', alignItems: 'center' },
+  unavailableText: { color: '#B42318', fontSize: 11 },
 
-  /* Empty/error states */
-  emptyBox: {
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyIcon: {
-    fontSize: 38,
-    marginBottom: 8,
-  },
+  emptyBox: { alignItems: 'center', padding: 24 },
+  emptyIcon: { fontSize: 38, marginBottom: 8 },
   emptyTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333333',
     textAlign: 'center',
   },
-  emptyText: {
-    fontSize: 13,
-    color: '#777777',
-    textAlign: 'center',
-    marginTop: 6,
-  },
+  emptyText: { fontSize: 13, color: '#777777', textAlign: 'center', marginTop: 6 },
   resetButton: {
     marginTop: 14,
     paddingHorizontal: 16,
@@ -1280,49 +1403,21 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
     borderRadius: 5,
   },
-  resetButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
+  resetButtonText: { color: '#FFFFFF', fontWeight: 'bold' },
   errorBox: {
     backgroundColor: '#FDECEC',
     padding: 14,
     borderRadius: 6,
     marginBottom: 14,
   },
-  errorText: {
-    color: '#B42318',
-  },
-  retry: {
-    color: BLUE,
-    fontWeight: 'bold',
-    marginTop: 8,
-  },
+  errorText: { color: '#B42318' },
+  retry: { color: BLUE, fontWeight: 'bold', marginTop: 8 },
 
-  /* Cart */
-  cartPageHeader: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    marginBottom: 9,
-  },
-  backToShop: {
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  backToShopText: {
-    color: BLUE,
-    fontWeight: '600',
-  },
-  cartPageTitle: {
-    fontSize: 21,
-    color: '#212121',
-    fontWeight: 'bold',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    marginBottom: 9,
-  },
+  cartPageHeader: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 9 },
+  backToShop: { alignSelf: 'flex-start', marginBottom: 12 },
+  backToShopText: { color: BLUE, fontWeight: '600' },
+  cartPageTitle: { fontSize: 21, color: '#212121', fontWeight: 'bold' },
+  section: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 9 },
   cartRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1331,12 +1426,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
-  cartImage: {
-    width: 65,
-    height: 70,
-    backgroundColor: '#FAFAFA',
-    borderRadius: 5,
-  },
+  cartImage: { width: 65, height: 70, backgroundColor: '#FAFAFA', borderRadius: 5 },
   cartImagePlaceholder: {
     width: 65,
     height: 70,
@@ -1345,30 +1435,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 5,
   },
-  cartItemInfo: {
-    flex: 1,
-  },
-  cartName: {
-    color: '#333333',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  cartPrice: {
-    fontWeight: 'bold',
-    color: '#212121',
-    marginTop: 4,
-  },
-  cartLineTotal: {
-    color: '#212121',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  cartQuantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
-  },
+  cartItemInfo: { flex: 1 },
+  cartName: { color: '#333333', fontWeight: '600', fontSize: 13 },
+  cartPrice: { fontWeight: 'bold', color: '#212121', marginTop: 4 },
+  cartLineTotal: { color: '#212121', fontWeight: 'bold', fontSize: 12 },
+  cartQuantityControls: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   smallQuantityButton: {
     width: 25,
     height: 25,
@@ -1378,11 +1449,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smallQuantityText: {
-    fontSize: 18,
-    color: BLUE,
-    fontWeight: 'bold',
-  },
+  smallQuantityText: { fontSize: 18, color: BLUE, fontWeight: 'bold' },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1391,23 +1458,10 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     marginTop: 12,
   },
-  totalLabel: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#212121',
-  },
-  totalAmount: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: '#15803D',
-  },
-  checkoutNote: {
-    fontSize: 11,
-    color: '#777777',
-    marginTop: 10,
-  },
+  totalLabel: { fontSize: 17, fontWeight: 'bold', color: '#212121' },
+  totalAmount: { fontSize: 19, fontWeight: 'bold', color: '#15803D' },
+  checkoutNote: { fontSize: 11, color: '#777777', marginTop: 10 },
 
-  /* Checkout */
   input: {
     backgroundColor: '#FFFFFF',
     borderColor: '#D9DDE3',
@@ -1418,27 +1472,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#222222',
   },
-  multiline: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-    paymentOption: {
+  multiline: { minHeight: 80, textAlignVertical: 'top' },
+  paymentOption: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D5D9E0',
     borderRadius: 8,
     padding: 13,
-    marginBottom: 8,
+    marginTop: 8,
   },
-  paymentOptionSelected: {
-    borderColor: BLUE,
-    backgroundColor: '#EAF2FF',
-  },
-  paymentOptionText: {
-    fontSize: 14,
-    color: '#222222',
-    fontWeight: '600',
-  },
+  paymentOptionSelected: { borderColor: BLUE, backgroundColor: '#EAF2FF' },
+  paymentOptionText: { fontSize: 14, color: '#222222', fontWeight: '600' },
   orderButton: {
     backgroundColor: '#FB641B',
     borderRadius: 5,
@@ -1446,14 +1490,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
   },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  orderButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
+  disabledButton: { opacity: 0.5 },
+  orderButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
   paymentNote: {
     fontSize: 11,
     color: '#777777',
@@ -1462,7 +1500,71 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* Fixed bottom cart bar */
+  ordersSection: { padding: 12 },
+  pageTitle: { fontSize: 23, fontWeight: 'bold', color: '#212121' },
+  pageSubtitle: { fontSize: 12, color: '#666666', marginTop: 5, marginBottom: 12 },
+  refreshOrdersButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: BLUE,
+    borderRadius: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  refreshOrdersText: { color: BLUE, fontWeight: 'bold' },
+  orderCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E6EC',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 12,
+  },
+  orderTitle: { fontSize: 15, fontWeight: 'bold', color: '#212121' },
+  orderMeta: { fontSize: 11, color: '#777777', marginTop: 5, marginBottom: 8 },
+  orderInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F1F3',
+  },
+  orderLabel: { fontSize: 12, color: '#666666', flex: 1 },
+  orderValue: { fontSize: 12, color: '#222222', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  orderTotal: { fontSize: 14, color: '#15803D', fontWeight: 'bold' },
+  trackingBox: {
+    backgroundColor: '#F5F8FF',
+    padding: 11,
+    borderRadius: 6,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  trackingTitle: { fontSize: 13, fontWeight: 'bold', color: DARK_BLUE },
+  trackingText: { fontSize: 12, color: '#444444', marginTop: 5, lineHeight: 18 },
+  secondaryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: BLUE,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 4,
+    marginTop: 8,
+  },
+  secondaryButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
+  orderActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  actionButton: {
+    borderWidth: 1,
+    borderColor: BLUE,
+    borderRadius: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    backgroundColor: '#FFFFFF',
+  },
+  actionButtonText: { color: BLUE, fontSize: 11, fontWeight: 'bold' },
+  orderFootnote: { fontSize: 10, color: '#888888', marginTop: 10, lineHeight: 15 },
+
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -1479,19 +1581,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  bottomBarInfo: {
-    flex: 1,
-  },
-  bottomBarTotal: {
-    color: '#212121',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  bottomBarCaption: {
-    color: '#777777',
-    fontSize: 10,
-    marginTop: 3,
-  },
+  bottomBarInfo: { flex: 1 },
+  bottomBarTotal: { color: '#212121', fontSize: 18, fontWeight: 'bold' },
+  bottomBarCaption: { color: '#777777', fontSize: 10, marginTop: 3 },
   viewCartButton: {
     backgroundColor: BLUE,
     borderRadius: 5,
@@ -1502,16 +1594,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
   },
-  viewCartIcon: {
-    fontSize: 17,
-  },
-  viewCartText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 11,
-  },
-  viewCartArrow: {
-    color: '#FFFFFF',
-    fontSize: 22,
-  },
+  viewCartIcon: { fontSize: 17 },
+  viewCartText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11 },
+  viewCartArrow: { color: '#FFFFFF', fontSize: 22 },
 });
+
