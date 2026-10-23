@@ -85,14 +85,16 @@ export const AuthProvider = ({
     }
 
     if (userToken && inAuthGroup) {
-      if (userRole === 'admin') {
-        router.replace('/admin/dashboard');
-      } else if (userRole === 'saint') {
-        router.replace('/saint/dashboard');
-      } else {
-        router.replace('/customer/dashboard');
-      }
-    }
+  if (userRole === 'admin') {
+    router.replace('/admin/dashboard');
+  } else if (userRole === 'saint') {
+    router.replace('/saint/dashboard');
+  } else if (userRole === 'seller') {
+    router.replace('/seller/dashboard');
+  } else {
+    router.replace('/customer/dashboard');
+  }
+}
   }, [userToken, userRole, segments, isLoading]);
 
   const login = async (
