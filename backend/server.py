@@ -1758,10 +1758,11 @@ class StoreOrderItem(BaseModel):
 class StoreOrderCreate(BaseModel):
     items: List[StoreOrderItem]
     customer_name: str = Field(..., min_length=2, max_length=120)
-    customer_phone: str = Field(..., min_length=5, max_length=20)
+    customer_phone: str = Field(..., min_length=10, max_length=10)
     delivery_address: str = Field(..., min_length=5, max_length=1000)
     city: str = Field(..., min_length=2, max_length=100)
-    pincode: str = Field(..., min_length=6, max_length=10)
+    pincode: str = Field(..., min_length=6, max_length=6)
+    payment_method: str = Field(default="online")
 
 
 
