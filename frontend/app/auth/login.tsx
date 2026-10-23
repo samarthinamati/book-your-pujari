@@ -76,12 +76,14 @@ export default function LoginScreen() {
       await login(response.token, response.user);
 
       if (role === 'customer') {
-        router.replace('/customer/dashboard');
-      } else if (role === 'saint') {
-        router.replace('/saint/dashboard');
-      } else {
-        router.replace('/admin/dashboard');
-      }
+  router.replace('/customer/dashboard');
+} else if (role === 'saint') {
+  router.replace('/saint/dashboard');
+} else if (role === 'seller') {
+  router.replace('/seller/dashboard');
+} else {
+  router.replace('/admin/dashboard');
+}
     } catch (error: any) {
       Alert.alert(
         'Login Failed',
