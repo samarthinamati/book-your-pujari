@@ -18,7 +18,7 @@ import { apiClient } from '@/src/api/client';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type LoginRole = 'customer' | 'saint' | 'admin';
+type LoginRole = 'customer' | 'saint' | 'admin' | 'seller';
 
 export default function LoginScreen() {
   const [phone, setPhone] = useState('');
