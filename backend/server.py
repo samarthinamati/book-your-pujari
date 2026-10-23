@@ -1906,6 +1906,48 @@ ALLOWED_STORE_ORDER_STATUSES = {
 }
 
 
+@api_router.get("/store/seller/orders")
+async def get_seller_store_orders(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    orders = await db.store_orders.find({
+        "items.seller_id": user["id"],
+    }).sort("created_at", -1).to_list(200)
+
+    seller_orders = []
+
+    for order in orders:
+        seller_items = [
+            item for item in order.get("items", [])
+            if item.get("seller_id") == user["id"]
+        ]
+
+        if not seller_items:
+            continue
+
+        seller_order = serialize_store_order(order)
+        seller_order["items"] = seller_items
+        seller_order["seller_total"] = round(
+            sum(float(item.get("line_total", 0)) for item in seller_items),
+            2,
+        )
+        seller_orders.append(seller_order)
+
+    return seller_orders
+
 @api_router.get("/store/admin/orders")
 async def get_all_store_orders(
     user: dict = Depends(get_current_user)
