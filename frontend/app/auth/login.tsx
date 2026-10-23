@@ -112,10 +112,11 @@ export default function LoginScreen() {
 
           <View style={styles.roleContainer}>
             {([
-              { label: 'Customer', value: 'customer' },
-              { label: 'Saint', value: 'saint' },
-              { label: 'Admin', value: 'admin' },
-            ] as const).map((item) => (
+  { label: 'Customer', value: 'customer' },
+  { label: 'Saint', value: 'saint' },
+  { label: 'Admin', value: 'admin' },
+  { label: 'Seller', value: 'seller' },
+] as const).map((item) => (
               <TouchableOpacity
                 key={item.value}
                 style={[
