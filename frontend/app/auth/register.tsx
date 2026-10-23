@@ -34,10 +34,16 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (role === 'saint' && password.trim().length < 4) {
-      Alert.alert('Error', 'Saint password must be at least 4 characters.');
-      return;
-    }
+    if (
+  (role === 'saint' || role === 'seller') &&
+  password.trim().length < 4
+) {
+  Alert.alert(
+    'Error',
+    `${role === 'seller' ? 'Seller' : 'Saint'} password must be at least 4 characters.`
+  );
+  return;
+}
 
     setLoading(true);
 
