@@ -251,6 +251,75 @@ const [pincode, setPincode] = useState('');
                 />
               </View>
             )}
+                        {role === 'seller' && (
+              <>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="storefront-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Shop Name"
+                    value={shopName}
+                    onChangeText={setShopName}
+                    placeholderTextColor="#999"
+                    editable={!loading}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email Address"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#999"
+                    editable={!loading}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="location-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Shop Address"
+                    value={shopAddress}
+                    onChangeText={setShopAddress}
+                    placeholderTextColor="#999"
+                    editable={!loading}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="City"
+                    value={city}
+                    onChangeText={setCity}
+                    placeholderTextColor="#999"
+                    editable={!loading}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="map-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="6-digit PIN Code"
+                    value={pincode}
+                    onChangeText={(value) =>
+                      setPincode(value.replace(/\D/g, '').slice(0, 6))
+                    }
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholderTextColor="#999"
+                    editable={!loading}
+                  />
+                </View>
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
