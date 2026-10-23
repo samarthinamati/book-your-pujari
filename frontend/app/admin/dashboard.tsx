@@ -135,6 +135,36 @@ const fetchSellerApplications = async () => {
     setLoadingSellerApplications(false);
   }
 };
+  
+const reviewSellerApplication = async (
+  applicationId: string,
+  approved: boolean
+) => {
+  try {
+    await apiClient.request(
+      `/store/admin/seller-applications/${applicationId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ approved }),
+      }
+    );
+
+    Alert.alert(
+      'Success',
+      approved
+        ? 'Seller application approved.'
+        : 'Seller application rejected.'
+    );
+
+    await fetchSellerApplications();
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Unable to review seller application.'
+    );
+  }
+};
+
 
 const saveStoreProduct = async () => {
   const name = productName.trim();
