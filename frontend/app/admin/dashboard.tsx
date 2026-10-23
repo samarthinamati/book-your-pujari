@@ -707,6 +707,24 @@ const updateStoreOrderTracking = async (
           </View>
           <Ionicons name="chevron-forward" size={22} color="#888" />
         </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => setShowAdminSection('sellers')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="storefront-outline" size={28} color="#2874F0" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#222' }}>
+              Manage Seller Applications
+            </Text>
+            <Text style={{ color: '#666', marginTop: 4 }}>
+              Review and approve Samagri Store sellers
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color="#888" />
+        </TouchableOpacity>
+
       </View>
     )}
       
