@@ -1619,6 +1619,53 @@ async def update_seller_product(
     product = await db.store_products.find_one({"_id": object_id})
     return serialize_store_product(product)
 
+@api_router.delete("/store/seller/products/{product_id}")
+async def hide_seller_product(
+    product_id: str,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    try:
+        object_id = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid product ID",
+        )
+
+    result = await db.store_products.update_one(
+        {
+            "_id": object_id,
+            "seller_id": user["id"],
+        },
+        {
+            "$set": {
+                "is_available": False,
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        },
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found or you do not own it",
+        )
+
+    return {"message": "Product hidden from customers"}
+
 
 @api_router.delete("/store/admin/products/{product_id}")
 async def delete_store_product(
