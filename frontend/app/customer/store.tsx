@@ -194,6 +194,7 @@ export default function CustomerStoreScreen() {
           product_id: item.product.id,
           quantity: item.quantity,
         })),
+        payment_method: paymentMethod,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         delivery_address: address.trim(),
