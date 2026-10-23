@@ -2126,7 +2126,8 @@ async def create_store_payment_order(
     if not store_order:
         raise HTTPException(status_code=404, detail="Store order not found")
 
-        if store_order.get("payment_status") == "paid":
+            if store_order.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="Order is already paid")
         raise HTTPException(status_code=400, detail="Order is already paid")
 
     if store_order.get("payment_method") == "cod":
