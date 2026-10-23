@@ -96,31 +96,41 @@ const [pincode, setPincode] = useState('');
         throw new Error('Invalid response from server. Please try again.');
       }
 
-     await login(response.token, response.user, role !== 'seller');
 if (role === 'seller') {
-  await apiClient.post('/store/seller/apply', {
-    shop_name: shopName.trim(),
-    owner_name: cleanName,
-    phone: cleanPhone,
-    password: password.trim(),
-    email: email.trim(),
-    shop_address: shopAddress.trim(),
-    city: city.trim(),
-    pincode: pincode.trim(),
+  await apiClient.request('/store/seller/apply', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${response.token}`,
+    },
+    body: JSON.stringify({
+      shop_name: shopName.trim(),
+      owner_name: cleanName,
+      phone: cleanPhone,
+      password: password.trim(),
+      email: email.trim(),
+      shop_address: shopAddress.trim(),
+      city: city.trim(),
+      pincode: pincode.trim(),
+    }),
   });
 
   Alert.alert(
     'Application Submitted',
-    'Your seller application has been sent to the admin for approval. Please sign in after your application is approved.',
+    'Your seller application has been sent to the admin for approval.',
     [
       {
         text: 'OK',
-        onPress: () => router.replace('/auth/login'),
+        onPress: async () => {
+          await login(response.token, response.user);
+          router.replace('/auth/login');
+        },
       },
     ]
   );
   return;
 }
+
+await login(response.token, response.user);
 if (response.user.role === 'customer') {
   router.replace('/customer/dashboard');
 } else if (response.user.role === 'saint') {
