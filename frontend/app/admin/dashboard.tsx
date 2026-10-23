@@ -1109,6 +1109,124 @@ const updateStoreOrderTracking = async (
      </ScrollView>
   </>
 )}
+      
+{showAdminSection === 'sellers' && (
+  <>
+    <TouchableOpacity
+      onPress={() => setShowAdminSection(null)}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#FFF',
+      }}
+    >
+      <Ionicons name="arrow-back" size={22} color="#2874F0" />
+      <Text style={{ marginLeft: 8, fontWeight: 'bold', color: '#333' }}>
+        Back to Admin Menu
+      </Text>
+    </TouchableOpacity>
+
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 16 }}>
+        Seller Applications
+      </Text>
+
+      <TouchableOpacity
+        onPress={fetchSellerApplications}
+        style={{
+          backgroundColor: '#2874F0',
+          padding: 12,
+          borderRadius: 8,
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+          Refresh Applications
+        </Text>
+      </TouchableOpacity>
+
+      {loadingSellerApplications ? (
+        <ActivityIndicator size="large" color="#2874F0" />
+      ) : sellerApplications.length === 0 ? (
+        <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>
+          No seller applications found.
+        </Text>
+      ) : (
+        sellerApplications.map((application: any) => (
+          <View
+            key={String(application.id)}
+            style={{
+              backgroundColor: '#FFF',
+              padding: 16,
+              marginBottom: 12,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#DDD',
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#222' }}>
+              {application.shop_name}
+            </Text>
+
+            <Text style={{ marginTop: 6 }}>Owner: {application.owner_name}</Text>
+            <Text>Phone: {application.phone}</Text>
+            <Text>Email: {application.email || 'Not provided'}</Text>
+            <Text>Address: {application.shop_address}</Text>
+            <Text>City: {application.city}</Text>
+            <Text>PIN: {application.pincode}</Text>
+            <Text style={{ marginTop: 6 }}>
+              Status: {application.status}
+            </Text>
+
+            {application.status === 'pending' && (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                <TouchableOpacity
+                  onPress={() =>
+                    reviewSellerApplication(application.id, true)
+                  }
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#2E7D32',
+                    padding: 12,
+                    borderRadius: 7,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                    Approve
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    reviewSellerApplication(application.id, false)
+                  }
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#C62828',
+                    padding: 12,
+                    borderRadius: 7,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                    Reject
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        ))
+      )}
+    </ScrollView>
+  </>
+)}
+
 
     {showAdminSection === 'pujaris' && (
       <>
