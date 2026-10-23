@@ -97,6 +97,30 @@ const [pincode, setPincode] = useState('');
       }
 
       await login(response.token, response.user);
+            if (role === 'seller') {
+        await apiClient.post('/store/seller/apply', {
+          shop_name: shopName.trim(),
+          owner_name: cleanName,
+          phone: cleanPhone,
+          password: password.trim(),
+          email: email.trim(),
+          shop_address: shopAddress.trim(),
+          city: city.trim(),
+          pincode: pincode.trim(),
+        });
+
+        Alert.alert(
+          'Application Submitted',
+          'Your seller application has been sent to the admin for approval. Please sign in after your application is approved.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/auth/login'),
+            },
+          ]
+        );
+        return;
+      }
 
       if (response.user.role === 'customer') {
         router.replace('/customer/dashboard');
