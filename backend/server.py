@@ -361,6 +361,56 @@ async def register(credentials: UserRegister):
         },
     }
 
+# ==================== SELLER APPLICATION ====================
+
+@api_router.post("/store/seller/apply")
+async def apply_as_seller(
+    application: SellerApplication,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+
+    phone = application.phone.strip()
+
+    if phone != user["phone"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Seller phone number must match your logged-in account"
+        )
+
+    existing = await db.seller_applications.find_one({
+        "user_id": user["id"]
+    })
+
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="You have already submitted a seller application"
+        )
+
+    seller_application = {
+        "user_id": user["id"],
+        "shop_name": application.shop_name.strip(),
+        "owner_name": application.owner_name.strip(),
+        "phone": phone,
+        "email": application.email.strip(),
+        "shop_address": application.shop_address.strip(),
+        "city": application.city.strip(),
+        "pincode": application.pincode.strip(),
+        "status": "pending",
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await db.seller_applications.insert_one(
+        seller_application
+    )
+
+    return {
+        "id": str(result.inserted_id),
+        "status": "pending",
+        "message": "Seller application submitted for admin approval"
+    }
+
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
