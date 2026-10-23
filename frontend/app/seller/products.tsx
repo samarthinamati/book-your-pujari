@@ -1,0 +1,585 @@
+
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '@/src/api/client';
+
+type Product = {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  price: number;
+  image_url?: string;
+  stock: number;
+  is_available: boolean;
+};
+
+export default function SellerProductsScreen() {
+  const router = useRouter();
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Puja Samagri');
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/store/seller/products');
+      setProducts(Array.isArray(response) ? response : []);
+    } catch (error: any) {
+      Alert.alert(
+        'Unable to load products',
+        error?.message || 'Please try again.'
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [loadProducts])
+  );
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName('');
+    setDescription('');
+    setCategory('Puja Samagri');
+    setPrice('');
+    setStock('');
+    setImageUrl('');
+  };
+
+  const startEdit = (product: Product) => {
+    setEditingId(product.id);
+    setName(product.name || '');
+    setDescription(product.description || '');
+    setCategory(product.category || 'Puja Samagri');
+    setPrice(String(product.price ?? ''));
+    setStock(String(product.stock ?? ''));
+    setImageUrl(product.image_url || '');
+  };
+
+  const saveProduct = async () => {
+    const cleanName = name.trim();
+    const cleanPrice = Number(price);
+    const cleanStock = Number(stock);
+
+    if (!cleanName) {
+      Alert.alert('Missing name', 'Please enter the product name.');
+      return;
+    }
+
+    if (!price.trim() || !Number.isFinite(cleanPrice) || cleanPrice <= 0) {
+      Alert.alert('Invalid price', 'Enter a price greater than zero.');
+      return;
+    }
+
+    if (
+      !stock.trim() ||
+      !Number.isInteger(cleanStock) ||
+      cleanStock < 0
+    ) {
+      Alert.alert('Invalid stock', 'Enter a whole number of 0 or more.');
+      return;
+    }
+
+    const payload = {
+      name: cleanName,
+      description: description.trim(),
+      category: category.trim() || 'Puja Samagri',
+      price: cleanPrice,
+      stock: cleanStock,
+      image_url: imageUrl.trim(),
+      is_available: cleanStock > 0,
+    };
+
+    setSaving(true);
+
+    try {
+      if (editingId) {
+        await apiClient.put(
+          `/store/seller/products/${editingId}`,
+          payload
+        );
+        Alert.alert('Success', 'Product updated successfully.');
+      } else {
+        await apiClient.post('/store/seller/products', payload);
+        Alert.alert('Success', 'Product added successfully.');
+      }
+
+      resetForm();
+      await loadProducts();
+    } catch (error: any) {
+      Alert.alert(
+        'Could not save product',
+        error?.message || 'Please check your details and try again.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hideProduct = (product: Product) => {
+    Alert.alert(
+      'Hide product?',
+      `Hide "${product.name}" from the customer store?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Hide',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete(
+                `/store/seller/products/${product.id}`
+              );
+              Alert.alert('Success', 'Product hidden from customers.');
+              await loadProducts();
+            } catch (error: any) {
+              Alert.alert(
+                'Could not hide product',
+                error?.message || 'Please try again.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator
+          size="large"
+          color="#2874F0"
+          style={{ marginTop: 50 }}
+        />
+        <Text style={styles.loadingText}>Loading your products...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadProducts();
+            }}
+          />
+        }
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={22} color="#172B4D" />
+          <Text style={styles.backText}>Seller Dashboard</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.title}>My Products</Text>
+        <Text style={styles.subtitle}>
+          Add and manage the products in your shop.
+        </Text>
+
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>
+            {editingId ? 'Edit Product' : 'Add New Product'}
+          </Text>
+
+          <Text style={styles.label}>Product name *</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Puja Thali"
+          />
+
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Describe your product"
+            multiline
+          />
+
+          <Text style={styles.label}>Category</Text>
+          <TextInput
+            style={styles.input}
+            value={category}
+            onChangeText={setCategory}
+            placeholder="Puja Samagri"
+          />
+
+          <Text style={styles.label}>Price (₹) *</Text>
+          <TextInput
+            style={styles.input}
+            value={price}
+            onChangeText={setPrice}
+            placeholder="Enter price"
+            keyboardType="decimal-pad"
+          />
+
+          <Text style={styles.label}>Stock quantity *</Text>
+          <TextInput
+            style={styles.input}
+            value={stock}
+            onChangeText={setStock}
+            placeholder="Enter available quantity"
+            keyboardType="number-pad"
+          />
+
+          <Text style={styles.label}>Product image URL</Text>
+          <TextInput
+            style={styles.input}
+            value={imageUrl}
+            onChangeText={setImageUrl}
+            placeholder="Paste a hosted image URL"
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+
+          <Text style={styles.helper}>
+            This version uses an image URL. Gallery upload will be added
+            separately so product photos can be hosted persistently.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.disabledButton]}
+            onPress={saveProduct}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons
+                  name={editingId ? 'save-outline' : 'add-circle-outline'}
+                  size={21}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.saveButtonText}>
+                  {editingId ? 'Save Changes' : 'Add Product'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {editingId && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={resetForm}
+              disabled={saving}
+            >
+              <Text style={styles.cancelText}>Cancel Editing</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={styles.listTitle}>
+          Your Products ({products.length})
+        </Text>
+
+        {products.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="cube-outline" size={42} color="#98A2B3" />
+            <Text style={styles.emptyTitle}>No products yet</Text>
+            <Text style={styles.emptyText}>
+              Add your first product using the form above.
+            </Text>
+          </View>
+        ) : (
+          products.map((product) => (
+            <View key={product.id} style={styles.productCard}>
+              <View style={styles.productInfo}>
+                <Text style={styles.productName}>{product.name}</Text>
+                <Text style={styles.productCategory}>
+                  {product.category || 'Puja Samagri'}
+                </Text>
+                <Text style={styles.productPrice}>
+                  ₹{Number(product.price || 0).toFixed(2)}
+                </Text>
+                <Text style={styles.productStock}>
+                  Stock: {product.stock}
+                </Text>
+                <Text
+                  style={[
+                    styles.status,
+                    product.is_available
+                      ? styles.available
+                      : styles.hidden,
+                  ]}
+                >
+                  {product.is_available ? 'Available' : 'Hidden'}
+                </Text>
+              </View>
+
+              <View style={styles.productActions}>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => startEdit(product)}
+                >
+                  <Ionicons name="create-outline" size={18} color="#2874F0" />
+                  <Text style={styles.editText}>Edit</Text>
+                </TouchableOpacity>
+
+                {product.is_available && (
+                  <TouchableOpacity
+                    style={styles.hideButton}
+                    onPress={() => hideProduct(product)}
+                  >
+                    <Ionicons
+                      name="eye-off-outline"
+                      size={18}
+                      color="#D92D20"
+                    />
+                    <Text style={styles.hideText}>Hide</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FB',
+  },
+  content: {
+    padding: 18,
+    paddingBottom: 40,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backText: {
+    color: '#172B4D',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  title: {
+    fontSize: 27,
+    fontWeight: 'bold',
+    color: '#172B4D',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#667085',
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 17,
+    marginBottom: 28,
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginBottom: 18,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#344054',
+    marginBottom: 7,
+    marginTop: 12,
+  },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    fontSize: 15,
+    color: '#172B4D',
+  },
+  multiline: {
+    minHeight: 85,
+    textAlignVertical: 'top',
+  },
+  helper: {
+    color: '#667085',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  saveButton: {
+    backgroundColor: '#2874F0',
+    minHeight: 50,
+    borderRadius: 10,
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    alignItems: 'center',
+    padding: 13,
+    marginTop: 4,
+  },
+  cancelText: {
+    color: '#667085',
+    fontWeight: '600',
+  },
+  listTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginBottom: 14,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 30,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#344054',
+    marginTop: 12,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#667085',
+    marginTop: 7,
+    textAlign: 'center',
+  },
+  productCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 15,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  productInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#172B4D',
+  },
+  productCategory: {
+    color: '#667085',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  productPrice: {
+    color: '#172B4D',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 7,
+  },
+  productStock: {
+    color: '#667085',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  status: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  available: {
+    color: '#16803D',
+  },
+  hidden: {
+    color: '#D92D20',
+  },
+  productActions: {
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#EAF2FF',
+  },
+  editText: {
+    color: '#2874F0',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  hideButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: '#FEF3F2',
+  },
+  hideText: {
+    color: '#D92D20',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 12,
+    color: '#667085',
+  },
+});
