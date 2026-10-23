@@ -108,14 +108,17 @@ export const AuthProvider = ({
 
     await storage.secureSet('auth_token', token);
 
-    if (redirect) {
+   if (redirect) {
   if (role === 'admin') {
     router.replace('/admin/dashboard');
   } else if (role === 'saint') {
     router.replace('/saint/dashboard');
+  } else if (role === 'seller') {
+    router.replace('/seller/dashboard');
   } else {
     router.replace('/customer/dashboard');
   }
+}
 }
   };
 
