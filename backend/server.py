@@ -1801,7 +1801,10 @@ async def create_store_order(
         try:
             product_id = ObjectId(item.product_id)
         except Exception:
-            raise HTTPException(status_code=400, detail="Invalid product ID")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid product ID"
+            )
 
         product = await db.store_products.find_one({
             "_id": product_id,
@@ -1822,7 +1825,7 @@ async def create_store_order(
 
         unit_price = float(product["price"])
         line_total = round(unit_price * item.quantity, 2)
-                total_amount += line_total
+        total_amount += line_total
 
         order_items.append({
             "product_id": str(product["_id"]),
@@ -1834,7 +1837,6 @@ async def create_store_order(
             "line_total": line_total,
             "image_url": product.get("image_url", "")
         })
-
 
     order = {
         "customer_id": user["id"],
@@ -1856,7 +1858,6 @@ async def create_store_order(
     order["_id"] = result.inserted_id
 
     return serialize_store_order(order)
-
 
 @api_router.get("/store/orders/my-orders")
 async def get_my_store_orders(
