@@ -108,13 +108,15 @@ export const AuthProvider = ({
 
     await storage.secureSet('auth_token', token);
 
-    if (role === 'admin') {
-      router.replace('/admin/dashboard');
-    } else if (role === 'saint') {
-      router.replace('/saint/dashboard');
-    } else {
-      router.replace('/customer/dashboard');
-    }
+    if (redirect) {
+  if (role === 'admin') {
+    router.replace('/admin/dashboard');
+  } else if (role === 'saint') {
+    router.replace('/saint/dashboard');
+  } else {
+    router.replace('/customer/dashboard');
+  }
+}
   };
 
   const logout = async () => {
