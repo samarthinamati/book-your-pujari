@@ -112,10 +112,30 @@ const fetchStoreOrders = async () => {
       'Error',
       error?.message || 'Unable to load store orders.'
     );
-  } finally {
+   } finally {
     setLoadingStoreOrders(false);
   }
 };
+  
+const fetchSellerApplications = async () => {
+  try {
+    setLoadingSellerApplications(true);
+
+    const response = await apiClient.request(
+      '/store/admin/seller-applications'
+    );
+
+    setSellerApplications(Array.isArray(response) ? response : []);
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Unable to load seller applications.'
+    );
+  } finally {
+    setLoadingSellerApplications(false);
+  }
+};
+
 const saveStoreProduct = async () => {
   const name = productName.trim();
   const price = Number(productPrice);
