@@ -86,9 +86,9 @@ const [pincode, setPincode] = useState('');
   role: role === 'seller' ? 'customer' : role,
 };
 
-      if (role === 'saint') {
-        payload.password = password;
-      }
+      if (role === 'saint' || role === 'seller') {
+  payload.password = password.trim();
+}
 
       const response = await apiClient.post('/auth/register', payload);
 
