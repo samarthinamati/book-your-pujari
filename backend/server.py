@@ -505,6 +505,7 @@ async def review_seller_application(
     }
 
 
+
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     phone = credentials.phone.strip()
@@ -532,9 +533,9 @@ async def login(credentials: UserLogin):
             detail="This phone number is not registered for the selected account type"
         )
 
-    # Customers use phone-only login.
-    # Saint and Admin passwords remain required.
-    if actual_role in ["saint", "admin"]:
+    # Customers continue using phone-only login.
+    # Saints, admins, and sellers must use their password.
+    if actual_role in ["saint", "admin", "seller"]:
         password = credentials.password or ""
         password_hash = user.get("password_hash") or user.get("password")
 
