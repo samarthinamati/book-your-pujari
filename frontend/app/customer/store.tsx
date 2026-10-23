@@ -817,9 +817,11 @@ export default function CustomerStoreScreen() {
                   {placingOrder ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.orderButtonText}>
-                      Pay ₹{total.toFixed(2)} Securely
-                    </Text>
+<Text style={styles.orderButtonText}>
+  {paymentMethod === 'cod'
+    ? `Place Order • ₹${total.toFixed(2)} (COD)`
+    : `Pay ₹${total.toFixed(2)} Securely`}
+</Text>
                   )}
                 </TouchableOpacity>
                 <Text style={styles.paymentNote}>
