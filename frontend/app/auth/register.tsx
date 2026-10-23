@@ -14,7 +14,7 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'customer' | 'saint'>('customer');
+  const [role, setRole] = useState<'customer' | 'saint' | 'seller'>('customer');
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
