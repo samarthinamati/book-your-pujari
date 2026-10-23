@@ -81,10 +81,10 @@ const [pincode, setPincode] = useState('');
   role: 'customer' | 'saint';
   password?: string;
 } = {
-        name: cleanName,
-        phone: cleanPhone,
-        role,
-      };
+  name: cleanName,
+  phone: cleanPhone,
+  role: role === 'seller' ? 'customer' : role,
+};
 
       if (role === 'saint') {
         payload.password = password;
