@@ -2128,12 +2128,12 @@ async def create_store_payment_order(
 
     if store_order.get("payment_status") == "paid":
         raise HTTPException(status_code=400, detail="Order is already paid")
-            if store_order.get("payment_method") == "cod":
+
+        if store_order.get("payment_method") == "cod":
         raise HTTPException(
             status_code=400,
             detail="This is a Cash on Delivery order. Online payment is not required."
         )
-
     if not razorpay_client or RAZORPAY_KEY_ID == "dummy_key":
         raise HTTPException(status_code=503, detail="Payment service is not configured")
 
