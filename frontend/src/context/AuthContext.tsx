@@ -120,8 +120,6 @@ export const AuthProvider = ({
   } else {
     router.replace('/customer/dashboard');
   }
-}
-}
   };
 
   const logout = async () => {
