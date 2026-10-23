@@ -415,6 +415,95 @@ async def apply_as_seller(
         "message": "Seller application submitted for admin approval"
     }
 
+# ==================== ADMIN SELLER APPROVAL ====================
+
+@api_router.get("/store/admin/seller-applications")
+async def list_seller_applications(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    applications = await db.seller_applications.find(
+        {}
+    ).sort("created_at", -1).to_list(500)
+
+    results = []
+
+    for application in applications:
+        results.append({
+            "id": str(application["_id"]),
+            "user_id": application.get("user_id", ""),
+            "shop_name": application.get("shop_name", ""),
+            "owner_name": application.get("owner_name", ""),
+            "phone": application.get("phone", ""),
+            "email": application.get("email", ""),
+            "shop_address": application.get("shop_address", ""),
+            "city": application.get("city", ""),
+            "pincode": application.get("pincode", ""),
+            "status": application.get("status", "pending"),
+            "created_at": application.get("created_at", ""),
+        })
+
+    return results
+
+
+@api_router.put("/store/admin/seller-applications/{application_id}")
+async def review_seller_application(
+    application_id: str,
+    payload: SellerApprovalRequest,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    try:
+        application_object_id = ObjectId(application_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid application ID"
+        )
+
+    application = await db.seller_applications.find_one({
+        "_id": application_object_id
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Seller application not found"
+        )
+
+    if application.get("status") != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail="This application has already been reviewed"
+        )
+
+    new_status = "approved" if payload.approved else "rejected"
+
+    await db.seller_applications.update_one(
+        {"_id": application_object_id},
+        {"$set": {
+            "status": new_status,
+            "reviewed_at": datetime.utcnow().isoformat(),
+            "reviewed_by": user["id"],
+        }}
+    )
+
+    if payload.approved:
+        await db.users.update_one(
+            {
+                "_id": ObjectId(application["user_id"]),
+                "role": "customer",
+            },
+            {"$set": {"role": "seller"}}
+        )
+
+    return {
+        "message": f"Seller application {new_status}",
+        "status": new_status,
+    }
+
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
