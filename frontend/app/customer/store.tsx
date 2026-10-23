@@ -1403,6 +1403,23 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
+    paymentOption: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D5D9E0',
+    borderRadius: 8,
+    padding: 13,
+    marginBottom: 8,
+  },
+  paymentOptionSelected: {
+    borderColor: BLUE,
+    backgroundColor: '#EAF2FF',
+  },
+  paymentOptionText: {
+    fontSize: 14,
+    color: '#222222',
+    fontWeight: '600',
+  },
   orderButton: {
     backgroundColor: '#FB641B',
     borderRadius: 5,
