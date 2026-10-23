@@ -139,7 +139,6 @@ class AdminApprovalRequest(BaseModel):
     approved: bool
 
 class SellerApprovalRequest(BaseModel):
-    application_id: str
     approved: bool
 
 
