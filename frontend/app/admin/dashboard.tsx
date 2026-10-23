@@ -64,8 +64,8 @@ const [productImageUrl, setProductImageUrl] = useState('');
 const [productStock, setProductStock] = useState('10');
 const [savingProduct, setSavingProduct] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [showAdminSection, setShowAdminSection] = useState<
-  'store' | 'pujaris' | null
+    const [showAdminSection, setShowAdminSection] = useState<
+  'store' | 'pujaris' | 'sellers' | null
 >(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
