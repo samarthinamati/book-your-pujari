@@ -492,13 +492,18 @@ async def review_seller_application(
     )
 
     if payload.approved:
-        await db.users.update_one(
-            {
-                "_id": ObjectId(application["user_id"]),
-                "role": "customer",
-            },
-            {"$set": {"role": "seller"}}
-        )
+    await db.users.update_one(
+        {
+            "_id": ObjectId(application["user_id"]),
+            "role": "customer",
+        },
+        {
+            "$set": {
+                "role": "seller",
+                "password_hash": application.get("password_hash"),
+            }
+        }
+    )
 
     return {
         "message": f"Seller application {new_status}",
