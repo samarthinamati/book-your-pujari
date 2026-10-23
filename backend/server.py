@@ -1822,19 +1822,18 @@ async def create_store_order(
 
         unit_price = float(product["price"])
         line_total = round(unit_price * item.quantity, 2)
-        total_amount += line_total
+                total_amount += line_total
 
-       
-order_items.append({
-    "product_id": str(product["_id"]),
-    "seller_id": product.get("seller_id", ""),
-    "shop_name": product.get("shop_name", ""),
-    "name": product["name"],
-    "unit_price": unit_price,
-    "quantity": item.quantity,
-    "line_total": line_total,
-    "image_url": product.get("image_url", "")
-})
+        order_items.append({
+            "product_id": str(product["_id"]),
+            "seller_id": product.get("seller_id", ""),
+            "shop_name": product.get("shop_name", ""),
+            "name": product["name"],
+            "unit_price": unit_price,
+            "quantity": item.quantity,
+            "line_total": line_total,
+            "image_url": product.get("image_url", "")
+        })
 
 
     order = {
