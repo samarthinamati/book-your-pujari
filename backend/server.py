@@ -1948,6 +1948,65 @@ async def get_seller_store_orders(
 
     return seller_orders
 
+@api_router.put("/store/seller/orders/{order_id}/tracking")
+async def update_seller_order_tracking(
+    order_id: str,
+    payload: StoreOrderTrackingUpdate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    if payload.order_status not in ALLOWED_STORE_ORDER_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order status",
+        )
+
+    try:
+        object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order ID",
+        )
+
+    order = await db.store_orders.find_one({
+        "_id": object_id,
+        "items.seller_id": user["id"],
+    })
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found for this seller",
+        )
+
+    updates = {
+        "order_status": payload.order_status,
+        "courier": (payload.courier or "").strip(),
+        "tracking_number": (payload.tracking_number or "").strip(),
+        "tracking_url": (payload.tracking_url or "").strip(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    await db.store_orders.update_one(
+        {"_id": object_id},
+        {"$set": updates},
+    )
+
+    return {"message": "Seller order tracking updated successfully"}
+
 @api_router.get("/store/admin/orders")
 async def get_all_store_orders(
     user: dict = Depends(get_current_user)
