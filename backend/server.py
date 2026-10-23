@@ -394,6 +394,7 @@ async def apply_as_seller(
 
     seller_application = {
         "user_id": user["id"],
+        "password_hash": hash_password(application.password.strip()),
         "shop_name": application.shop_name.strip(),
         "owner_name": application.owner_name.strip(),
         "phone": phone,
