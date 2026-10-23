@@ -231,7 +231,7 @@ const [pincode, setPincode] = useState('');
               />
             </View>
 
-            {role === 'saint' && (
+            {(role === 'saint' || role === 'seller') && (
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
