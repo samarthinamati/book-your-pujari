@@ -1587,6 +1587,31 @@ async def delete_store_product(
 
     return {"message": "Product marked unavailable"}
 
+# ==================== SELLER PRODUCT MANAGEMENT ====================
+
+@api_router.get("/store/seller/products")
+async def list_seller_products(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    products = await db.store_products.find({
+        "seller_id": user["id"],
+    }).sort("created_at", -1).to_list(200)
+
+    return [serialize_store_product(p) for p in products]
+
 # ==================== SAMAGRI STORE ORDERS ====================
 
 class StoreOrderItem(BaseModel):
