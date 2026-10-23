@@ -97,11 +97,11 @@ export const AuthProvider = ({
 }
   }, [userToken, userRole, segments, isLoading]);
 
-  const login = async (
-  token: string,
-  loggedInUser: any,
-  redirect: boolean = true
-) => {
+    const login = async (
+    token: string,
+    loggedInUser: any,
+    redirect: boolean = true
+  ) => {
     const role: UserRole = loggedInUser?.role ?? null;
 
     setUserToken(token);
@@ -110,18 +110,18 @@ export const AuthProvider = ({
 
     await storage.secureSet('auth_token', token);
 
-   if (redirect) {
-  if (role === 'admin') {
-    router.replace('/admin/dashboard');
-  } else if (role === 'saint') {
-    router.replace('/saint/dashboard');
-  } else if (role === 'seller') {
-    router.replace('/seller/dashboard');
-  } else {
-    router.replace('/customer/dashboard');
-  }
+    if (redirect) {
+      if (role === 'admin') {
+        router.replace('/admin/dashboard');
+      } else if (role === 'saint') {
+        router.replace('/saint/dashboard');
+      } else if (role === 'seller') {
+        router.replace('/seller/dashboard');
+      } else {
+        router.replace('/customer/dashboard');
+      }
+    }
   };
-
   const logout = async () => {
     setUserToken(null);
     setUserRole(null);
