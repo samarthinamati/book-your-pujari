@@ -95,7 +95,11 @@ export const AuthProvider = ({
     }
   }, [userToken, userRole, segments, isLoading]);
 
-  const login = async (token: string, loggedInUser: any) => {
+  const login = async (
+  token: string,
+  loggedInUser: any,
+  redirect: boolean = true
+) => {
     const role: UserRole = loggedInUser?.role ?? null;
 
     setUserToken(token);
