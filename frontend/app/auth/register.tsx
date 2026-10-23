@@ -122,11 +122,11 @@ const [pincode, setPincode] = useState('');
         return;
       }
 
-      if (response.user.role === 'customer') {
-        router.replace('/customer/dashboard');
-      } else if (response.user.role === 'saint') {
-        router.replace('/saint/dashboard');
-      }
+if (response.user.role === 'customer') {
+  router.replace('/customer/dashboard');
+} else if (response.user.role === 'saint') {
+  router.replace('/saint/dashboard');
+}
     } catch (error: any) {
       Alert.alert(
         'Registration Failed',
