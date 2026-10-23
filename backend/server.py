@@ -66,6 +66,16 @@ class UserRegister(BaseModel):
     password: Optional[str] = None
     role: str = "customer"
 
+class SellerApplication(BaseModel):
+    shop_name: str = Field(..., min_length=2, max_length=120)
+    owner_name: str = Field(..., min_length=2, max_length=120)
+    phone: str = Field(..., min_length=5, max_length=20)
+    password: str = Field(..., min_length=4, max_length=128)
+    email: str = Field(default="", max_length=254)
+    shop_address: str = Field(..., min_length=5, max_length=1000)
+    city: str = Field(..., min_length=2, max_length=100)
+    pincode: str = Field(..., min_length=6, max_length=10)
+
 
 class SaintProfile(BaseModel):
     name: str
