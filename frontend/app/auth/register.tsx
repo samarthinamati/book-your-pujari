@@ -217,17 +217,24 @@ export default function RegisterScreen() {
       } else if (response.user.role === 'saint') {
         router.replace('/saint/dashboard');
       }
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.detail ||
-        error?.message ||
-        'Unable to create your account. Please try again.';
+    
+} catch (error: any) {
+  const message =
+    error?.response?.data?.detail ||
+    error?.message ||
+    'Unable to create your account. Please try again.';
 
-      Alert.alert('Registration Failed', message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  console.error('Registration error:', error);
+
+  if (Platform.OS === 'web') {
+    window.alert('Registration Failed\n\n' + message);
+  } else {
+    Alert.alert('Registration Failed', message);
+  }
+} finally {
+  setLoading(false);
+}
+
 
   return (
     <SafeAreaView style={styles.container}>
