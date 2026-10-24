@@ -1,5 +1,3 @@
-
-
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -367,47 +365,80 @@ async def register(credentials: UserRegister):
 # ==================== SELLER APPLICATION ====================
 
 @api_router.post("/store/seller/apply")
-async def apply_as_seller(
-    application: SellerApplication,
-    user: dict = Depends(get_current_user)
-):
-    await require_role(user, ["customer"])
+async def apply_as_seller(application: SellerApplication):
+    """Submit a seller application without requiring a prior login.
 
+    A new phone number gets a customer account first. Seller privileges are
+    granted only by the existing admin approval endpoint.
+    """
     phone = application.phone.strip()
+    owner_name = application.owner_name.strip()
+    shop_name = application.shop_name.strip()
+    password = application.password.strip()
+    email = application.email.strip()
+    shop_address = application.shop_address.strip()
+    city = application.city.strip()
+    pincode = application.pincode.strip()
 
-    if phone != user["phone"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Seller phone number must match your logged-in account"
-        )
+    if not phone or not owner_name or not shop_name:
+        raise HTTPException(status_code=400, detail="Owner name, shop name and phone number are required")
+    if len(password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
 
-    existing = await db.seller_applications.find_one({
-        "user_id": user["id"]
+    existing_user = await db.users.find_one({"phone": phone})
+    if existing_user and existing_user.get("role", "customer") != "customer":
+        raise HTTPException(status_code=409, detail="This phone number already belongs to another account type")
+
+    existing_application = await db.seller_applications.find_one({
+        "phone": phone,
+        "status": {"$in": ["pending", "approved"]}
     })
+    if existing_application:
+        raise HTTPException(status_code=409, detail="A seller application already exists for this phone number")
 
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="You have already submitted a seller application"
-        )
+    if existing_user:
+        user_id = str(existing_user["_id"])
+        # Keep the existing customer's profile, but update email if it is blank.
+        if email and not existing_user.get("email"):
+            await db.users.update_one({"_id": existing_user["_id"]}, {"$set": {"email": email}})
+    else:
+        customer = {
+            "name": owner_name,
+            "phone": phone,
+            "email": email,
+            "role": "customer",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        try:
+            result = await db.users.insert_one(customer)
+            user_id = str(result.inserted_id)
+        except Exception:
+            # Re-check in case another registration request used this phone concurrently.
+            existing_user = await db.users.find_one({"phone": phone})
+            if not existing_user:
+                raise HTTPException(status_code=500, detail="Could not create the account. Please try again.")
+            if existing_user.get("role", "customer") != "customer":
+                raise HTTPException(status_code=409, detail="This phone number already belongs to another account type")
+            user_id = str(existing_user["_id"])
 
     seller_application = {
-        "user_id": user["id"],
-        "password_hash": hash_password(application.password.strip()),
-        "shop_name": application.shop_name.strip(),
-        "owner_name": application.owner_name.strip(),
+        "user_id": user_id,
+        "password_hash": hash_password(password),
+        "shop_name": shop_name,
+        "owner_name": owner_name,
         "phone": phone,
-        "email": application.email.strip(),
-        "shop_address": application.shop_address.strip(),
-        "city": application.city.strip(),
-        "pincode": application.pincode.strip(),
+        "email": email,
+        "shop_address": shop_address,
+        "city": city,
+        "pincode": pincode,
         "status": "pending",
         "created_at": datetime.utcnow().isoformat(),
     }
 
-    result = await db.seller_applications.insert_one(
-        seller_application
-    )
+    try:
+        result = await db.seller_applications.insert_one(seller_application)
+    except Exception:
+        raise HTTPException(status_code=409, detail="Could not submit the application. Please try again.")
 
     return {
         "id": str(result.inserted_id),
@@ -1797,6 +1828,13 @@ async def create_store_order(
 
     order_items = []
     total_amount = 0
+    payment_method = payload.payment_method.strip().lower()
+
+    if payment_method not in {"online", "cod"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid payment method. Choose online or cod."
+        )
 
     for item in payload.items:
         try:
@@ -1839,13 +1877,33 @@ async def create_store_order(
             "image_url": product.get("image_url", "")
         })
 
-        payment_method = payload.payment_method.strip().lower()
-
-    if payment_method not in {"online", "cod"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid payment method. Choose online or cod."
-        )
+    # Reserve/decrement stock atomically before creating the order. If any item
+    # cannot be reserved, restore stock already reserved for this request.
+    reserved = []
+    try:
+        for item in payload.items:
+            product_id = ObjectId(item.product_id)
+            reservation = await db.store_products.update_one(
+                {
+                    "_id": product_id,
+                    "is_available": True,
+                    "stock": {"$gte": item.quantity},
+                },
+                {"$inc": {"stock": -item.quantity}, "$set": {"updated_at": datetime.utcnow().isoformat()}},
+            )
+            if reservation.modified_count == 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Stock changed while placing the order. Please refresh your cart and try again."
+                )
+            reserved.append((product_id, item.quantity))
+    except Exception:
+        for reserved_id, reserved_quantity in reserved:
+            await db.store_products.update_one(
+                {"_id": reserved_id},
+                {"$inc": {"stock": reserved_quantity}}
+            )
+        raise
 
     order = {
         "customer_id": user["id"],
@@ -1869,9 +1927,18 @@ async def create_store_order(
         "created_at": datetime.utcnow().isoformat()
     }
 
-    result = await db.store_orders.insert_one(order)
-    order["_id"] = result.inserted_id
+    try:
+        result = await db.store_orders.insert_one(order)
+    except Exception:
+        # Restore reserved stock if the order could not be saved.
+        for reserved_id, reserved_quantity in reserved:
+            await db.store_products.update_one(
+                {"_id": reserved_id},
+                {"$inc": {"stock": reserved_quantity}}
+            )
+        raise HTTPException(status_code=500, detail="Could not create the order. Please try again.")
 
+    order["_id"] = result.inserted_id
     return serialize_store_order(order)
 
 @api_router.get("/store/orders/my-orders")
@@ -2238,4 +2305,3 @@ async def verify_store_payment(
 
 
 app.include_router(api_router)
-
