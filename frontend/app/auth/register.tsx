@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import {
   View,
@@ -20,6 +18,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RegisterRole = 'customer' | 'saint' | 'seller';
+
+const REQUEST_TIMEOUT_MS = 20000;
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error(
+        'The server took too long to respond. Please try again.'
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -100,45 +125,23 @@ export default function RegisterScreen() {
 
     try {
       // SELLER REGISTRATION
-      // Use the existing customer account instead of creating
-      // another account with the same phone number.
+      // The backend route accepts applications without prior login.
       if (role === 'seller') {
-        const customerResponse = await apiClient.post(
-          '/auth/login',
-          {
-            phone: cleanPhone,
-            role: 'customer',
-          }
-        );
-
-        if (!customerResponse?.token || !customerResponse?.user) {
-          throw new Error(
-            'Could not access your existing customer account. Please try again.'
-          );
-        }
-
-        if (customerResponse.user.role !== 'customer') {
-          throw new Error(
-            'This phone number is not registered as a customer account.'
-          );
-        }
-
         const backendUrl =
           process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/+$/, '');
 
         if (!backendUrl) {
           throw new Error(
-            'Server configuration is missing. Please try again later.'
+            'Server configuration is missing. Please check the frontend environment variables.'
           );
         }
 
-        const sellerResponse = await fetch(
+        const sellerResponse = await fetchWithTimeout(
           `${backendUrl}/api/store/seller/apply`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${customerResponse.token}`,
             },
             body: JSON.stringify({
               shop_name: shopName.trim(),
@@ -159,14 +162,15 @@ export default function RegisterScreen() {
 
         if (!sellerResponse.ok) {
           throw new Error(
-            sellerData.detail ||
+            sellerData?.detail ||
               `Seller application failed (${sellerResponse.status}).`
           );
         }
 
         Alert.alert(
           'Registration Successful!',
-          'Your seller registration has been submitted successfully. You can sign in as a Seller after the admin approves your application.',
+          sellerData?.message ||
+            'Your seller application has been submitted for admin approval.',
           [
             {
               text: 'OK',
@@ -669,3 +673,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+
+
+      
