@@ -1225,6 +1225,64 @@ const updateStoreOrderTracking = async (
               Status: {application.status}
             </Text>
 
+<Text style={{ marginTop: 12, fontWeight: 'bold', color: '#333' }}>
+  Delhivery Pickup Location
+</Text>
+
+<Text style={{ marginTop: 5, color: '#666', fontSize: 12 }}>
+  Enter the exact pickup-location name registered with Delhivery.
+</Text>
+
+<TextInput
+  value={
+    pickupNames[String(application.id)] ??
+    application.delhivery_pickup_name ??
+    ''
+  }
+  onChangeText={(value) =>
+    setPickupNames((previous) => ({
+      ...previous,
+      [String(application.id)]: value,
+    }))
+  }
+  placeholder="Registered pickup location name"
+  placeholderTextColor="#999"
+  style={{
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: 8,
+    padding: 11,
+    marginTop: 8,
+    color: '#222',
+    backgroundColor: '#FFF',
+  }}
+/>
+
+<Text style={{ marginTop: 6, color: '#666', fontSize: 12 }}>
+  Status: {application.delhivery_pickup_status || 'not_registered'}
+</Text>
+
+<TouchableOpacity
+  onPress={() => saveSellerPickupLocation(String(application.id))}
+  disabled={savingPickupId === String(application.id)}
+  style={{
+    backgroundColor: '#2874F0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    opacity: savingPickupId === String(application.id) ? 0.6 : 1,
+  }}
+>
+  {savingPickupId === String(application.id) ? (
+    <ActivityIndicator color="#FFF" />
+  ) : (
+    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+      Save Pickup Location
+    </Text>
+  )}
+</TouchableOpacity>
+
             {application.status === 'pending' && (
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
                 <TouchableOpacity
