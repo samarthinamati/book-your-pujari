@@ -214,11 +214,12 @@ export default function RegisterScreen() {
 
       if (response.user.role === 'customer') {
         router.replace('/customer/dashboard');
+     
       } else if (response.user.role === 'saint') {
         router.replace('/saint/dashboard');
       }
-    
-} catch (error: any) {
+    } catch (error: any) {
+
   const message =
     error?.response?.data?.detail ||
     error?.message ||
