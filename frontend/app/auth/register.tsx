@@ -675,9 +675,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  linkText: {
+    linkText: {
     fontSize: 14,
     color: '#FF6B35',
     fontWeight: '600',
-    },
+  },
 });
