@@ -1,4 +1,5 @@
 
+
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -10,11 +11,17 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
+  Platform,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/src/api/client';
+
+const CLOUDINARY_CLOUD_NAME = 'jhj9yzbl';
+const CLOUDINARY_UPLOAD_PRESET = 'pujarigo-products';
 
 type Product = {
   id: string;
@@ -34,6 +41,7 @@ export default function SellerProductsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -42,6 +50,8 @@ export default function SellerProductsScreen() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [selectedImageUri, setSelectedImageUri] = useState('');
+  const [selectedImageFile, setSelectedImageFile] = useState<any>(null);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -72,6 +82,8 @@ export default function SellerProductsScreen() {
     setPrice('');
     setStock('');
     setImageUrl('');
+    setSelectedImageUri('');
+    setSelectedImageFile(null);
   };
 
   const startEdit = (product: Product) => {
@@ -82,6 +94,91 @@ export default function SellerProductsScreen() {
     setPrice(String(product.price ?? ''));
     setStock(String(product.stock ?? ''));
     setImageUrl(product.image_url || '');
+    setSelectedImageUri('');
+    setSelectedImageFile(null);
+  };
+
+  const choosePhoto = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          'Photo permission needed',
+          'Allow photo library access to choose a product image.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setSelectedImageUri(asset.uri);
+      setSelectedImageFile((asset as any).file || null);
+    } catch (error: any) {
+      Alert.alert(
+        'Could not select photo',
+        error?.message || 'Please try again.'
+      );
+    }
+  };
+
+  const uploadPhoto = async (): Promise<string> => {
+    if (!selectedImageUri) {
+      return imageUrl.trim();
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', 'pujarigo-products');
+
+      if (Platform.OS === 'web' && selectedImageFile) {
+        formData.append('file', selectedImageFile);
+      } else {
+        const fileResponse = await fetch(selectedImageUri);
+        const blob = await fileResponse.blob();
+
+        formData.append(
+          'file',
+          blob,
+          `pujarigo-${Date.now()}.jpg`
+        );
+      }
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.secure_url) {
+        throw new Error(
+          result?.error?.message || 'Cloudinary could not upload the photo.'
+        );
+      }
+
+      return result.secure_url;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const saveProduct = async () => {
@@ -108,19 +205,21 @@ export default function SellerProductsScreen() {
       return;
     }
 
-    const payload = {
-      name: cleanName,
-      description: description.trim(),
-      category: category.trim() || 'Puja Samagri',
-      price: cleanPrice,
-      stock: cleanStock,
-      image_url: imageUrl.trim(),
-      is_available: cleanStock > 0,
-    };
-
     setSaving(true);
 
     try {
+      const uploadedImageUrl = await uploadPhoto();
+
+      const payload = {
+        name: cleanName,
+        description: description.trim(),
+        category: category.trim() || 'Puja Samagri',
+        price: cleanPrice,
+        stock: cleanStock,
+        image_url: uploadedImageUrl,
+        is_available: cleanStock > 0,
+      };
+
       if (editingId) {
         await apiClient.put(
           `/store/seller/products/${editingId}`,
@@ -261,28 +360,69 @@ export default function SellerProductsScreen() {
             keyboardType="number-pad"
           />
 
-          <Text style={styles.label}>Product image URL</Text>
-          <TextInput
-            style={styles.input}
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="Paste a hosted image URL"
-            autoCapitalize="none"
-            keyboardType="url"
-          />
+          <Text style={styles.label}>Product photo</Text>
+
+          {(selectedImageUri || imageUrl) ? (
+            <Image
+              source={{ uri: selectedImageUri || imageUrl }}
+              style={styles.photoPreview}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <Ionicons name="image-outline" size={42} color="#98A2B3" />
+              <Text style={styles.photoPlaceholderText}>
+                No product photo selected
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.photoButton}
+            onPress={choosePhoto}
+            disabled={saving || uploadingImage}
+          >
+            <Ionicons name="images-outline" size={21} color="#2874F0" />
+            <Text style={styles.photoButtonText}>
+              {selectedImageUri || imageUrl
+                ? 'Choose Another Photo'
+                : 'Choose Photo from Gallery'}
+            </Text>
+          </TouchableOpacity>
+
+          {(selectedImageUri || imageUrl) ? (
+            <TouchableOpacity
+              style={styles.removePhotoButton}
+              onPress={() => {
+                setSelectedImageUri('');
+                setSelectedImageFile(null);
+                setImageUrl('');
+              }}
+              disabled={saving || uploadingImage}
+            >
+              <Text style={styles.removePhotoText}>Remove Photo</Text>
+            </TouchableOpacity>
+          ) : null}
 
           <Text style={styles.helper}>
-            This version uses an image URL. Gallery upload will be added
-            separately so product photos can be hosted persistently.
+            Photos are uploaded to Cloudinary when you save the product.
           </Text>
 
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.disabledButton]}
+            style={[
+              styles.saveButton,
+              (saving || uploadingImage) && styles.disabledButton,
+            ]}
             onPress={saveProduct}
-            disabled={saving}
+            disabled={saving || uploadingImage}
           >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
+            {saving || uploadingImage ? (
+              <>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>
+                  {uploadingImage ? 'Uploading photo...' : 'Saving product...'}
+                </Text>
+              </>
             ) : (
               <>
                 <Ionicons
@@ -301,7 +441,7 @@ export default function SellerProductsScreen() {
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={resetForm}
-              disabled={saving}
+              disabled={saving || uploadingImage}
             >
               <Text style={styles.cancelText}>Cancel Editing</Text>
             </TouchableOpacity>
@@ -323,6 +463,14 @@ export default function SellerProductsScreen() {
         ) : (
           products.map((product) => (
             <View key={product.id} style={styles.productCard}>
+              {product.image_url ? (
+                <Image
+                  source={{ uri: product.image_url }}
+                  style={styles.productThumbnail}
+                  resizeMode="cover"
+                />
+              ) : null}
+
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.name}</Text>
                 <Text style={styles.productCategory}>
@@ -442,6 +590,55 @@ const styles = StyleSheet.create({
     minHeight: 85,
     textAlignVertical: 'top',
   },
+  photoPreview: {
+    width: 160,
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#F2F4F7',
+    alignSelf: 'center',
+    marginVertical: 12,
+  },
+  photoPlaceholder: {
+    minHeight: 145,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#D0D5DD',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  photoPlaceholderText: {
+    color: '#667085',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  photoButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: '#2874F0',
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EAF2FF',
+    marginTop: 4,
+  },
+  photoButtonText: {
+    color: '#2874F0',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  removePhotoButton: {
+    alignItems: 'center',
+    padding: 10,
+  },
+  removePhotoText: {
+    color: '#D92D20',
+    fontWeight: '600',
+  },
   helper: {
     color: '#667085',
     fontSize: 12,
@@ -457,6 +654,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    paddingHorizontal: 12,
   },
   disabledButton: {
     opacity: 0.6,
@@ -506,6 +704,13 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 12,
     alignItems: 'center',
+  },
+  productThumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#F2F4F7',
   },
   productInfo: {
     flex: 1,
