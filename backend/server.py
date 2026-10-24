@@ -474,10 +474,21 @@ async def list_seller_applications(
             "owner_name": application.get("owner_name", ""),
             "phone": application.get("phone", ""),
             "email": application.get("email", ""),
-            "shop_address": application.get("shop_address", ""),
-            "city": application.get("city", ""),
-            "pincode": application.get("pincode", ""),
-            "status": application.get("status", "pending"),
+"shop_address": application.get("shop_address", ""),
+"city": application.get("city", ""),
+"pincode": application.get("pincode", ""),
+
+"delhivery_pickup_name": application.get(
+    "delhivery_pickup_name", ""
+),
+"delhivery_pickup_status": application.get(
+    "delhivery_pickup_status", "not_registered"
+),
+"delhivery_pickup_id": application.get(
+    "delhivery_pickup_id", ""
+),
+
+"status": application.get("status", "pending"),
             "created_at": application.get("created_at", ""),
         })
 
