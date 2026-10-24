@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View,
@@ -63,18 +64,26 @@ export default function RegisterScreen() {
   const { login } = useAuth();
   const router = useRouter();
 
+  const showMessage = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleRegister = async () => {
     const cleanName = name.trim();
     const cleanPhone = phone.trim();
     const cleanPassword = password.trim();
 
     if (!cleanName || !cleanPhone) {
-      Alert.alert('Error', 'Please enter your name and phone number.');
+      showMessage('Error', 'Please enter your name and phone number.');
       return;
     }
 
     if (!/^\d{10}$/.test(cleanPhone)) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number.');
+      showMessage('Error', 'Please enter a valid 10-digit phone number.');
       return;
     }
 
@@ -82,7 +91,7 @@ export default function RegisterScreen() {
       (role === 'saint' || role === 'seller') &&
       cleanPassword.length < 4
     ) {
-      Alert.alert(
+      showMessage(
         'Error',
         `${role === 'seller' ? 'Seller' : 'Saint'} password must be at least 4 characters.`
       );
@@ -97,26 +106,17 @@ export default function RegisterScreen() {
         !city.trim() ||
         !pincode.trim()
       ) {
-        Alert.alert(
-          'Missing Details',
-          'Please fill in all shop details.'
-        );
+        showMessage('Missing Details', 'Please fill in all shop details.');
         return;
       }
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        Alert.alert(
-          'Invalid Email',
-          'Please enter a valid email address.'
-        );
+        showMessage('Invalid Email', 'Please enter a valid email address.');
         return;
       }
 
       if (!/^\d{6}$/.test(pincode.trim())) {
-        Alert.alert(
-          'Invalid PIN Code',
-          'Please enter a valid 6-digit PIN code.'
-        );
+        showMessage('Invalid PIN Code', 'Please enter a valid 6-digit PIN code.');
         return;
       }
     }
@@ -125,7 +125,6 @@ export default function RegisterScreen() {
 
     try {
       // SELLER REGISTRATION
-      // The backend route accepts applications without prior login.
       if (role === 'seller') {
         const backendUrl =
           process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/+$/, '');
@@ -156,9 +155,7 @@ export default function RegisterScreen() {
           }
         );
 
-        const sellerData = await sellerResponse
-          .json()
-          .catch(() => ({}));
+        const sellerData = await sellerResponse.json().catch(() => ({}));
 
         if (!sellerResponse.ok) {
           throw new Error(
@@ -167,19 +164,13 @@ export default function RegisterScreen() {
           );
         }
 
-        Alert.alert(
+        showMessage(
           'Registration Successful!',
           sellerData?.message ||
-            'Your seller application has been submitted for admin approval.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/auth/login'),
-            },
-          ],
-          { cancelable: false }
+            'Your seller application has been submitted for admin approval.'
         );
 
+        router.replace('/auth/login');
         return;
       }
 
@@ -199,43 +190,31 @@ export default function RegisterScreen() {
         payload.password = cleanPassword;
       }
 
-      const response = await apiClient.post(
-        '/auth/register',
-        payload
-      );
+      const response = await apiClient.post('/auth/register', payload);
 
       if (!response?.token || !response?.user) {
-        throw new Error(
-          'Invalid response from server. Please try again.'
-        );
+        throw new Error('Invalid response from server. Please try again.');
       }
 
       await login(response.token, response.user);
 
       if (response.user.role === 'customer') {
         router.replace('/customer/dashboard');
-     
       } else if (response.user.role === 'saint') {
         router.replace('/saint/dashboard');
       }
     } catch (error: any) {
+      const message =
+        error?.response?.data?.detail ||
+        error?.message ||
+        'Unable to create your account. Please try again.';
 
-  const message =
-    error?.response?.data?.detail ||
-    error?.message ||
-    'Unable to create your account. Please try again.';
-
-  console.error('Registration error:', error);
-
-  if (Platform.OS === 'web') {
-    window.alert('Registration Failed\n\n' + message);
-  } else {
-    Alert.alert('Registration Failed', message);
-  }
-} finally {
-  setLoading(false);
-}
-
+      console.error('Registration error:', error);
+      showMessage('Registration Failed', message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -252,18 +231,12 @@ export default function RegisterScreen() {
             onPress={() => router.back()}
             disabled={loading}
           >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color="#333"
-            />
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
 
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              Join our community
-            </Text>
+            <Text style={styles.subtitle}>Join our community</Text>
           </View>
 
           <View style={styles.roleSelector}>
@@ -514,10 +487,7 @@ export default function RegisterScreen() {
             )}
 
             <TouchableOpacity
-              style={[
-                styles.button,
-                loading && styles.buttonDisabled,
-              ]}
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleRegister}
               disabled={loading}
               testID="register-submit-button"
@@ -527,9 +497,7 @@ export default function RegisterScreen() {
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <Text style={styles.buttonText}>
-                  {role === 'seller'
-                    ? 'Apply as Seller'
-                    : 'Create Account'}
+                  {role === 'seller' ? 'Apply as Seller' : 'Create Account'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -675,7 +643,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-    linkText: {
+  linkText: {
     fontSize: 14,
     color: '#FF6B35',
     fontWeight: '600',
