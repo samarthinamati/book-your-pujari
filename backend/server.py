@@ -555,6 +555,61 @@ async def review_seller_application(
     }
 
 
+class SellerPickupLocationUpdate(BaseModel):
+    delhivery_pickup_name: str = Field(..., min_length=2, max_length=120)
+
+
+@api_router.put("/store/admin/seller-applications/{application_id}/pickup-location")
+async def update_seller_pickup_location(
+    application_id: str,
+    payload: SellerPickupLocationUpdate,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    try:
+        application_object_id = ObjectId(application_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid seller application ID",
+        )
+
+    application = await db.seller_applications.find_one({
+        "_id": application_object_id,
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Seller application not found",
+        )
+
+    pickup_name = payload.delhivery_pickup_name.strip()
+
+    if len(pickup_name) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Enter the registered Delhivery pickup-location name",
+        )
+
+    await db.seller_applications.update_one(
+        {"_id": application_object_id},
+        {
+            "$set": {
+                "delhivery_pickup_name": pickup_name,
+                "delhivery_pickup_status": "pending_verification",
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        },
+    )
+
+    return {
+        "message": "Pickup location name saved. Verify that it matches a registered Delhivery pickup location.",
+        "delhivery_pickup_name": pickup_name,
+        "delhivery_pickup_status": "pending_verification",
+    }
+
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
