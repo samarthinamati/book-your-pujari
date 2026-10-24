@@ -168,6 +168,46 @@ const reviewSellerApplication = async (
 };
 
 
+const saveSellerPickupLocation = async (applicationId: string) => {
+  const pickupName = (pickupNames[applicationId] || '').trim();
+
+  if (!pickupName || pickupName.length < 2) {
+    Alert.alert(
+      'Missing pickup name',
+      'Enter the exact pickup-location name registered with Delhivery.'
+    );
+    return;
+  }
+
+  try {
+    setSavingPickupId(applicationId);
+
+    await apiClient.request(
+      `/store/admin/seller-applications/${applicationId}/pickup-location`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          delhivery_pickup_name: pickupName,
+        }),
+      }
+    );
+
+    Alert.alert(
+      'Saved',
+      'Pickup name saved. Delhivery registration still needs to be verified.'
+    );
+
+    await fetchSellerApplications();
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not save the seller pickup location.'
+    );
+  } finally {
+    setSavingPickupId(null);
+  }
+};
+
 const saveStoreProduct = async () => {
   const name = productName.trim();
   const price = Number(productPrice);
