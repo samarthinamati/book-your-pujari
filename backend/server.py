@@ -429,9 +429,15 @@ async def apply_as_seller(application: SellerApplication):
         "phone": phone,
         "email": email,
         "shop_address": shop_address,
-        "city": city,
-        "pincode": pincode,
-        "status": "pending",
+"city": city,
+"pincode": pincode,
+
+# Delhivery pickup-location details
+"delhivery_pickup_name": "",
+"delhivery_pickup_status": "not_registered",
+"delhivery_pickup_id": "",
+
+"status": "pending",
         "created_at": datetime.utcnow().isoformat(),
     }
 
