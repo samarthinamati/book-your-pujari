@@ -55,6 +55,8 @@ export default function AdminDashboard() {
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [storeOrders, setStoreOrders] = useState<any[]>([]);
   const [sellerApplications, setSellerApplications] = useState<any[]>([]);
+  const [pickupNames, setPickupNames] = useState<Record<string, string>>({});
+const [savingPickupId, setSavingPickupId] = useState<string | null>(null);
 const [loadingSellerApplications, setLoadingSellerApplications] = useState(false);
 const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
