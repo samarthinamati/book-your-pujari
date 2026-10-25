@@ -281,6 +281,9 @@ export default function CustomerStoreScreen() {
         pincode: pincode.trim(),
       });
 
+console.log('STORE ORDER RESPONSE:', JSON.stringify(order));
+console.log('STORE ORDER ID:', getOrderId(order));
+
       storeOrderId = getOrderId(order);
 
       if (!storeOrderId) {
