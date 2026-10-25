@@ -102,24 +102,31 @@ const [savingProduct, setSavingProduct] = useState(false);
     }
   };
 
-const response = await apiClient.request('/store/admin/orders');
 
-console.log('[Admin] Store orders response:', response);
-console.log(
-  '[Admin] Store orders count:',
-  Array.isArray(response) ? response.length : 'Response is not an array'
-);
+const fetchStoreOrders = async () => {
+  try {
+    setLoadingStoreOrders(true);
 
-setStoreOrders(Array.isArray(response) ? response : []);
+    const response = await apiClient.request('/store/admin/orders');
+
+    console.log('[Admin] Store orders response:', response);
+    console.log(
+      '[Admin] Store orders count:',
+      Array.isArray(response) ? response.length : 'Response is not an array'
+    );
+
+    setStoreOrders(Array.isArray(response) ? response : []);
   } catch (error: any) {
+    console.error('[Admin] Failed to load store orders:', error);
     Alert.alert(
       'Error',
       error?.message || 'Unable to load store orders.'
     );
-   } finally {
+  } finally {
     setLoadingStoreOrders(false);
   }
 };
+
   
 const fetchSellerApplications = async () => {
   try {
