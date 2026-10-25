@@ -2842,7 +2842,31 @@ async def create_delhivery_staging_shipment(
     }
 
 
+# ==================== DELHIVERY PRODUCTION SHIPMENT ====================
 
+@api_router.post("/store/admin/orders/{order_id}/delhivery-create")
+async def create_delhivery_production_shipment(
+    order_id: str,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Live Delhivery shipments are disabled. "
+                "No shipment request was sent."
+            ),
+        )
+
+    raise HTTPException(
+        status_code=501,
+        detail=(
+            "Production shipment creation is not implemented yet. "
+            "No shipment request was sent."
+        ),
+    )
 # ==================== DELHIVERY API CONFIG CHECK ====================
 
 @api_router.get("/store/admin/delhivery/config-check")
