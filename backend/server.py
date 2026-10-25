@@ -58,6 +58,13 @@ try:
 except Exception:
     razorpay_client = None
 
+# ==================== DELHIVERY WAREHOUSE MODELS ====================
+
+class DelhiveryWarehouseResponse(BaseModel):
+    message: str
+    delhivery_pickup_name: str
+    delhivery_pickup_status: str
+
 
 # ==================== PYDANTIC MODELS ====================
 
