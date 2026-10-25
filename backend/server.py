@@ -2769,4 +2769,3 @@ async def delhivery_config_check(
 
 
 app.include_router(api_router)
-app.include_router(api_router)
