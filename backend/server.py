@@ -827,6 +827,66 @@ async def update_seller_pickup_location(
     }
 
 
+@api_router.put(
+    "/store/admin/seller-applications/{application_id}/use-existing-pickup"
+)
+async def use_existing_delhivery_pickup(
+    application_id: str,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    try:
+        application_object_id = ObjectId(application_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid seller application ID",
+        )
+
+    application = await db.seller_applications.find_one({
+        "_id": application_object_id,
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Seller application not found",
+        )
+
+    existing_pickup_name = DELHIVERY_EXISTING_PICKUP_NAME
+
+    if not existing_pickup_name:
+        raise HTTPException(
+            status_code=503,
+            detail="Existing Delhivery pickup name is not configured",
+        )
+
+    await db.seller_applications.update_one(
+        {"_id": application_object_id},
+        {
+            "$set": {
+                "delhivery_pickup_name": existing_pickup_name,
+                "delhivery_pickup_status": "existing_location_selected",
+                "delhivery_pickup_id": "",
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+            "$unset": {
+                "delhivery_registration_response": "",
+            },
+        },
+    )
+
+    return {
+        "message": (
+            "Existing pickup location selected. "
+            "No Delhivery registration request was sent."
+        ),
+        "delhivery_pickup_name": existing_pickup_name,
+        "delhivery_pickup_status": "existing_location_selected",
+        "registration_sent": False,
+    }
+
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     phone = credentials.phone.strip()
