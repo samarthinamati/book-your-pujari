@@ -575,6 +575,7 @@ class SellerPickupLocationUpdate(BaseModel):
     delhivery_pickup_name: str = Field(..., min_length=2, max_length=120)
 
 
+
 @api_router.put("/store/admin/seller-applications/{application_id}/pickup-location")
 async def update_seller_pickup_location(
     application_id: str,
@@ -583,6 +584,7 @@ async def update_seller_pickup_location(
 ):
     await require_role(user, ["admin"])
 
+    # Validate seller application ID.
     try:
         application_object_id = ObjectId(application_id)
     except Exception:
@@ -606,24 +608,172 @@ async def update_seller_pickup_location(
     if len(pickup_name) < 2:
         raise HTTPException(
             status_code=400,
-            detail="Enter the registered Delhivery pickup-location name",
+            detail="Enter a valid Delhivery pickup-location name",
         )
 
+    # Never register this application twice through this endpoint.
+    if application.get("delhivery_pickup_status") == "registered":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This seller already has a registered pickup location. "
+                "Do not register it again."
+            ),
+        )
+
+    if not DELHIVERY_API_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Delhivery API token is not configured on the server",
+        )
+
+    # Read the actual seller details from the application.
+    shop_name = str(application.get("shop_name", "")).strip()
+    owner_name = str(application.get("owner_name", "")).strip()
+    phone = str(application.get("phone", "")).strip()
+    email = str(application.get("email", "")).strip()
+    address = str(application.get("shop_address", "")).strip()
+    city = str(application.get("city", "")).strip()
+    pincode = str(application.get("pincode", "")).strip()
+
+    missing = [
+        field for field, value in {
+            "shop_name": shop_name,
+            "owner_name": owner_name,
+            "phone": phone,
+            "shop_address": address,
+            "city": city,
+            "pincode": pincode,
+        }.items()
+        if not value
+    ]
+
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail="Seller application is missing required details: "
+                   + ", ".join(missing),
+        )
+
+    # Delhivery requires a return address too.
+    # This uses the seller's shop address as the return address.
+    warehouse_payload = {
+        "name": pickup_name,
+        "registered_name": shop_name or owner_name,
+        "phone": phone,
+        "address": address,
+        "city": city,
+        "pin": pincode,
+        "country": "India",
+        "return_address": address,
+        "return_city": city,
+        "return_pin": pincode,
+        "return_country": "India",
+    }
+
+    if email:
+        warehouse_payload["email"] = email
+
+    headers = {
+        "Authorization": f"Token {DELHIVERY_API_TOKEN}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+    # Do not mark the warehouse as registered unless Delhivery confirms
+    # a successful response. A timeout can leave the result uncertain.
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                DELHIVERY_WAREHOUSE_URL,
+                headers=headers,
+                json=warehouse_payload,
+            )
+    except httpx.TimeoutException as exc:
+        logger.warning(
+            "Delhivery warehouse registration timed out for application %s",
+            application_id,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Delhivery did not respond in time. Registration status "
+                "is uncertain; check Delhivery before retrying."
+            ),
+        ) from exc
+    except httpx.RequestError as exc:
+        logger.exception("Delhivery warehouse request failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to contact Delhivery. Please try again later.",
+        ) from exc
+
+    try:
+        result_data = response.json()
+    except ValueError:
+        result_data = {}
+
+    # Delhivery may return an HTTP error or an application-level error.
+    if not response.is_success:
+        logger.error(
+            "Delhivery warehouse registration failed: HTTP %s",
+            response.status_code,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Delhivery rejected the warehouse registration. "
+                "Check the seller details and Delhivery account."
+            ),
+        )
+
+    if (
+        isinstance(result_data, dict)
+        and (
+            result_data.get("success") is False
+            or result_data.get("status") == "Failed"
+            or result_data.get("error")
+            or result_data.get("errors")
+        )
+    ):
+        logger.warning(
+            "Delhivery returned a warehouse registration error for %s",
+            application_id,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Delhivery did not confirm warehouse registration. "
+                "Check the details and Delhivery response before retrying."
+            ),
+        )
+
+    # Store the exact pickup name and registration result after a
+    # successful HTTP response without a reported application error.
     await db.seller_applications.update_one(
         {"_id": application_object_id},
         {
             "$set": {
                 "delhivery_pickup_name": pickup_name,
-                "delhivery_pickup_status": "pending_verification",
+                "delhivery_pickup_status": "registered",
+                "delhivery_pickup_id": str(
+                    result_data.get("id", "")
+                    if isinstance(result_data, dict)
+                    else ""
+                ),
+                "delhivery_registration_response": result_data,
                 "updated_at": datetime.utcnow().isoformat(),
             }
         },
     )
 
     return {
-        "message": "Pickup location name saved. Verify that it matches a registered Delhivery pickup location.",
+        "message": (
+            "Delhivery accepted the warehouse registration request. "
+            "Verify the warehouse in Delhivery before creating shipments."
+        ),
         "delhivery_pickup_name": pickup_name,
-        "delhivery_pickup_status": "pending_verification",
+        "delhivery_pickup_status": "registered",
     }
 
 
