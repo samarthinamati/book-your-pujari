@@ -632,7 +632,6 @@ async def update_seller_pickup_location(
                 "$set": {
                     "delhivery_pickup_name": pickup_name,
                     "delhivery_pickup_status": "test_registered",
-                    "delhivery_pickup_id": "",
                     "delhivery_registration_response": {
                         "test_mode": True,
                         "message": "Simulated registration; Delhivery was not contacted.",
