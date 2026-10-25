@@ -2857,15 +2857,7 @@ async def delhivery_config_check(
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["admin"])
-    if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
-    raise HTTPException(
-        status_code=403,
-        detail=(
-            "Live Delhivery shipments are disabled. "
-            "Enable them only after reviewing the production integration."
-        ),
-    )
-
+  
     test_mode = (
         os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
         == "true"
