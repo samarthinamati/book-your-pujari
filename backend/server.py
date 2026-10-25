@@ -2758,6 +2758,14 @@ async def create_delhivery_staging_shipment(
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["admin"])
+        if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Live Delhivery shipments are disabled. "
+                "Production shipment creation is not authorized."
+            ),
+        )
 
     test_mode = (
         os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
