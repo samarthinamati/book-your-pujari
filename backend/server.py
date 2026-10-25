@@ -2651,5 +2651,101 @@ async def verify_store_payment(
         "store_order_id": payload.store_order_id
     }
 
+# ==================== DELHIVERY TEST SHIPMENT ====================
+
+@api_router.post("/store/admin/orders/{order_id}/delhivery-test")
+async def test_delhivery_shipment(
+    order_id: str,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    # Never run this simulation unless test mode is enabled.
+    delhivery_test_mode = (
+        os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
+        == "true"
+    )
+
+    if not delhivery_test_mode:
+        raise HTTPException(
+            status_code=403,
+            detail="Delhivery test mode must be enabled.",
+        )
+
+    try:
+        order_object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid store order ID",
+        )
+
+    order = await db.store_orders.find_one({
+        "_id": order_object_id,
+    })
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Store order not found",
+        )
+
+    # Online orders must have verified payment before shipment preparation.
+    if (
+        order.get("payment_method") != "cod"
+        and order.get("payment_status") != "paid"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Online payment must be verified before shipment preparation.",
+        )
+
+    items = order.get("items", [])
+
+    if not items:
+        raise HTTPException(
+            status_code=400,
+            detail="The order contains no items.",
+        )
+
+    shipment_items = []
+
+    for item in items:
+        shipment_items.append({
+            "name": str(item.get("name", "Puja Item")),
+            "quantity": int(item.get("quantity", 1)),
+            "price": float(item.get("unit_price", 0)),
+        })
+
+    # This is only a preview. No request is sent to Delhivery.
+    shipment_preview = {
+        "pickup_location": DELHIVERY_EXISTING_PICKUP_NAME,
+        "order_id": str(order["_id"]),
+        "payment_method": order.get("payment_method", ""),
+        "payment_status": order.get("payment_status", ""),
+        "customer_name": order.get("customer_name", ""),
+        "customer_phone": order.get("customer_phone", ""),
+        "delivery_address": order.get("delivery_address", ""),
+        "city": order.get("city", ""),
+        "pincode": order.get("pincode", ""),
+        "total_amount": float(order.get("total_amount", 0)),
+        "items": shipment_items,
+    }
+
+    return {
+        "test_mode": True,
+        "simulated": True,
+        "delhivery_contacted": False,
+        "waybill_created": False,
+        "message": (
+            "Shipment preview prepared successfully. "
+            "No shipment or waybill was created."
+        ),
+        "shipment_preview": shipment_preview,
+    }
+
+
+app.include_router(api_router)
+
 
 app.include_router(api_router)
