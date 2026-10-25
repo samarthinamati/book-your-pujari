@@ -39,6 +39,14 @@ MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = client.book_your_pujari
 
+# ==================== DELHIVERY CONFIGURATION ====================
+
+DELHIVERY_API_TOKEN = os.getenv("DELHIVERY_API_TOKEN", "")
+
+DELHIVERY_WAREHOUSE_URL = (
+    "https://track.delhivery.com/api/backend/clientwarehouse/create/"
+)
+
 # Razorpay Setup
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_key")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "dummy_secret")
