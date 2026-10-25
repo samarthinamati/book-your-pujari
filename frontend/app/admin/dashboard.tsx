@@ -1085,13 +1085,87 @@ const updateStoreOrderTracking = async (
               Amount: ₹{Number(order.total_amount ?? order.amount ?? 0).toFixed(2)}
             </Text>
 
-            <Text>
-              Courier: {order.courier || 'Not assigned'}
-            </Text>
+            {(() => {
+  const orderId = String(order.id || order._id || '');
+  const inputs = trackingInputs[orderId] || {
+    courier: order.courier || 'Delhivery',
+    tracking_number: order.tracking_number || '',
+    tracking_url: order.tracking_url || '',
+  };
 
-            <Text>
-              Tracking number: {order.tracking_number || 'Not added'}
-            </Text>
+  return (
+    <View style={{ gap: 8, marginTop: 12 }}>
+      <Text style={{ fontWeight: 'bold' }}>
+        Delivery Tracking
+      </Text>
+
+      <TextInput
+        value={inputs.courier}
+        onChangeText={(value) =>
+          setTrackingInputs((previous) => ({
+            ...previous,
+            [orderId]: { ...inputs, courier: value },
+          }))
+        }
+        placeholder="Courier name (e.g. Delhivery)"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        value={inputs.tracking_number}
+        onChangeText={(value) =>
+          setTrackingInputs((previous) => ({
+            ...previous,
+            [orderId]: {
+              ...inputs,
+              tracking_number: value,
+            },
+          }))
+        }
+        placeholder="Tracking ID / AWB number"
+        autoCapitalize="characters"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        value={inputs.tracking_url}
+        onChangeText={(value) =>
+          setTrackingInputs((previous) => ({
+            ...previous,
+            [orderId]: {
+              ...inputs,
+              tracking_url: value,
+            },
+          }))
+        }
+        placeholder="Tracking URL (optional)"
+        autoCapitalize="none"
+        keyboardType="url"
+        style={productInputStyle}
+      />
+
+      <TouchableOpacity
+        disabled={savingTrackingId === orderId}
+        onPress={() => saveTrackingDetails(order)}
+        style={{
+          backgroundColor: '#2874F0',
+          padding: 12,
+          borderRadius: 8,
+          alignItems: 'center',
+          opacity: savingTrackingId === orderId ? 0.6 : 1,
+        }}
+      >
+        {savingTrackingId === orderId ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+            Save Tracking Details
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+})()}
             
 {order.tracking_url ? (
   <TouchableOpacity
