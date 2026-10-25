@@ -102,13 +102,15 @@ const [savingProduct, setSavingProduct] = useState(false);
     }
   };
 
-const fetchStoreOrders = async () => {
-  try {
-    setLoadingStoreOrders(true);
+const response = await apiClient.request('/store/admin/orders');
 
-    const response = await apiClient.request('/store/admin/orders');
+console.log('[Admin] Store orders response:', response);
+console.log(
+  '[Admin] Store orders count:',
+  Array.isArray(response) ? response.length : 'Response is not an array'
+);
 
-    setStoreOrders(Array.isArray(response) ? response : []);
+setStoreOrders(Array.isArray(response) ? response : []);
   } catch (error: any) {
     Alert.alert(
       'Error',
