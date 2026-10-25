@@ -2744,7 +2744,7 @@ async def test_delhivery_shipment(
         "shipment_preview": shipment_preview,
     }
     
-# ==================== DELHIVERY STAGING SHIPMENT ====================
+# ==================== DELHIVERY SHIPMENT PREVIEW ====================
 
 @api_router.post("/store/admin/orders/{order_id}/delhivery-staging")
 async def create_delhivery_staging_shipment(
@@ -2761,13 +2761,7 @@ async def create_delhivery_staging_shipment(
     if not test_mode:
         raise HTTPException(
             status_code=403,
-            detail="Delhivery test mode must be enabled.",
-        )
-
-    if not DELHIVERY_API_TOKEN:
-        raise HTTPException(
-            status_code=503,
-            detail="Delhivery API token is not configured.",
+            detail="Test mode must remain enabled during review.",
         )
 
     try:
@@ -2786,159 +2780,61 @@ async def create_delhivery_staging_shipment(
             detail="Store order not found.",
         )
 
-    if (
-        order.get("payment_method") != "cod"
-        and order.get("payment_status") != "paid"
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Online payment must be verified before shipment creation.",
-        )
-
     if not order.get("items"):
         raise HTTPException(
             status_code=400,
             detail="The order contains no items.",
         )
 
-    # Safety: refuse if this order already has a saved waybill.
+    payment_method = str(order.get("payment_method", "")).lower()
+
+    if payment_method != "cod" and order.get("payment_status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Online payment must be verified before shipment preparation.",
+        )
+
     if order.get("tracking_number"):
         raise HTTPException(
             status_code=409,
             detail="This order already has a tracking number.",
         )
 
-    # This endpoint is deliberately staging-only.
-    staging_url = "https://staging-express.delhivery.com/api/cmu/create.json"
-
-    shipment = {
-        "name": str(order.get("customer_name", "")).strip(),
-        "order": str(order["_id"]),
-        "phone": str(order.get("customer_phone", "")).strip(),
-        "add": str(order.get("delivery_address", "")).strip(),
-        "city": str(order.get("city", "")).strip(),
-        "pin": str(order.get("pincode", "")).strip(),
-        "country": "India",
-        "payment_mode": (
-            "COD" if order.get("payment_method") == "cod" else "Prepaid"
-        ),
-        "cod_amount": (
-            float(order.get("total_amount", 0))
-            if order.get("payment_method") == "cod"
-            else 0
-        ),
+    shipment_preview = {
+        "order_id": str(order["_id"]),
+        "pickup_location": DELHIVERY_EXISTING_PICKUP_NAME,
+        "customer_name": order.get("customer_name", ""),
+        "customer_phone": order.get("customer_phone", ""),
+        "delivery_address": order.get("delivery_address", ""),
+        "city": order.get("city", ""),
+        "pincode": order.get("pincode", ""),
+        "payment_method": payment_method,
+        "payment_status": order.get("payment_status", ""),
         "total_amount": float(order.get("total_amount", 0)),
-        "quantity": sum(
-            int(item.get("quantity", 1))
-            for item in order.get("items", [])
-        ),
-        "products_desc": ", ".join(
-            str(item.get("name", "Puja Item"))
-            for item in order.get("items", [])
-        ),
-        "return_name": "PujariGo",
-        "return_address": str(order.get("pickup_address", "")).strip(),
-        "return_city": str(order.get("pickup_city", "")).strip(),
-        "return_phone": str(order.get("pickup_phone", "")).strip(),
-        "return_pin": str(order.get("pickup_pincode", "")).strip(),
-        "waybill": "",
-        "weight": 500,
-        "shipping_mode": "Surface",
-        "pickup_location": {
-            "name": DELHIVERY_EXISTING_PICKUP_NAME
-        },
-    }
-
-    # Validate required shipment fields before contacting staging.
-    required_fields = ["name", "phone", "add", "pin"]
-    missing_fields = [
-        field for field in required_fields
-        if not str(shipment.get(field, "")).strip()
-    ]
-
-    if missing_fields:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Required delivery details are missing.",
-                "missing_fields": missing_fields,
-            },
-        )
-
-    import json
-    import httpx
-
-    payload = {
-        "format": "json",
-        "data": json.dumps({"shipments": [shipment]}),
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                staging_url,
-                headers={
-                    "Authorization": f"Token {DELHIVERY_API_TOKEN}",
-                    "Accept": "application/json",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data=payload,
-            )
-    except httpx.RequestError:
-        raise HTTPException(
-            status_code=502,
-            detail="Could not connect to Delhivery staging.",
-        )
-
-    try:
-        result = response.json()
-    except ValueError:
-        result = {"raw_response": response.text[:1000]}
-
-    if response.status_code >= 400:
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "message": "Delhivery staging rejected the shipment request.",
-                "staging_status": response.status_code,
-                "response": result,
-            },
-        )
-
-    # Do not save or report a waybill unless staging returned one.
-    packages = result.get("packages", []) if isinstance(result, dict) else []
-    waybill = ""
-
-    if packages and isinstance(packages[0], dict):
-        waybill = str(packages[0].get("waybill", "")).strip()
-
-    if waybill:
-        await db.store_orders.update_one(
-            {"_id": order_object_id, "tracking_number": {"$in": ["", None]}},
+        "items": [
             {
-                "$set": {
-                    "courier": "Delhivery Staging",
-                    "tracking_number": waybill,
-                    "tracking_url": (
-                        "https://staging-express.delhivery.com/"
-                        "api/v1/packages/json/?waybill=" + waybill
-                    ),
-                    "delhivery_staging_response": result,
-                }
-            },
-        )
+                "name": str(item.get("name", "Puja Item")),
+                "quantity": int(item.get("quantity", 1)),
+                "price": float(item.get("unit_price", 0)),
+            }
+            for item in order.get("items", [])
+        ],
+    }
 
     return {
         "test_mode": True,
-        "staging_only": True,
+        "preview_only": True,
+        "delhivery_contacted": False,
         "production_contacted": False,
-        "staging_http_status": response.status_code,
-        "waybill": waybill or None,
-        "response": result,
+        "waybill_created": False,
+        "shipment_preview": shipment_preview,
         "message": (
-            "Staging request completed. Review the response before proceeding."
+            "Preview prepared. No request was sent to Delhivery. "
+            "Production integration has not been activated."
         ),
     }
+
+
 
 # ==================== DELHIVERY API CONFIG CHECK ====================
 
