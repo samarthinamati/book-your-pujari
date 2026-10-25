@@ -2758,7 +2758,7 @@ async def create_delhivery_staging_shipment(
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["admin"])
-        if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
+    if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
         raise HTTPException(
             status_code=403,
             detail=(
