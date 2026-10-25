@@ -446,22 +446,33 @@ console.log('COD ERROR MESSAGE:', errorMessage);
               : 'Tracking details will appear when provided by the store.'}
           </Text>
 
-          {order.tracking_url ? (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => {
-                Alert.alert(
-                  'Tracking Link',
-                  order.tracking_url,
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Text style={styles.secondaryButtonText}>
-                View Tracking Link
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+          {order.tracking_number ? (
+  <TouchableOpacity
+    style={styles.secondaryButton}
+    onPress={async () => {
+      const trackingPage =
+        order.tracking_url?.trim() ||
+        'https://www.delhivery.com/tracking';
+
+      try {
+        await Linking.openURL(trackingPage);
+      } catch {
+        Alert.alert(
+          'Unable to open tracking',
+          'Please try opening Delhivery tracking in your browser.'
+        );
+      }
+    }}
+  >
+    <Text style={styles.secondaryButtonText}>
+      Track My Order ↗
+    </Text>
+  </TouchableOpacity>
+) : (
+  <Text style={styles.trackingText}>
+    Tracking will be available after the store adds a courier tracking number.
+  </Text>
+)}
         </View>
 
         <View style={styles.orderInfoRow}>
