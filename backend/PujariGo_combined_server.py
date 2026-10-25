@@ -668,8 +668,6 @@ async def update_seller_pickup_location(
                 "Seller pickup registration is disabled. "
                 "Confirm Delhivery API access before enabling it."
             ),
-        )
-
     )
     # Live mode: prevent duplicate registrations.
     if application.get("delhivery_pickup_status") == "registered":
