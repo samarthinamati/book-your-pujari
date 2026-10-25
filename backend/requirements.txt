@@ -6,3 +6,4 @@ PyJWT
 bcrypt
 python-multipart
 httpx
+uvicorn
