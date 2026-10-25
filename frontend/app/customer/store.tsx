@@ -360,6 +360,8 @@ export default function CustomerStoreScreen() {
           : typeof e?.message === 'string'
             ? e.message
             : 'Please check your order status and try again.';
+console.log('COD ORDER ERROR:', e);
+console.log('COD ERROR MESSAGE:', errorMessage);
 
       if (
         errorCode === 'PAYMENT_CANCELLED' ||
