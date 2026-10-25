@@ -1,0 +1,8 @@
+motor
+pymongo
+razorpay
+pydantic
+PyJWT
+bcrypt
+python-multipart
+httpx
