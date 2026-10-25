@@ -659,14 +659,17 @@ async def update_seller_pickup_location(
             "test_mode": True,
         }
 
-        # SAFETY: Never register a new pickup location through this endpoint.
-    # The existing PUJARIGO B2C location must be reused instead.
-    raise HTTPException(
-        status_code=403,
-        detail=(
-            "New Delhivery pickup registration is disabled. "
-            "Use the existing PUJARIGO B2C pickup location."
-        ),
+        
+    # Allow seller pickup registration only when explicitly enabled.
+    if not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Seller pickup registration is disabled. "
+                "Confirm Delhivery API access before enabling it."
+            ),
+        )
+
     )
     # Live mode: prevent duplicate registrations.
     if application.get("delhivery_pickup_status") == "registered":
