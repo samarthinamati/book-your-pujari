@@ -442,7 +442,7 @@ console.log('COD ERROR MESSAGE:', errorMessage);
           <Text style={styles.trackingText}>
             {order.courier ? `Courier: ${order.courier}\n` : ''}
             {order.tracking_number
-              ? `Tracking number: ${order.tracking_number}`
+              ? `Order ID: ${order.tracking_number}`
               : 'Tracking details will appear when provided by the store.'}
           </Text>
 
