@@ -49,6 +49,12 @@ DELHIVERY_WAREHOUSE_URL = (
 # Reuse the existing Delhivery pickup location.
 # Never register dummy or admin test addresses.
 DELHIVERY_EXISTING_PICKUP_NAME = "PUJARIGO B2C"
+DELHIVERY_LIVE_SHIPMENTS_ENABLED = (
+    os.getenv("DELHIVERY_LIVE_SHIPMENTS_ENABLED", "false")
+    .strip()
+    .lower()
+    == "true"
+)
 
 # Razorpay Setup
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_key")
