@@ -315,6 +315,55 @@ const updateStoreOrderTracking = async (
     );
   }
 };
+  
+const saveTrackingDetails = async (order: any) => {
+  const orderId = String(order.id || order._id || '');
+
+  if (!orderId) {
+    Alert.alert('Error', 'Order ID is missing.');
+    return;
+  }
+
+  const inputs = trackingInputs[orderId] || {
+    courier: order.courier || 'DTDC',
+    tracking_number: order.tracking_number || '',
+    tracking_url: order.tracking_url || '',
+  };
+
+  if (!inputs.courier.trim() || !inputs.tracking_number.trim()) {
+    Alert.alert(
+      'Missing details',
+      'Enter the courier name and actual tracking ID.'
+    );
+    return;
+  }
+
+  try {
+    setSavingTrackingId(orderId);
+
+    await apiClient.put(
+      `/store/admin/orders/${orderId}/tracking`,
+      {
+        order_status: order.order_status || 'Shipped',
+        courier: inputs.courier.trim(),
+        tracking_number: inputs.tracking_number.trim(),
+        tracking_url: inputs.tracking_url.trim(),
+      }
+    );
+
+    await fetchStoreOrders();
+
+    Alert.alert('Saved', 'Tracking details saved successfully.');
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not save tracking details.'
+    );
+  } finally {
+    setSavingTrackingId(null);
+  }
+};
+
 
   const onRefresh = () => {
     setRefreshing(true);
