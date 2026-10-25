@@ -611,7 +611,47 @@ async def update_seller_pickup_location(
             detail="Enter a valid Delhivery pickup-location name",
         )
 
-    # Never register this application twice through this endpoint.
+        # Test mode: simulate registration without contacting Delhivery.
+    DELHIVERY_TEST_MODE = (
+        os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
+        == "true"
+    )
+
+    if DELHIVERY_TEST_MODE:
+        pickup_name = payload.delhivery_pickup_name.strip()
+
+        if len(pickup_name) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Enter a valid test pickup-location name",
+            )
+
+        await db.seller_applications.update_one(
+            {"_id": application_object_id},
+            {
+                "$set": {
+                    "delhivery_pickup_name": pickup_name,
+                    "delhivery_pickup_status": "test_registered",
+                    "delhivery_pickup_id": "",
+                    "delhivery_registration_response": {
+                        "test_mode": True,
+                        "message": "Simulated registration; Delhivery was not contacted.",
+                    },
+                    "updated_at": datetime.utcnow().isoformat(),
+                }
+            },
+        )
+
+        return {
+            "message": (
+                "Test registration successful. No request was sent to Delhivery."
+            ),
+            "delhivery_pickup_name": pickup_name,
+            "delhivery_pickup_status": "test_registered",
+            "test_mode": True,
+        }
+
+    # Live mode: prevent duplicate registrations.
     if application.get("delhivery_pickup_status") == "registered":
         raise HTTPException(
             status_code=409,
@@ -620,7 +660,6 @@ async def update_seller_pickup_location(
                 "Do not register it again."
             ),
         )
-
     if not DELHIVERY_API_TOKEN:
         raise HTTPException(
             status_code=503,
