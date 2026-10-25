@@ -46,6 +46,9 @@ DELHIVERY_API_TOKEN = os.getenv("DELHIVERY_API_TOKEN", "")
 DELHIVERY_WAREHOUSE_URL = (
     "https://track.delhivery.com/api/backend/clientwarehouse/create/"
 )
+# Reuse the existing Delhivery pickup location.
+# Never register dummy or admin test addresses.
+DELHIVERY_EXISTING_PICKUP_NAME = "PUJARIGO B2C"
 
 # Razorpay Setup
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_key")
