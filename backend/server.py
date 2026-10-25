@@ -2743,9 +2743,30 @@ async def test_delhivery_shipment(
         ),
         "shipment_preview": shipment_preview,
     }
+# ==================== DELHIVERY API CONFIG CHECK ====================
+
+@api_router.get("/store/admin/delhivery/config-check")
+async def delhivery_config_check(
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    test_mode = (
+        os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
+        == "true"
+    )
+
+    return {
+        "token_configured": bool(DELHIVERY_API_TOKEN),
+        "test_mode": test_mode,
+        "pickup_location": DELHIVERY_EXISTING_PICKUP_NAME,
+        "shipment_created": False,
+        "delhivery_contacted": False,
+        "message": (
+            "Configuration check only. No request was sent to Delhivery."
+        ),
+    }
 
 
 app.include_router(api_router)
-
-
 app.include_router(api_router)
