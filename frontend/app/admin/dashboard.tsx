@@ -54,6 +54,12 @@ export default function AdminDashboard() {
   const [saints, setSaints] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [storeOrders, setStoreOrders] = useState<any[]>([]);
+  
+const [trackingInputs, setTrackingInputs] = useState<
+  Record<string, { courier: string; tracking_number: string; tracking_url: string }>
+>({});
+const [savingTrackingId, setSavingTrackingId] = useState<string | null>(null);
+
   const [sellerApplications, setSellerApplications] = useState<any[]>([]);
   const [pickupNames, setPickupNames] = useState<Record<string, string>>({});
 const [savingPickupId, setSavingPickupId] = useState<string | null>(null);
