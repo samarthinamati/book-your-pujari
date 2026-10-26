@@ -185,6 +185,11 @@ const updateStoreOrderTracking = async (
   orderStatus: string
 ) => {
   const orderId = String(order.id || order._id || '');
+  const tracking = trackingEdits[orderId] || {
+  courier: order.courier || 'Dehlivery',
+  tracking_number: order.tracking_number || '',
+  tracking_url: order.tracking_url || '',
+};
 
   if (!orderId) {
     Alert.alert('Error', 'Order ID is missing.');
