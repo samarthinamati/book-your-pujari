@@ -352,15 +352,23 @@ export default function SellerProductsScreen() {
             keyboardType="decimal-pad"
           />
 
-          <Text style={styles.label}>Stock quantity *</Text>
-          <TextInput
-            style={styles.input}
-            value={stock}
-            onChangeText={setStock}
-            placeholder="Enter available quantity"
-            keyboardType="number-pad"
-          />
+         <Text style={styles.label}>Weight in grams *</Text>
+<TextInput
+  style={styles.input}
+  value={weightGrams}
+  onChangeText={setWeightGrams}
+  placeholder="Enter weight in grams"
+  keyboardType="number-pad"
+/>
 
+<Text style={styles.label}>Stock quantity *</Text>
+<TextInput
+  style={styles.input}
+  value={stock}
+  onChangeText={setStock}
+  placeholder="Enter stock"
+  keyboardType="number-pad"
+/>
           <Text style={styles.label}>Product photo</Text>
 
           {(selectedImageUri || imageUrl) ? (
