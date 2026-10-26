@@ -729,7 +729,15 @@ const updateStoreOrderTracking = async (
       </Text>
     </TouchableOpacity>
 
-    <View style={{ padding: 16, flex: 1 }}>
+    <ScrollView
+  style={{ flex: 1 }}
+  contentContainerStyle={{
+    padding: 16,
+    paddingBottom: 100,
+    flexGrow: 1,
+  }}
+  keyboardShouldPersistTaps="handled"
+>
       {storeView === 'menu' && (
         <View style={{ gap: 12 }}>
           <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 2, color: '#222' }}>
