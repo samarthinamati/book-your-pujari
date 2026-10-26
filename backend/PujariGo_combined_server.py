@@ -85,95 +85,6 @@ class DelhiveryShippingEstimateRequest(BaseModel):
 
 # ==================== DELHIVERY SHIPPING RATE ESTIMATE ====================
 
-@api_router.post("/store/shipping/estimate")
-async def estimate_store_shipping(
-    payload: DelhiveryShippingEstimateRequest,
-    user: dict = Depends(get_current_user),
-):
-    await require_role(user, ["customer", "admin"])
-
-    if not DELHIVERY_API_TOKEN:
-        raise HTTPException(
-            status_code=503,
-            detail="Shipping rate service is not configured",
-        )
-
-    if not payload.pickup_pincode.isdigit() or not payload.delivery_pincode.isdigit():
-        raise HTTPException(
-            status_code=400,
-            detail="PIN codes must contain only digits",
-        )
-
-    if payload.payment_mode not in {"Pre-paid", "COD"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Payment mode must be Pre-paid or COD",
-        )
-
-    if payload.shipping_mode not in {"E", "S"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Shipping mode must be E (Express) or S (Surface)",
-        )
-
-    params = {
-        "md": payload.shipping_mode,
-        "cgm": payload.weight_grams,
-        "o_pin": payload.pickup_pincode,
-        "d_pin": payload.delivery_pincode,
-        "ss": "Delivered",
-        "pt": payload.payment_mode,
-    }
-
-    headers = {
-        "Authorization": f"Token {DELHIVERY_API_TOKEN}",
-        "Accept": "application/json",
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.get(
-                "https://track.delhivery.com/api/kinko/v1/invoice/charges/.json",
-                params=params,
-                headers=headers,
-            )
-
-        if response.status_code >= 400:
-            logger.error(
-                "Delhivery rate estimate failed with status %s",
-                response.status_code,
-            )
-            raise HTTPException(
-                status_code=502,
-                detail="Unable to calculate shipping estimate",
-            )
-
-        rate_data = response.json()
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="Shipping estimate request timed out",
-        )
-    except httpx.RequestError:
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to contact shipping service",
-        )
-    except ValueError:
-        raise HTTPException(
-            status_code=502,
-            detail="Invalid response from shipping service",
-        )
-
-    return {
-        "provider": "Delhivery",
-        "currency": "INR",
-        "shipping_mode": payload.shipping_mode,
-        "payment_mode": payload.payment_mode,
-        "estimate": rate_data,
-        "note": "Estimated charges only. Final courier charges may differ.",
-    }
 
 
 
@@ -381,6 +292,95 @@ async def require_role(user: dict, roles: List[str]):
             status_code=403,
             detail="Unauthorized role access"
         )
+        @api_router.post("/store/shipping/estimate")
+async def estimate_store_shipping(
+    payload: DelhiveryShippingEstimateRequest,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["customer", "admin"])
+
+    if not DELHIVERY_API_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Shipping rate service is not configured",
+        )
+
+    if not payload.pickup_pincode.isdigit() or not payload.delivery_pincode.isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail="PIN codes must contain only digits",
+        )
+
+    if payload.payment_mode not in {"Pre-paid", "COD"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment mode must be Pre-paid or COD",
+        )
+
+    if payload.shipping_mode not in {"E", "S"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipping mode must be E (Express) or S (Surface)",
+        )
+
+    params = {
+        "md": payload.shipping_mode,
+        "cgm": payload.weight_grams,
+        "o_pin": payload.pickup_pincode,
+        "d_pin": payload.delivery_pincode,
+        "ss": "Delivered",
+        "pt": payload.payment_mode,
+    }
+
+    headers = {
+        "Authorization": f"Token {DELHIVERY_API_TOKEN}",
+        "Accept": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                "https://track.delhivery.com/api/kinko/v1/invoice/charges/.json",
+                params=params,
+                headers=headers,
+            )
+
+        if response.status_code >= 400:
+            logger.error(
+                "Delhivery rate estimate failed with status %s",
+                response.status_code,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="Unable to calculate shipping estimate",
+            )
+
+        rate_data = response.json()
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail="Shipping estimate request timed out",
+        )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to contact shipping service",
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid response from shipping service",
+        )
+
+    return {
+        "provider": "Delhivery",
+        "currency": "INR",
+        "shipping_mode": payload.shipping_mode,
+        "payment_mode": payload.payment_mode,
+        "estimate": rate_data,
+        "note": "Estimated charges only. Final courier charges may differ.",
+    }
 
 
 # ==================== ADMIN ACCOUNT SETUP ====================
