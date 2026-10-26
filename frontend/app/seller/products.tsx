@@ -96,6 +96,7 @@ export default function SellerProductsScreen() {
     setCategory(product.category || 'Puja Samagri');
     setPrice(String(product.price ?? ''));
     setStock(String(product.stock ?? ''));
+    setWeightGrams(String(product.weight_grams ?? ''));
     setImageUrl(product.image_url || '');
     setSelectedImageUri('');
     setSelectedImageFile(null);
