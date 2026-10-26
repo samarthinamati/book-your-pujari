@@ -500,6 +500,9 @@ export default function SellerProductsScreen() {
                 <Text style={styles.productStock}>
                   Stock: {product.stock}
                 </Text>
+                <Text style={styles.productStock}>
+  Weight: {product.weight_grams ?? '—'} g
+</Text>
                 <Text
                   style={[
                     styles.status,
