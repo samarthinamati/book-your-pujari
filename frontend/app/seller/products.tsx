@@ -186,6 +186,7 @@ export default function SellerProductsScreen() {
     const cleanName = name.trim();
     const cleanPrice = Number(price);
     const cleanStock = Number(stock);
+    const cleanWeight = Number(weightGrams);
 
     if (!cleanName) {
       Alert.alert('Missing name', 'Please enter the product name.');
