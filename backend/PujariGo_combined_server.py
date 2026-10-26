@@ -2427,12 +2427,21 @@ async def get_seller_store_orders(
         if not seller_items:
             continue
 
+        
         seller_order = serialize_store_order(order)
         seller_order["items"] = seller_items
         seller_order["seller_total"] = round(
             sum(float(item.get("line_total", 0)) for item in seller_items),
             2,
         )
+
+        # Customer delivery details for the seller.
+        seller_order["customer_name"] = order.get("customer_name", "")
+        seller_order["customer_phone"] = order.get("customer_phone", "")
+        seller_order["delivery_address"] = order.get("delivery_address", "")
+        seller_order["city"] = order.get("city", "")
+        seller_order["pincode"] = order.get("pincode", "")
+
         seller_orders.append(seller_order)
 
     return seller_orders
