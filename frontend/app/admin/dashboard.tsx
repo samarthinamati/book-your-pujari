@@ -201,9 +201,9 @@ const updateStoreOrderTracking = async (
       `/store/admin/orders/${orderId}/tracking`,
       {
         order_status: orderStatus,
-        courier: order.courier || 'DTDC',
-        tracking_number: order.tracking_number || '',
-        tracking_url: order.tracking_url || '',
+        courier: tracking.courier,
+tracking_number: tracking.tracking_number,
+tracking_url: tracking.tracking_url,
       }
     );
 
