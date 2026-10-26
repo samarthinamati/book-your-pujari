@@ -199,13 +199,17 @@ export default function SellerProductsScreen() {
     }
 
     if (
-      !stock.trim() ||
-      !Number.isInteger(cleanStock) ||
-      cleanStock < 0
-    ) {
-      Alert.alert('Invalid stock', 'Enter a whole number of 0 or more.');
-      return;
-    }
+  !weightGrams.trim() ||
+  !Number.isInteger(cleanWeight) ||
+  cleanWeight <= 0 ||
+  cleanWeight > 100000
+) {
+  Alert.alert(
+    'Invalid weight',
+    'Enter a whole number of grams greater than 0.'
+  );
+  return;
+}
 
     setSaving(true);
 
