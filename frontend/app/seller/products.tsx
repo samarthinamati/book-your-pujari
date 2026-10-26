@@ -49,6 +49,7 @@ export default function SellerProductsScreen() {
   const [category, setCategory] = useState('Puja Samagri');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [stock, setStock] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState<any>(null);
