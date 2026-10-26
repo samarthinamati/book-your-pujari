@@ -167,6 +167,7 @@ const saveStoreProduct = async () => {
         price,
         image_url: productImageUrl.trim(),
         stock,
+        weight_grams: weight,
         is_available: stock > 0,
       }),
     });
