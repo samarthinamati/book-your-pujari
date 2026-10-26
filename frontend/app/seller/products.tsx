@@ -82,6 +82,7 @@ export default function SellerProductsScreen() {
     setCategory('Puja Samagri');
     setPrice('');
     setStock('');
+    setWeightGrams('');
     setImageUrl('');
     setSelectedImageUri('');
     setSelectedImageFile(null);
