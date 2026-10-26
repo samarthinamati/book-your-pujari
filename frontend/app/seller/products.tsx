@@ -222,6 +222,7 @@ export default function SellerProductsScreen() {
         category: category.trim() || 'Puja Samagri',
         price: cleanPrice,
         stock: cleanStock,
+        weight_grams: cleanWeight,
         image_url: uploadedImageUrl,
         is_available: cleanStock > 0,
       };
