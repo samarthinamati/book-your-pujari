@@ -1082,9 +1082,24 @@ tracking_url: tracking.tracking_url,
 </Text>
 <TextInput
   placeholder="Enter tracking ID"
-  defaultValue={order.tracking_number || ''}
+  value={
+    trackingEdits[String(order.id || order._id || '')]?.tracking_number
+    ?? order.tracking_number
+    ?? ''
+  }
   onChangeText={(value) => {
-    order.tracking_number = value;
+    const orderId = String(order.id || order._id || '');
+
+    setTrackingEdits((previous) => ({
+      ...previous,
+      [orderId]: {
+        courier:
+          previous[orderId]?.courier ?? order.courier ?? 'DTDC',
+        tracking_number: value,
+        tracking_url:
+          previous[orderId]?.tracking_url ?? order.tracking_url ?? '',
+      },
+    }));
   }}
   style={productInputStyle}
 />
