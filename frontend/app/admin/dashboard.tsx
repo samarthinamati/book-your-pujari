@@ -125,6 +125,7 @@ const saveStoreProduct = async () => {
   const name = productName.trim();
   const price = Number(productPrice);
   const stock = Number(productStock);
+  const weight = Number(productWeight);
 
   if (!name || name.length < 2) {
     Alert.alert('Error', 'Enter a product name with at least 2 characters.');
@@ -144,6 +145,15 @@ const saveStoreProduct = async () => {
     Alert.alert('Error', 'Enter a valid stock quantity.');
     return;
   }
+  if (
+  !productWeight.trim() ||
+  !Number.isInteger(weight) ||
+  weight <= 0 ||
+  weight > 100000
+) {
+  Alert.alert('Error', 'Enter a valid product weight in grams.');
+  return;
+}
 
   setSavingProduct(true);
 
