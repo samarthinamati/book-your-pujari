@@ -1128,6 +1128,22 @@ const updateStoreOrderTracking = async (
     </TouchableOpacity>
   ))}
 </View>
+    <TouchableOpacity
+  onPress={() =>
+    updateStoreOrderTracking(order, order.order_status || 'Shipped')
+  }
+  style={{
+    backgroundColor: '#2874F0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  }}
+>
+  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+    Save Tracking Details
+  </Text>
+</TouchableOpacity>
 
           </View>
         ))
