@@ -32,6 +32,7 @@ export default function RootLayout() {
           <Stack.Screen name="customer/payment" />
           <Stack.Screen name="saint/dashboard" />
           <Stack.Screen name="admin/dashboard" />
+          <Stack.Screen name="seller/dashboard" />
         </Stack>
       </AuthProvider>
     </SafeAreaProvider>
