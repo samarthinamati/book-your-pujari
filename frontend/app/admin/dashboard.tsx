@@ -1101,8 +1101,7 @@ const updateStoreOrderTracking = async (
         ))
       )}
       
-
-
+      
       <TouchableOpacity
         onPress={fetchStoreOrders}
         style={{
@@ -1119,7 +1118,7 @@ const updateStoreOrderTracking = async (
       </TouchableOpacity>
         </>
       )}
-    </View>
+    </ScrollView>
   </>
 )}
 
