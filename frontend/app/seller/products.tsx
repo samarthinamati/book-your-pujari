@@ -31,6 +31,7 @@ type Product = {
   price: number;
   image_url?: string;
   stock: number;
+  weight_grams?: number;
   is_available: boolean;
 };
 
