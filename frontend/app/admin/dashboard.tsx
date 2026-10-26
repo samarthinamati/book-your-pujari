@@ -1039,13 +1039,45 @@ const updateStoreOrderTracking = async (
               Amount: ₹{Number(order.total_amount ?? order.amount ?? 0).toFixed(2)}
             </Text>
 
-            <Text>
-              Courier: {order.courier || 'Not assigned'}
-            </Text>
+            
+<Text style={{ marginTop: 8, fontWeight: 'bold' }}>
+  Courier Name
+</Text>
+<TextInput
+  placeholder="Enter courier name (e.g. DTDC)"
+  defaultValue={order.courier || 'DTDC'}
+  onChangeText={(value) => {
+    order.courier = value;
+  }}
+  style={productInputStyle}
+/>
 
-            <Text>
-              Tracking number: {order.tracking_number || 'Not added'}
-            </Text>
+<Text style={{ marginTop: 8, fontWeight: 'bold' }}>
+  Tracking ID / AWB Number
+</Text>
+<TextInput
+  placeholder="Enter tracking ID"
+  defaultValue={order.tracking_number || ''}
+  onChangeText={(value) => {
+    order.tracking_number = value;
+  }}
+  style={productInputStyle}
+/>
+
+<Text style={{ marginTop: 8, fontWeight: 'bold' }}>
+  Tracking URL
+</Text>
+<TextInput
+  placeholder="Paste courier tracking link"
+  defaultValue={order.tracking_url || ''}
+  onChangeText={(value) => {
+    order.tracking_url = value;
+  }}
+  autoCapitalize="none"
+  keyboardType="url"
+  style={productInputStyle}
+/>
+
             
 {order.tracking_url ? (
   <TouchableOpacity
