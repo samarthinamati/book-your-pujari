@@ -1109,9 +1109,24 @@ tracking_url: tracking.tracking_url,
 </Text>
 <TextInput
   placeholder="Paste courier tracking link"
-  defaultValue={order.tracking_url || ''}
+  value={
+    trackingEdits[String(order.id || order._id || '')]?.tracking_url
+    ?? order.tracking_url
+    ?? ''
+  }
   onChangeText={(value) => {
-    order.tracking_url = value;
+    const orderId = String(order.id || order._id || '');
+
+    setTrackingEdits((previous) => ({
+      ...previous,
+      [orderId]: {
+        courier:
+          previous[orderId]?.courier ?? order.courier ?? 'DTDC',
+        tracking_number:
+          previous[orderId]?.tracking_number ?? order.tracking_number ?? '',
+        tracking_url: value,
+      },
+    }));
   }}
   autoCapitalize="none"
   keyboardType="url"
