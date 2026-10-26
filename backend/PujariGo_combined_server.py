@@ -2221,16 +2221,48 @@ async def create_store_order(
         line_total = round(unit_price * item.quantity, 2)
         total_amount += line_total
 
+        
+        seller_id = str(product.get("seller_id", ""))
+        seller_application = None
+
+        if seller_id:
+            seller_application = await db.seller_applications.find_one({
+                "user_id": seller_id,
+                "status": "approved",
+            })
+
         order_items.append({
             "product_id": str(product["_id"]),
-            "seller_id": product.get("seller_id", ""),
-            "shop_name": product.get("shop_name", ""),
+            "seller_id": seller_id,
+            "shop_name": (
+                (seller_application or {}).get("shop_name")
+                or product.get("shop_name", "")
+            ),
+            "seller_owner_name": (seller_application or {}).get(
+                "owner_name", ""
+            ),
+            "seller_phone": (seller_application or {}).get(
+                "phone", ""
+            ),
+            "seller_email": (seller_application or {}).get(
+                "email", ""
+            ),
+            "seller_shop_address": (seller_application or {}).get(
+                "shop_address", ""
+            ),
+            "seller_city": (seller_application or {}).get(
+                "city", ""
+            ),
+            "seller_pincode": (seller_application or {}).get(
+                "pincode", ""
+            ),
             "name": product["name"],
             "unit_price": unit_price,
             "quantity": item.quantity,
             "line_total": line_total,
-            "image_url": product.get("image_url", "")
+            "image_url": product.get("image_url", ""),
         })
+
 
     # Reserve/decrement stock atomically before creating the order. If any item
     # cannot be reserved, restore stock already reserved for this request.
