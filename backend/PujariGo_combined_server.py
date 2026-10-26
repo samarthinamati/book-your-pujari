@@ -2515,8 +2515,18 @@ async def get_all_store_orders(
         "created_at", -1
     ).to_list(500)
 
-    return [serialize_store_order(order) for order in orders]
-
+    return [
+    {
+        **serialize_store_order(order),
+        "customer_name": order.get("customer_name", ""),
+        "customer_phone": order.get("customer_phone", ""),
+        "delivery_address": order.get("delivery_address", ""),
+        "city": order.get("city", ""),
+        "pincode": order.get("pincode", ""),
+        "items": order.get("items", []),
+    }
+    for order in orders
+]
 
 @api_router.put("/store/admin/orders/{order_id}/tracking")
 async def update_store_order_tracking(
