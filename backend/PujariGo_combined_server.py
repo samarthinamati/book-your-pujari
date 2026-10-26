@@ -1916,6 +1916,7 @@ class StoreProductUpdate(BaseModel):
     price: Optional[float] = Field(default=None, gt=0, le=100000)
     image_url: Optional[str] = Field(default=None, max_length=2000)
     stock: Optional[int] = Field(default=None, ge=0, le=100000)
+    weight_grams: Optional[int] = Field(default=None, gt=0, le=100000)
     is_available: Optional[bool] = None
 
 
