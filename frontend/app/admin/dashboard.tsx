@@ -179,7 +179,7 @@ const saveStoreProduct = async () => {
     setProductCategory('Puja Samagri');
     setProductPrice('');
     setProductImageUrl('');
-    setProductStock('10');
+    setProductStock('');
     setProductWeight('500');
     setShowAddProduct(false);
   } catch (error: any) {
