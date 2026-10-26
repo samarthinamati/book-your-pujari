@@ -1055,9 +1055,24 @@ tracking_url: tracking.tracking_url,
 </Text>
 <TextInput
   placeholder="Enter courier name (e.g. DTDC)"
-  defaultValue={order.courier || 'DTDC'}
+  value={
+    trackingEdits[String(order.id || order._id || '')]?.courier
+    ?? order.courier
+    ?? 'DTDC'
+  }
   onChangeText={(value) => {
-    order.courier = value;
+    const orderId = String(order.id || order._id || '');
+
+    setTrackingEdits((previous) => ({
+      ...previous,
+      [orderId]: {
+        courier: value,
+        tracking_number:
+          previous[orderId]?.tracking_number ?? order.tracking_number ?? '',
+        tracking_url:
+          previous[orderId]?.tracking_url ?? order.tracking_url ?? '',
+      },
+    }));
   }}
   style={productInputStyle}
 />
