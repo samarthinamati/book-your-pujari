@@ -2328,6 +2328,7 @@ async def create_store_order(
     order["_id"] = result.inserted_id
     return serialize_store_order(order)
 
+
 @api_router.get("/store/orders/my-orders")
 async def get_my_store_orders(
     user: dict = Depends(get_current_user)
@@ -2338,7 +2339,29 @@ async def get_my_store_orders(
         "customer_id": user["id"]
     }).sort("created_at", -1).to_list(200)
 
-    return [serialize_store_order(order) for order in orders]
+    result = []
+
+    for order in orders:
+        serialized_order = serialize_store_order(order)
+
+        # Include seller contact and shop details for the customer.
+        serialized_order["items"] = [
+            {
+                **item,
+                "seller_owner_name": item.get("seller_owner_name", ""),
+                "seller_phone": item.get("seller_phone", ""),
+                "seller_email": item.get("seller_email", ""),
+                "seller_shop_address": item.get("seller_shop_address", ""),
+                "seller_city": item.get("seller_city", ""),
+                "seller_pincode": item.get("seller_pincode", ""),
+            }
+            for item in serialized_order.get("items", [])
+        ]
+
+        result.append(serialized_order)
+
+    return result
+
 
 
 class StorePaymentCreate(BaseModel):
