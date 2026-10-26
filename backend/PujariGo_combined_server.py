@@ -75,6 +75,15 @@ class DelhiveryWarehouseResponse(BaseModel):
     delhivery_pickup_status: str
 
 
+class DelhiveryShippingEstimateRequest(BaseModel):
+    pickup_pincode: str = Field(..., min_length=6, max_length=6)
+    delivery_pincode: str = Field(..., min_length=6, max_length=6)
+    weight_grams: int = Field(..., gt=0, le=100000)
+    payment_mode: str = Field(default="Pre-paid")
+    shipping_mode: str = Field(default="E")
+
+
+
 # ==================== PYDANTIC MODELS ====================
 
 class UserLogin(BaseModel):
