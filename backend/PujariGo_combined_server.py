@@ -1858,6 +1858,7 @@ class StoreProductCreate(BaseModel):
     price: float = Field(..., gt=0, le=100000)
     image_url: str = Field(default="", max_length=2000)
     stock: int = Field(default=0, ge=0, le=100000)
+    weight_grams: int = Field(..., gt=0, le=100000)
     is_available: bool = True
 
 
@@ -1871,6 +1872,7 @@ def serialize_store_product(product: dict) -> dict:
         "price": product.get("price", 0),
         "image_url": product.get("image_url", ""),
         "stock": product.get("stock", 0),
+       "weight_grams": product.get("weight_grams", 0),
         "is_available": product.get("is_available", True),
         "seller_id": product.get("seller_id", ""),
         "shop_name": product.get("shop_name", ""),
