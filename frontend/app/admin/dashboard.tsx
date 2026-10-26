@@ -974,7 +974,7 @@ tracking_url: tracking.tracking_url,
   </View>
 ) : null}
     <TextInput
-  placeholder="Product weight in grams * (e.g. 500)"
+ placeholder="Weight in grams (e.g. 500)"
   value={productWeight}
   onChangeText={setProductWeight}
   keyboardType="number-pad"
