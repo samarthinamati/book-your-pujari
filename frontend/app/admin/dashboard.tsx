@@ -982,7 +982,7 @@ placeholder="Enter weight in grams"
 />
 
 <TextInput
-  placeholder="Stock quantity"
+  placeholder="Enter Stock quantity"
   value={productStock}
   onChangeText={setProductStock}
   keyboardType="number-pad"
