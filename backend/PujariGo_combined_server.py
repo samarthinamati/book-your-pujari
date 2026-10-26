@@ -292,7 +292,7 @@ async def require_role(user: dict, roles: List[str]):
             status_code=403,
             detail="Unauthorized role access"
         )
-        @api_router.post("/store/shipping/estimate")
+@api_router.post("/store/shipping/estimate")
 async def estimate_store_shipping(
     payload: DelhiveryShippingEstimateRequest,
     user: dict = Depends(get_current_user),
