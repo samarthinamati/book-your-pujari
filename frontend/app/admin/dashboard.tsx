@@ -180,6 +180,7 @@ const saveStoreProduct = async () => {
     setProductPrice('');
     setProductImageUrl('');
     setProductStock('10');
+    setProductWeight('500');
     setShowAddProduct(false);
   } catch (error: any) {
     Alert.alert(
