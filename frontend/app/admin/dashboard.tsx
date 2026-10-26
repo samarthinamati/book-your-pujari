@@ -974,12 +974,20 @@ tracking_url: tracking.tracking_url,
   </View>
 ) : null}
     <TextInput
-      placeholder="Stock quantity"
-      value={productStock}
-      onChangeText={setProductStock}
-      keyboardType="number-pad"
-      style={productInputStyle}
-    />
+  placeholder="Product weight in grams * (e.g. 500)"
+  value={productWeight}
+  onChangeText={setProductWeight}
+  keyboardType="number-pad"
+  style={productInputStyle}
+/>
+
+<TextInput
+  placeholder="Stock quantity"
+  value={productStock}
+  onChangeText={setProductStock}
+  keyboardType="number-pad"
+  style={productInputStyle}
+/>
 
     <TouchableOpacity
       disabled={savingProduct}
