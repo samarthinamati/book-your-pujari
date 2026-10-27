@@ -3153,8 +3153,34 @@ async def create_delhivery_production_shipment(
                         "location before creating a live shipment."
                     ),
                 )
+    
     if not items:
         raise HTTPException(status_code=400, detail="The order contains no items.")
+
+    # SAFETY: Block mixed-seller orders until separate shipments
+    # are implemented for each seller.
+    if any(not item.get("seller_id") for item in items):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Shipment blocked: one or more products have no seller assigned."
+            ),
+        )
+
+    shipment_seller_ids = {
+        str(item.get("seller_id")).strip()
+        for item in items
+    }
+
+    if len(shipment_seller_ids) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Shipment blocked: this order contains products from multiple "
+                "sellers. Separate seller shipments must be implemented first."
+            ),
+        )
+
 
     required = {
         "customer_name": order.get("customer_name"),
