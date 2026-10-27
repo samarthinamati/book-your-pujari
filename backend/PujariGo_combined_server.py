@@ -2365,6 +2365,16 @@ async def create_store_order(
             "seller_pincode": (seller_application or {}).get(
                 "pincode", ""
             ),
+            "seller_delhivery_pickup_name": (
+    seller_application or {}
+).get("delhivery_pickup_name", ""),
+"seller_delhivery_pickup_status": (
+    seller_application or {}
+).get("delhivery_pickup_status", "not_registered"),
+"seller_delhivery_pickup_verified": (
+    (seller_application or {}).get("delhivery_pickup_verified")
+    is True
+),
             "name": product["name"],
             "unit_price": unit_price,
             "quantity": item.quantity,
