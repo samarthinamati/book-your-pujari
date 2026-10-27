@@ -917,6 +917,7 @@ async def update_seller_pickup_location(
             "$set": {
                 "delhivery_pickup_name": pickup_name,
                 "delhivery_pickup_status": "registered",
+                "delhivery_pickup_verified": False,
                 "delhivery_pickup_id": str(
                     result_data.get("id", "")
                     if isinstance(result_data, dict)
