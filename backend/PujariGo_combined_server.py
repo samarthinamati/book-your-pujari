@@ -980,6 +980,7 @@ async def use_existing_delhivery_pickup(
             "$set": {
                 "delhivery_pickup_name": existing_pickup_name,
                 "delhivery_pickup_status": "existing_location_selected",
+                "delhivery_pickup_verified": False,
                 "delhivery_pickup_id": "",
                 "updated_at": datetime.utcnow().isoformat(),
             },
