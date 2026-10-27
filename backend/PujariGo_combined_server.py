@@ -293,6 +293,105 @@ async def require_role(user: dict, roles: List[str]):
             detail="Unauthorized role access"
         )
 @api_router.post("/store/shipping/estimate")
+    
+async def get_delhivery_shipping_fee(
+    pickup_pincode: str,
+    delivery_pincode: str,
+    weight_grams: int,
+    payment_mode: str,
+) -> float:
+    if not DELHIVERY_API_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Shipping rate service is not configured",
+        )
+
+    if (
+        not pickup_pincode.isdigit()
+        or len(pickup_pincode) != 6
+        or not delivery_pincode.isdigit()
+        or len(delivery_pincode) != 6
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Valid six-digit pickup and delivery PIN codes are required",
+        )
+
+    params = {
+        "md": "S",
+        "cgm": weight_grams,
+        "o_pin": pickup_pincode,
+        "d_pin": delivery_pincode,
+        "ss": "Delivered",
+        "pt": payment_mode,
+    }
+
+    headers = {
+        "Authorization": f"Token {DELHIVERY_API_TOKEN}",
+        "Accept": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                "https://track.delhivery.com/api/kinko/v1/invoice/charges/.json",
+                params=params,
+                headers=headers,
+            )
+
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=502,
+                detail="Unable to calculate shipping charges",
+            )
+
+        rate_data = response.json()
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail="Shipping estimate request timed out",
+        )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to contact shipping service",
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid response from shipping service",
+        )
+
+    if (
+        not isinstance(rate_data, list)
+        or not rate_data
+        or not isinstance(rate_data[0], dict)
+        or rate_data[0].get("total_amount") is None
+    ):
+        raise HTTPException(
+            status_code=502,
+            detail="No valid shipping rate was returned",
+        )
+
+    try:
+        shipping_fee = float(rate_data[0]["total_amount"])
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid shipping fee returned by Delhivery",
+        )
+
+    if not math.isfinite(shipping_fee) or shipping_fee < 0:
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid shipping fee returned by Delhivery",
+        )
+
+    return round(shipping_fee, 2)
+
+
+
 async def estimate_store_shipping(
     payload: DelhiveryShippingEstimateRequest,
     user: dict = Depends(get_current_user),
