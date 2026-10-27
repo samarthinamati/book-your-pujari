@@ -718,14 +718,16 @@ async def update_seller_pickup_location(
 
     pickup_name = payload.delhivery_pickup_name.strip()
 
+   
     if len(pickup_name) < 2:
         raise HTTPException(
             status_code=400,
             detail="Enter a valid Delhivery pickup-location name",
         )
 
-        # Test mode: simulate registration without contacting Delhivery.
+    # Test mode: simulate registration without contacting Delhivery.
     DELHIVERY_TEST_MODE = (
+
         os.getenv("DELHIVERY_TEST_MODE", "false").strip().lower()
         == "true"
     )
