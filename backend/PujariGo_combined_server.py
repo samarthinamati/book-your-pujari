@@ -3111,6 +3111,7 @@ async def create_delhivery_production_shipment(
             if (
                 not application
                 or application.get("delhivery_pickup_status") != "registered"
+                or application.get("delhivery_pickup_verified") is not True
                 or not application.get("delhivery_pickup_name")
                 or not application.get("shop_address")
                 or not application.get("city")
