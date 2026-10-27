@@ -2293,6 +2293,7 @@ async def create_store_order(
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     order_items = []
+    order_seller_id = None
     total_amount = 0
     payment_method = payload.payment_method.strip().lower()
 
