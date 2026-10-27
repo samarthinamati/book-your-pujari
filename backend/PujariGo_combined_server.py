@@ -2343,14 +2343,19 @@ async def create_store_order(
                 ),
             )
 
-        seller_application = None
+                seller_application = await db.seller_applications.find_one({
+            "user_id": seller_id,
+            "status": "approved",
+        })
 
-
-        if seller_id:
-            seller_application = await db.seller_applications.find_one({
-                "user_id": seller_id,
-                "status": "approved",
-            })
+        if not seller_application:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This product's seller is not approved. "
+                    "Please contact the store administrator."
+                ),
+            )
 
         order_items.append({
             "product_id": str(product["_id"]),
