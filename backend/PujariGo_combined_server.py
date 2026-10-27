@@ -3227,12 +3227,16 @@ async def create_delhivery_production_shipment(
             detail="Shipment creation is already in progress or needs manual review. Do not retry until checked.",
         )
 
+    
     products_desc = ", ".join(
         f"{str(item.get('name', 'Puja Item'))[:80]} x {max(1, int(item.get('quantity', 1)))}"
         for item in items
     )[:500]
-    quantity = sum(max(1, int(item.get("quantity", 1))) for item in items)
-        payment_mode = "COD" if payment_method == "cod" else "Pre-paid"
+    quantity = sum(
+        max(1, int(item.get("quantity", 1)))
+        for item in items
+    )
+    payment_mode = "COD" if payment_method == "cod" else "Pre-paid"
 
     total_weight_grams = sum(
         int(item.get("weight_grams", 500) or 500)
