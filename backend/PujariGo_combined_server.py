@@ -3278,7 +3278,7 @@ async def create_delhivery_production_shipment(
         "format": "json",
         "data": __import__("json").dumps({
             "shipments": [shipment],
-            "pickup_location": {"name": DELHIVERY_EXISTING_PICKUP_NAME},
+            "pickup_location": {"name": seller_pickup_name},
         }),
     }
 
