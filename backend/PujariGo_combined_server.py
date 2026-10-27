@@ -3097,7 +3097,6 @@ async def create_delhivery_production_shipment(
         raise HTTPException(status_code=400, detail="Verify online payment before shipping.")
 
     items = order.get("items") or []
-        # SAFETY: Do not create a live shipment until seller pickup
     # locations have been verified and registered.
     seller_ids = {
         str(item.get("seller_id") or "").strip()
