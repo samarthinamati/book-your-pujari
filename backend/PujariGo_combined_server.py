@@ -3084,6 +3084,44 @@ async def create_delhivery_production_shipment(
         raise HTTPException(status_code=400, detail="Verify online payment before shipping.")
 
     items = order.get("items") or []
+        # SAFETY: Do not create a live shipment until seller pickup
+    # locations have been verified and registered.
+    seller_ids = {
+        str(item.get("seller_id") or "").strip()
+        for item in items
+        if item.get("seller_id")
+    }
+
+    if seller_ids:
+        seller_applications = await db.seller_applications.find({
+            "user_id": {"$in": list(seller_ids)}
+        }).to_list(500)
+
+        applications_by_user = {
+            str(app.get("user_id")): app
+            for app in seller_applications
+        }
+
+        for seller_id in seller_ids:
+            application = applications_by_user.get(seller_id)
+
+            if (
+                not application
+                or application.get("delhivery_pickup_status") != "registered"
+                or not application.get("delhivery_pickup_name")
+                or not application.get("shop_address")
+                or not application.get("city")
+                or not application.get("pincode")
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Shipment blocked: at least one seller's "
+                        "Delhivery pickup location is not verified. "
+                        "Register and verify each seller's real pickup "
+                        "location before creating a live shipment."
+                    ),
+                )
     if not items:
         raise HTTPException(status_code=400, detail="The order contains no items.")
 
