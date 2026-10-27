@@ -2391,10 +2391,12 @@ async def create_store_order(
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    order_items = []
+   order_items = []
 order_seller_id = None
-product_subtotal = 0
-total_amount = 0
+product_subtotal = 0.0
+total_amount = 0.0
+total_weight_grams = 0
+seller_pickup_pincode = ""
 payment_method = payload.payment_method.strip().lower()
 
     if payment_method not in {"online", "cod"}:
