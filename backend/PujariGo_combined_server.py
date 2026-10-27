@@ -3286,7 +3286,7 @@ async def create_delhivery_production_shipment(
         "quantity": str(quantity),
         "total_amount": str(total),
         "cod_amount": str(total if payment_mode == "COD" else 0),
-        "weight": "0.5",
+        "weight": str(total_weight_kg),
         "shipping_mode": "Surface",
     }
     request_payload = {
