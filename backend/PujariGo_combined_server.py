@@ -2366,6 +2366,7 @@ async def create_store_order(
             "unit_price": unit_price,
             "quantity": item.quantity,
             "line_total": line_total,
+            "weight_grams": int(product.get("weight_grams", 500)),
             "image_url": product.get("image_url", ""),
         })
 
