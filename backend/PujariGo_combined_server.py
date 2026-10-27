@@ -2337,6 +2337,16 @@ async def create_store_order(
         
         
         seller_id = str(product.get("seller_id", ""))
+        if order_seller_id is None:
+    order_seller_id = seller_id
+elif order_seller_id != seller_id:
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Please place separate orders for products "
+            "from different sellers."
+        ),
+    )
 
         if not seller_id:
             raise HTTPException(
