@@ -2331,16 +2331,20 @@ async def create_store_order(
         total_amount += line_total
 
         
+        
         seller_id = str(product.get("seller_id", ""))
+
         if not seller_id:
-    raise HTTPException(
-        status_code=400,
-        detail=(
-            "This product has no assigned seller. "
-            "Please contact the store administrator."
-        ),
-    )
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This product has no assigned seller. "
+                    "Please contact the store administrator."
+                ),
+            )
+
         seller_application = None
+
 
         if seller_id:
             seller_application = await db.seller_applications.find_one({
