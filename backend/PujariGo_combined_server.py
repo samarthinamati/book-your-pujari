@@ -2332,6 +2332,14 @@ async def create_store_order(
 
         
         seller_id = str(product.get("seller_id", ""))
+        if not seller_id:
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "This product has no assigned seller. "
+            "Please contact the store administrator."
+        ),
+    )
         seller_application = None
 
         if seller_id:
