@@ -2414,7 +2414,17 @@ elif order_seller_id != seller_id:
             "image_url": product.get("image_url", ""),
         })
 
+# Calculate platform and COD fees.
+platform_fee = round(product_subtotal * 0.02, 2)
+cod_fee = 10.00 if payment_method == "cod" else 0.00
 
+# Shipping will be calculated in the next step.
+shipping_fee = 0.00
+
+total_amount = round(
+    product_subtotal + platform_fee + cod_fee + shipping_fee,
+    2,
+)
     # Reserve/decrement stock atomically before creating the order. If any item
     # cannot be reserved, restore stock already reserved for this request.
     reserved = []
