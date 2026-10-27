@@ -2332,6 +2332,7 @@ async def create_store_order(
 
         
         
+        
         seller_id = str(product.get("seller_id", ""))
 
         if not seller_id:
@@ -2343,7 +2344,7 @@ async def create_store_order(
                 ),
             )
 
-                seller_application = await db.seller_applications.find_one({
+        seller_application = await db.seller_applications.find_one({
             "user_id": seller_id,
             "status": "approved",
         })
