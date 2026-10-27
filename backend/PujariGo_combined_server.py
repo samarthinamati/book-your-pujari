@@ -2332,8 +2332,7 @@ payment_method = payload.payment_method.strip().lower()
 
         unit_price = float(product["price"])
         line_total = round(unit_price * item.quantity, 2)
-        total_amount += line_total
-
+        product_subtotal += line_total
         
         
         
