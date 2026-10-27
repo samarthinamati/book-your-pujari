@@ -3232,7 +3232,31 @@ async def create_delhivery_production_shipment(
         for item in items
     )[:500]
     quantity = sum(max(1, int(item.get("quantity", 1))) for item in items)
-    payment_mode = "COD" if payment_method == "cod" else "Pre-paid"
+        payment_mode = "COD" if payment_method == "cod" else "Pre-paid"
+
+    shipment_seller_id = next(iter(shipment_seller_ids))
+    seller_application = await db.seller_applications.find_one({
+        "user_id": shipment_seller_id,
+        "status": "approved",
+        "delhivery_pickup_status": "registered",
+        "delhivery_pickup_verified": True,
+    })
+
+    if not seller_application:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment blocked: the seller's verified pickup location could not be found.",
+        )
+
+    seller_pickup_name = str(
+        seller_application.get("delhivery_pickup_name") or ""
+    ).strip()
+
+    if not seller_pickup_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment blocked: the seller has no registered pickup location name.",
+        )
 
     shipment = {
         "name": str(order["customer_name"]).strip(),
