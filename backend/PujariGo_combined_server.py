@@ -564,6 +564,7 @@ async def apply_as_seller(application: SellerApplication):
 "delhivery_pickup_name": "",
 "delhivery_pickup_status": "not_registered",
 "delhivery_pickup_id": "",
+"delhivery_pickup_verified": False,       
 
 "status": "pending",
         "created_at": datetime.utcnow().isoformat(),
