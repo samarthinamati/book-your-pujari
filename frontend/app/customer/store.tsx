@@ -1116,8 +1116,174 @@ console.log('COD ERROR MESSAGE:', errorMessage);
           </>
         )}
       </ScrollView>
+      
+      <Modal
+        visible={selectedProduct !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedProduct(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              maxHeight: '85%',
+            }}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                onPress={() => setSelectedProduct(null)}
+                style={{ alignSelf: 'flex-end', padding: 8 }}
+              >
+                <Text style={{ fontSize: 24, color: '#333333' }}>✕</Text>
+              </TouchableOpacity>
+
+              {selectedProduct?.image_url ? (
+                <Image
+                  source={{ uri: selectedProduct.image_url }}
+                  style={{
+                    width: '100%',
+                    height: 220,
+                    borderRadius: 12,
+                    backgroundColor: '#F1F3F6',
+                  }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View
+                  style={{
+                    height: 160,
+                    backgroundColor: '#F1F3F6',
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 54 }}>🪔</Text>
+                  <Text style={{ color: '#666666' }}>Puja Samagri</Text>
+                </View>
+              )}
+
+              <Text
+                style={{
+                  fontSize: 23,
+                  fontWeight: '700',
+                  color: '#222222',
+                  marginTop: 18,
+                }}
+              >
+                {selectedProduct?.name}
+              </Text>
+
+              <Text
+                style={{
+                  color: BLUE,
+                  fontSize: 24,
+                  fontWeight: '700',
+                  marginTop: 8,
+                }}
+              >
+                ₹{Number(selectedProduct?.price || 0).toFixed(2)}
+              </Text>
+
+              <Text style={{ color: '#666666', marginTop: 8 }}>
+                Category: {selectedProduct?.category || 'Puja Samagri'}
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: 17,
+                  fontWeight: '700',
+                  marginTop: 20,
+                  color: '#222222',
+                }}
+              >
+                Product Description
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: 15,
+                  lineHeight: 23,
+                  color: '#444444',
+                  marginTop: 8,
+                  marginBottom: 20,
+                }}
+              >
+                {selectedProduct?.description?.trim() ||
+                  'No description has been added for this product yet.'}
+              </Text>
+
+              {(() => {
+                const product = selectedProduct;
+                if (!product) return null;
+
+                const unavailable =
+                  product.is_available === false ||
+                  (product.stock !== undefined &&
+                    Number(product.stock) <= 0);
+
+                const quantity = cart[product.id]?.quantity || 0;
+
+                return (
+                  <>
+                    <Text style={{ color: '#666666', marginBottom: 12 }}>
+                      {unavailable
+                        ? 'Currently unavailable'
+                        : product.stock !== undefined
+                          ? `${product.stock} item(s) in stock`
+                          : 'Available'}
+                    </Text>
+
+                    <TouchableOpacity
+                      disabled={unavailable}
+                      onPress={() => {
+                        updateQuantity(product, 1);
+                        setSelectedProduct(null);
+                      }}
+                      style={{
+                        backgroundColor: unavailable ? '#999999' : BLUE,
+                        paddingVertical: 15,
+                        borderRadius: 10,
+                        alignItems: 'center',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: 16,
+                          fontWeight: '700',
+                        }}
+                      >
+                        {unavailable
+                          ? 'OUT OF STOCK'
+                          : quantity > 0
+                            ? 'ADD ONE MORE TO CART'
+                            : 'ADD TO CART'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {!showCart && !showOrders && (
+
+
+     
         <View style={styles.bottomBar}>
           <View style={styles.bottomBarInfo}>
             <Text style={styles.bottomBarTotal}>₹{total.toFixed(2)}</Text>
