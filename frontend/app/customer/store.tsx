@@ -1139,7 +1139,12 @@ console.log('COD ERROR MESSAGE:', errorMessage);
               maxHeight: '85%',
             }}
           >
-            <ScrollView showsVerticalScrollIndicator={false}>
+<ScrollView
+    showsVerticalScrollIndicator={true}
+    style={{ flexGrow: 0 }}
+    contentContainerStyle={{ paddingBottom: 20 }}
+    nestedScrollEnabled
+>
               <TouchableOpacity
                 onPress={() => setSelectedProduct(null)}
                 style={{ alignSelf: 'flex-end', padding: 8 }}
