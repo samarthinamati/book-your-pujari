@@ -536,23 +536,9 @@ console.log('COD ERROR MESSAGE:', errorMessage);
     return (
       <View key={item.id} style={styles.productCard}>
         <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() =>
-            Alert.alert(
-              item.name,
-              `${item.description || item.category || 'Puja Samagri'}\n\nPrice: ₹${Number(item.price).toFixed(2)}`,
-              [
-                { text: 'Close', style: 'cancel' },
-                ...(unavailable
-                  ? []
-                  : [{
-                      text: quantity > 0 ? 'Add one more' : 'Add to Cart',
-                      onPress: () => updateQuantity(item, 1),
-                    }]),
-              ]
-            )
-          }
-        >
+  activeOpacity={0.85}
+  onPress={() => setSelectedProduct(item)}
+>
           <View style={styles.imageContainer}>
             {item.image_url ? (
               <Image
