@@ -87,7 +87,6 @@ export default function CustomerStoreScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showCart, setShowCart] = useState(false);
-  const [showCart, setShowCart] = useState(false);
   const [showOrders, setShowOrders] = useState(false);
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [ordersError, setOrdersError] = useState('');
