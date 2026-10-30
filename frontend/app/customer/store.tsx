@@ -1407,9 +1407,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 9,
   },
-  quickActionButton: { alignItems: 'center', flex: 1, gap: 4 },
-  quickActionIcon: { fontSize: 22 },
-  quickActionText: { fontSize: 11, color: '#333333', fontWeight: '600' },
+  
+quickActionButton: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  flex: 1,
+  gap: 6,
+  paddingVertical: 5,
+},
+quickActionIcon: {
+  fontSize: 23,
+},
+quickActionText: {
+  fontSize: 11,
+  color: DARK_BLUE,
+  fontWeight: '700',
+},
 
   categorySection: {
     backgroundColor: '#FFFFFF',
