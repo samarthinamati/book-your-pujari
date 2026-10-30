@@ -635,57 +635,98 @@ console.log('COD ERROR MESSAGE:', errorMessage);
           />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => {
-                if (showOrders || showCart) {
-                  setShowOrders(false);
-                  setShowCart(false);
-                } else {
-                  router.back();
-                }
-              }}
-            >
-              <Text style={styles.backArrow}>‹</Text>
-            </TouchableOpacity>
+        
+<View style={[styles.header, { backgroundColor: DARK_BLUE, paddingBottom: 18 }]}>
+  <View style={[styles.headerTop, { alignItems: 'center' }]}>
+    <TouchableOpacity
+      style={[
+        styles.backButton,
+        {
+          backgroundColor: 'rgba(255,255,255,0.14)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.25)',
+          borderRadius: 12,
+        },
+      ]}
+      onPress={() => {
+        if (showOrders || showCart) {
+          setShowOrders(false);
+          setShowCart(false);
+        } else {
+          router.back();
+        }
+      }}
+    >
+      <Text style={[styles.backArrow, { color: '#FFFFFF' }]}>‹</Text>
+    </TouchableOpacity>
 
-            <View style={styles.headerTitleArea}>
-              <Text style={styles.brandTitle}>PujariGo</Text>
-              <Text style={styles.headerSubtitle}>
-                Your Trusted Partner for Every Puja
-              </Text>
-            </View>
+    <View style={styles.headerTitleArea}>
+      <Text style={[styles.brandTitle, { color: '#FFFFFF' }]}>
+        PujariGo
+      </Text>
+      <Text
+        style={[
+          styles.headerSubtitle,
+          { color: LIGHT_GOLD, fontWeight: '600' },
+        ]}
+      >
+        Your Trusted Partner for Every Puja
+      </Text>
+    </View>
 
-            <TouchableOpacity
-              style={styles.headerAction}
-              onPress={() => router.push('/customer/dashboard')}
-            >
-              <Text style={styles.headerActionIcon}>⌂</Text>
-              <Text style={styles.headerActionText}>Home</Text>
-            </TouchableOpacity>
-          </View>
+    <TouchableOpacity
+      style={[
+        styles.headerAction,
+        {
+          backgroundColor: GOLD,
+          borderRadius: 12,
+        },
+      ]}
+      onPress={() => router.push('/customer/dashboard')}
+    >
+      <Text style={[styles.headerActionIcon, { color: DARK_BLUE }]}>⌂</Text>
+      <Text
+        style={[
+          styles.headerActionText,
+          { color: DARK_BLUE, fontWeight: '700' },
+        ]}
+      >
+        Home
+      </Text>
+    </TouchableOpacity>
+  </View>
 
-          {!showCart && !showOrders && (
-            <View style={styles.searchBox}>
-              <Text style={styles.searchIcon}>⌕</Text>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search for products, puja kits..."
-                placeholderTextColor="#777777"
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Text style={styles.clearSearch}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
+  {!showCart && !showOrders && (
+    <View
+      style={[
+        styles.searchBox,
+        {
+          backgroundColor: '#FFFFFF',
+          borderRadius: 14,
+          borderWidth: 2,
+          borderColor: GOLD,
+          marginTop: 16,
+        },
+      ]}
+    >
+      <Text style={styles.searchIcon}>⌕</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search for products, puja kits..."
+        placeholderTextColor="#777777"
+        value={search}
+        onChangeText={setSearch}
+        returnKeyType="search"
+      />
+      {search.length > 0 && (
+        <TouchableOpacity onPress={() => setSearch('')}>
+          <Text style={styles.clearSearch}>✕</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  )}
+</View>
+
 
         <View style={styles.quickActions}>
           <TouchableOpacity
