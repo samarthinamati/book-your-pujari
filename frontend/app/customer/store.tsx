@@ -1074,6 +1074,82 @@ console.log('COD ERROR MESSAGE:', errorMessage);
             </View>
 
             <View style={styles.benefitsStrip}>
+              {!search.trim() && selectedCategory === 'All' && products.length > 0 && (
+  <>
+    <View style={styles.featuredSection}>
+      <View style={styles.featuredHeadingRow}>
+        <Text style={styles.sectionHeading}>Featured Products</Text>
+        <Text style={styles.viewAll}>Explore ›</Text>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {products.slice(0, 6).map((product) => (
+          <TouchableOpacity
+            key={`featured-${product.id}`}
+            style={styles.featuredCard}
+            onPress={() => setSelectedProduct(product)}
+            activeOpacity={0.85}
+          >
+            {product.image_url ? (
+              <Image
+                source={{ uri: product.image_url }}
+                style={styles.featuredImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.featuredImagePlaceholder}>
+                <Text style={{ fontSize: 38 }}>🪔</Text>
+              </View>
+            )}
+
+            <Text style={styles.featuredName} numberOfLines={2}>
+              {product.name}
+            </Text>
+
+            <Text style={styles.featuredPrice}>
+              ₹{Number(product.price || 0).toFixed(0)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+
+    <View style={styles.featuredSection}>
+      <Text style={styles.sectionHeading}>Explore More</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {products.slice(6).map((product) => (
+          <TouchableOpacity
+            key={`explore-${product.id}`}
+            style={styles.featuredCard}
+            onPress={() => setSelectedProduct(product)}
+            activeOpacity={0.85}
+          >
+            {product.image_url ? (
+              <Image
+                source={{ uri: product.image_url }}
+                style={styles.featuredImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.featuredImagePlaceholder}>
+                <Text style={{ fontSize: 38 }}>🙏</Text>
+              </View>
+            )}
+
+            <Text style={styles.featuredName} numberOfLines={2}>
+              {product.name}
+            </Text>
+
+            <Text style={styles.featuredPrice}>
+              ₹{Number(product.price || 0).toFixed(0)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  </>
+)}
               <View style={styles.benefit}>
                 <Text style={styles.benefitIcon}>🪷</Text>
                 <Text style={styles.benefitText}>Puja Essentials</Text>
