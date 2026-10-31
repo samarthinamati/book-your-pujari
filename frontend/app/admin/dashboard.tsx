@@ -142,6 +142,46 @@ const fetchStoreOrders = async () => {
     setLoadingSellerApplications(false);
   }
 };
+  const handleReviewSeller = async (
+  application: any,
+  approved: boolean
+) => {
+  const applicationId = String(
+    application.id || application._id || ''
+  );
+
+  if (!applicationId) {
+    Alert.alert('Error', 'Seller application ID is missing.');
+    return;
+  }
+
+  const action = approved ? 'approve' : 'reject';
+
+  try {
+    setReviewingSellerId(applicationId);
+
+    await apiClient.put(
+      `/store/admin/seller-applications/${applicationId}`,
+      { approved }
+    );
+
+    Alert.alert(
+      'Success',
+      approved
+        ? 'Seller application approved successfully.'
+        : 'Seller application rejected successfully.'
+    );
+
+    await fetchSellerApplications();
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || `Could not ${action} seller application.`
+    );
+  } finally {
+    setReviewingSellerId(null);
+  }
+};
 const saveStoreProduct = async () => {
   const name = productName.trim();
   const price = Number(productPrice);
