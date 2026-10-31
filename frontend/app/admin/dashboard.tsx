@@ -182,6 +182,40 @@ const fetchStoreOrders = async () => {
     setReviewingSellerId(null);
   }
 };
+  const updateSellerPickupLocation = async (
+  application: any,
+  pickupName: string
+) => {
+  const applicationId = String(
+    application.id || application._id || ''
+  );
+
+  if (!applicationId || !pickupName.trim()) {
+    Alert.alert('Error', 'Enter a valid pickup location name.');
+    return;
+  }
+
+  try {
+    setReviewingSellerId(applicationId);
+
+    await apiClient.put(
+      `/store/admin/seller-applications/${applicationId}/pickup-location`,
+      {
+        delhivery_pickup_name: pickupName.trim(),
+      }
+    );
+
+    Alert.alert('Success', 'Pickup location updated.');
+    await fetchSellerApplications();
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not update pickup location.'
+    );
+  } finally {
+    setReviewingSellerId(null);
+  }
+};
 const saveStoreProduct = async () => {
   const name = productName.trim();
   const price = Number(productPrice);
