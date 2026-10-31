@@ -52,10 +52,10 @@ type StoreOrder = {
   items?: any[];
 };
 
-const BLUE = '#174C8F';
-const DARK_BLUE = '#103568';
-const GOLD = '#D9A441';
-const LIGHT_GOLD = '#FFF4D8';
+const BLUE = '#65BDF2';
+const DARK_BLUE = '#42A5E8';
+const GOLD = '#EAF7FF';
+const LIGHT_GOLD = '#FFFFFF';
 
 const CATEGORY_ICONS: Record<string, string> = {
   all: '🛍️',
