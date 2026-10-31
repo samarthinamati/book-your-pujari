@@ -1648,6 +1648,59 @@ quickActionText: {
   benefitIcon: { fontSize: 20 },
   benefitText: { color: '#4A4A4A', fontSize: 9, textAlign: 'center' },
   benefitDivider: { width: 1, height: 30, backgroundColor: '#E5E7EB' },
+  featuredSection: {
+  backgroundColor: '#FFFFFF',
+  paddingHorizontal: 12,
+  paddingVertical: 15,
+  marginBottom: 9,
+},
+
+featuredHeadingRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 12,
+},
+
+featuredCard: {
+  width: 145,
+  backgroundColor: '#FFFFFF',
+  borderWidth: 1,
+  borderColor: '#D6EEFF',
+  borderRadius: 10,
+  padding: 8,
+  marginRight: 10,
+},
+
+featuredImage: {
+  width: '100%',
+  height: 115,
+  backgroundColor: '#F3FAFF',
+  borderRadius: 7,
+},
+
+featuredImagePlaceholder: {
+  height: 115,
+  backgroundColor: '#F3FAFF',
+  borderRadius: 7,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+featuredName: {
+  fontSize: 12,
+  fontWeight: '600',
+  color: '#17324D',
+  marginTop: 8,
+  minHeight: 34,
+},
+
+featuredPrice: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: DARK_BLUE,
+  marginTop: 5,
+},
 
   productsSection: {
     backgroundColor: '#FFFFFF',
