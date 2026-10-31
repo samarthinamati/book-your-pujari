@@ -2256,6 +2256,20 @@ async def create_seller_product(
     product["_id"] = result.inserted_id
 
     return serialize_store_product(product)
+    @api_router.get("/store/admin/products")
+async def get_all_store_products(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    products = await db.store_products.find().sort(
+        "created_at", -1
+    ).to_list(500)
+
+    return [
+        serialize_store_product(product)
+        for product in products
+    ]
 
 # ==================== SAMAGRI STORE ORDERS ====================
 
