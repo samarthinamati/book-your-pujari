@@ -1545,7 +1545,7 @@ quickActionText: {
     width: '49%',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E6E8EB',
+    borderColor: '#D6EEFF',
     borderRadius: 5,
     padding: 9,
     marginBottom: 2,
