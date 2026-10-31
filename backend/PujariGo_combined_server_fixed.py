@@ -2673,23 +2673,27 @@ async def get_all_store_orders(
 ):
     await require_role(user, ["admin"])
 
-    orders = await db.store_orders.find().sort(
+    cutoff_date = datetime.utcnow() - timedelta(days=90)
+    cutoff_iso = cutoff_date.isoformat()
+
+    orders = await db.store_orders.find({
+        "created_at": {"$gte": cutoff_iso}
+    }).sort(
         "created_at", -1
     ).to_list(500)
 
     return [
-    {
-        **serialize_store_order(order),
-        "customer_name": order.get("customer_name", ""),
-        "customer_phone": order.get("customer_phone", ""),
-        "delivery_address": order.get("delivery_address", ""),
-        "city": order.get("city", ""),
-        "pincode": order.get("pincode", ""),
-        "items": order.get("items", []),
-    }
-    for order in orders
-]
-
+        {
+            **serialize_store_order(order),
+            "customer_name": order.get("customer_name", ""),
+            "customer_phone": order.get("customer_phone", ""),
+            "delivery_address": order.get("delivery_address", ""),
+            "city": order.get("city", ""),
+            "pincode": order.get("pincode", ""),
+            "items": order.get("items", []),
+        }
+        for order in orders
+    ]
 @api_router.put("/store/admin/orders/{order_id}/tracking")
 async def update_store_order_tracking(
     order_id: str,
