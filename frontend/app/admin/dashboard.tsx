@@ -948,36 +948,157 @@ tracking_url: tracking.tracking_url,
       )}
 
    {storeView === 'sellerApplications' && (
-  <View style={{ padding: 16 }}>
-    <TouchableOpacity
-      onPress={() => setStoreView('menu')}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-      }}
-    >
-      <Ionicons name="arrow-back" size={22} color="#FF6B35" />
-      <Text style={{ marginLeft: 8, color: '#333', fontWeight: 'bold' }}>
-        Back to Store Menu
-      </Text>
-    </TouchableOpacity>
-
-    <Text style={{
-      fontSize: 22,
-      fontWeight: 'bold',
-      color: '#222',
-      marginBottom: 12,
-    }}>
+  <View style={{ gap: 14, marginBottom: 20 }}>
+    <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#222' }}>
       Seller Applications
     </Text>
 
-    <Text style={{ color: '#666', fontSize: 14 }}>
-      Seller applications will appear here. You will be able to review
-      applications and manage seller pickup locations.
-    </Text>
+    <TouchableOpacity
+      onPress={fetchSellerApplications}
+      style={{
+        backgroundColor: '#2874F0',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+        Refresh Applications
+      </Text>
+    </TouchableOpacity>
+
+    {loadingSellerApplications ? (
+      <ActivityIndicator size="large" color="#2874F0" />
+    ) : sellerApplications.length === 0 ? (
+      <Text style={{ color: '#666', textAlign: 'center', marginTop: 15 }}>
+        No seller applications found.
+      </Text>
+    ) : (
+      sellerApplications.map((application: any, index: number) => {
+        const applicationId = String(
+          application.id || application._id || index
+        );
+        const isReviewing = reviewingSellerId === applicationId;
+
+        return (
+          <View
+            key={applicationId}
+            style={{
+              backgroundColor: '#FFF',
+              padding: 15,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#DDD',
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: 'bold' }}>
+              {application.shop_name || 'Unnamed Shop'}
+            </Text>
+
+            <Text>Owner: {application.owner_name || '-'}</Text>
+            <Text>Phone: {application.phone || '-'}</Text>
+            <Text>Email: {application.email || '-'}</Text>
+            <Text>Address: {application.shop_address || '-'}</Text>
+            <Text>
+              City: {application.city || '-'} - {application.pincode || '-'}
+            </Text>
+
+            <Text style={{ fontWeight: 'bold' }}>
+              Status: {application.status || 'pending'}
+            </Text>
+
+            {String(application.status || '').toLowerCase() === 'pending' && (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  disabled={isReviewing}
+                  onPress={() => handleReviewSeller(application, true)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#2E7D32',
+                    padding: 12,
+                    borderRadius: 7,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                    Approve
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  disabled={isReviewing}
+                  onPress={() => handleReviewSeller(application, false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#C62828',
+                    padding: 12,
+                    borderRadius: 7,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                    Reject
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Text style={{ fontWeight: 'bold', marginTop: 8 }}>
+              Delhivery Pickup Location
+            </Text>
+
+            <Text>
+              Current pickup name: {application.delhivery_pickup_name || 'Not set'}
+            </Text>
+
+            <TextInput
+              placeholder="Enter pickup location name"
+              value={
+                sellerPickupEdits[applicationId] ??
+                application.delhivery_pickup_name ??
+                ''
+              }
+              onChangeText={(value) =>
+                setSellerPickupEdits((previous) => ({
+                  ...previous,
+                  [applicationId]: value,
+                }))
+              }
+              style={productInputStyle}
+            />
+
+            <TouchableOpacity
+              disabled={isReviewing}
+              onPress={() =>
+                updateSellerPickupLocation(
+                  application,
+                  sellerPickupEdits[applicationId] ??
+                    application.delhivery_pickup_name ??
+                    ''
+                )
+              }
+              style={{
+                backgroundColor: '#2874F0',
+                padding: 12,
+                borderRadius: 7,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                Save Pickup Location
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={{ color: '#666', fontSize: 12 }}>
+              Pickup registration status: {application.delhivery_pickup_status || 'Not registered'}
+            </Text>
+          </View>
+        );
+      })
+    )}
   </View>
-)}   
+)}
 {storeView === 'addProduct' && showAddProduct && (
   <View
     style={{
