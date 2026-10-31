@@ -915,7 +915,10 @@ tracking_url: tracking.tracking_url,
           </TouchableOpacity>
 
           <TouchableOpacity
-           onPress={() => setStoreView('sellerApplications')}
+           onPress={() => {
+  setStoreView('sellerApplications');
+  fetchSellerApplications();
+}}
             style={{ backgroundColor: '#EF6C00', padding: 16, borderRadius: 10, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="people-outline" size={25} color="#FFF" />
