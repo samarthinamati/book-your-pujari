@@ -783,7 +783,7 @@ tracking_url: tracking.tracking_url,
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => Alert.alert('Manage Products', 'Product listing, editing, stock updates and availability controls are not connected to this screen yet.')}
+            onPress={() => setStoreView('manageProducts')}
             style={{ backgroundColor: '#5E35B1', padding: 16, borderRadius: 10, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="pricetags-outline" size={25} color="#FFF" />
