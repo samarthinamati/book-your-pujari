@@ -61,7 +61,7 @@ export default function AdminDashboard() {
 }>>({});
 const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [storeView, setStoreView] = useState<'menu' | 'addProduct' | 'orders'>('menu');
+  const [storeView, setStoreView] = useState<'menu' | 'addProduct' | 'orders' | 'sellerApplications'>('menu');
 const [productName, setProductName] = useState('');
 const [productDescription, setProductDescription] = useState('');
 const [productCategory, setProductCategory] = useState('Puja Samagri');
