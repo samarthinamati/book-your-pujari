@@ -851,7 +851,37 @@ tracking_url: tracking.tracking_url,
         </>
       )}
 
-      
+   {storeView === 'sellerApplications' && (
+  <View style={{ padding: 16 }}>
+    <TouchableOpacity
+      onPress={() => setStoreView('menu')}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+      }}
+    >
+      <Ionicons name="arrow-back" size={22} color="#FF6B35" />
+      <Text style={{ marginLeft: 8, color: '#333', fontWeight: 'bold' }}>
+        Back to Store Menu
+      </Text>
+    </TouchableOpacity>
+
+    <Text style={{
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: '#222',
+      marginBottom: 12,
+    }}>
+      Seller Applications
+    </Text>
+
+    <Text style={{ color: '#666', fontSize: 14 }}>
+      Seller applications will appear here. You will be able to review
+      applications and manage seller pickup locations.
+    </Text>
+  </View>
+)}   
 {storeView === 'addProduct' && showAddProduct && (
   <View
     style={{
