@@ -1358,7 +1358,7 @@ console.log('COD ERROR MESSAGE:', errorMessage);
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F1F3F6' },
+ screen: { flex: 1, backgroundColor: '#F3FAFF' },
   content: { paddingBottom: 100 },
   center: {
     flex: 1,
