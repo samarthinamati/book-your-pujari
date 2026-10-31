@@ -1716,7 +1716,7 @@ quickActionText: {
   paymentOptionSelected: { borderColor: BLUE, backgroundColor: '#EAF2FF' },
   paymentOptionText: { fontSize: 14, color: '#222222', fontWeight: '600' },
   orderButton: {
-    backgroundColor: '#FB641B',
+    backgroundColor: BLUE,
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
