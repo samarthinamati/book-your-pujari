@@ -2257,8 +2257,8 @@ async def create_seller_product(
 
     return serialize_store_product(product)
     
-    @api_router.get("/store/admin/products")
-    async def get_all_store_products(
+@api_router.get("/store/admin/products")
+async def get_all_store_products(
     user: dict = Depends(get_current_user)
 ):
     await require_role(user, ["admin"])
