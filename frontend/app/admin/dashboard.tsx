@@ -819,7 +819,7 @@ tracking_url: tracking.tracking_url,
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => Alert.alert('Seller Applications', 'Seller approval and pickup-location management need seller application API endpoints and are not connected yet.')}
+           onPress={() => setStoreView('sellerApplications')}
             style={{ backgroundColor: '#EF6C00', padding: 16, borderRadius: 10, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="people-outline" size={25} color="#FFF" />
