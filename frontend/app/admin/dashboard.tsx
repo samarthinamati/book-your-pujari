@@ -1422,6 +1422,34 @@ tracking_url: tracking.tracking_url,
           </TouchableOpacity>
         </View>
       )}
+      
+
+<TouchableOpacity
+  onPress={() => {
+    setStoreView('coupons');
+    fetchCoupons();
+  }}
+  style={{
+    backgroundColor: '#AD1457',
+    padding: 16,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  }}
+>
+  <Ionicons name="pricetag-outline" size={25} color="#FFF" />
+
+  <View style={{ marginLeft: 12, flex: 1 }}>
+    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+      Manage Coupons
+    </Text>
+    <Text style={{ color: '#FCE4EC', marginTop: 3 }}>
+      Create discounts and promotional offers
+    </Text>
+  </View>
+
+  <Ionicons name="chevron-forward" size={22} color="#FFF" />
+</TouchableOpacity>
 
       {storeView === 'addProduct' && (
         <>
