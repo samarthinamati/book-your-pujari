@@ -531,6 +531,90 @@ tracking_url: tracking.tracking_url,
     );
   }
 };
+    // Load customer conversations for the admin inbox
+  const fetchChatConversations = async () => {
+    try {
+      setLoadingConversations(true);
+
+      const response = await apiClient.get('/store/chat/conversations');
+
+      setChatConversations(Array.isArray(response) ? response : []);
+    } catch (error: any) {
+      Alert.alert(
+        'Messages Error',
+        error?.message || 'Could not load customer messages.'
+      );
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  // Open a conversation and load its message history
+  const openChatConversation = async (conversation: any) => {
+    const conversationKey = conversation?.conversation_key;
+
+    if (!conversationKey) {
+      Alert.alert('Error', 'Conversation ID is missing.');
+      return;
+    }
+
+    setSelectedConversation(conversation);
+    setChatMessages([]);
+
+    try {
+      setLoadingChatMessages(true);
+
+      const response = await apiClient.get(
+        `/store/chat/messages/${encodeURIComponent(conversationKey)}`
+      );
+
+      setChatMessages(Array.isArray(response) ? response : []);
+    } catch (error: any) {
+      Alert.alert(
+        'Messages Error',
+        error?.message || 'Could not load this conversation.'
+      );
+    } finally {
+      setLoadingChatMessages(false);
+    }
+  };
+
+  // Send an admin reply
+  const sendChatReply = async () => {
+    const message = replyText.trim();
+    const conversationKey = selectedConversation?.conversation_key;
+
+    if (!conversationKey) {
+      Alert.alert('Error', 'Please select a conversation.');
+      return;
+    }
+
+    if (!message) {
+      Alert.alert('Empty Reply', 'Please type a message first.');
+      return;
+    }
+
+    try {
+      setSendingChatReply(true);
+
+      await apiClient.post(
+        `/store/chat/messages/${encodeURIComponent(conversationKey)}/reply`,
+        { message }
+      );
+
+      setReplyText('');
+
+      await openChatConversation(selectedConversation);
+      await fetchChatConversations();
+    } catch (error: any) {
+      Alert.alert(
+        'Reply Error',
+        error?.message || 'Could not send your reply.'
+      );
+    } finally {
+      setSendingChatReply(false);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
