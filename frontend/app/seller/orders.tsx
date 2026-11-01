@@ -4,6 +4,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Modal,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
