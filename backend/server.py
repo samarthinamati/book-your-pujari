@@ -4039,6 +4039,58 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
         {"$set": {"is_read": True}}
     )
     return {"message": "Notification marked as read"}
+    class StoreProductReviewCreate(BaseModel):
+    product_id: str
+    rating: int = Field(..., ge=1, le=5)
+    comment: str = Field(default="", max_length=1000)
+
+@api_router.post("/store/products/{product_id}/reviews")
+async def create_product_review(
+    product_id: str,
+    payload: StoreProductReviewCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+    
+    try:
+        product_oid = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+
+    product = await db.store_products.find_one({"_id": product_oid})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    review_doc = {
+        "product_id": str(product_oid),
+        "customer_id": user["id"],
+        "customer_name": user.get("name", "Customer"),
+        "rating": payload.rating,
+        "comment": payload.comment.strip(),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await db.store_product_reviews.insert_one(review_doc)
+    review_doc["id"] = str(result.inserted_id)
+    review_doc.pop("_id", None)
+
+    # Recalculate average rating & review count for the product
+    reviews = await db.store_product_reviews.find({"product_id": str(product_oid)}).to_list(1000)
+    avg_rating = sum(r.get("rating", 0) for r in reviews) / len(reviews) if reviews else 0
+
+    await db.store_products.update_one(
+        {"_id": product_oid},
+        {"$set": {"average_rating": round(avg_rating, 1), "review_count": len(reviews)}}
+    )
+
+    return review_doc
+
+@api_router.get("/store/products/{product_id}/reviews")
+async def list_product_reviews(product_id: str):
+    reviews = await db.store_product_reviews.find({"product_id": product_id}).sort("created_at", -1).to_list(200)
+    for r in reviews:
+        r["id"] = str(r.pop("_id"))
+    return reviews
 
 # ==================== DELHIVERY API CONFIG CHECK ====================
 
