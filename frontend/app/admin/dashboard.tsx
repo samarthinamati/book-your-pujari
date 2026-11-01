@@ -76,8 +76,7 @@ export default function AdminDashboard() {
   
 }>>({});
 const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
-  const [showAddProduct, setShowAddProduct] = useState(false);
- const [storeView, setStoreView] = useState<'menu' | 'addProduct' | 'orders' | 'sellerApplications' | 'manageProducts'>('menu');
+const [showAddProduct, setShowAddProduct] = useState(false);
 const [productName, setProductName] = useState('');
 const [productDescription, setProductDescription] = useState('');
 const [productCategory, setProductCategory] = useState('Puja Samagri');
@@ -88,6 +87,19 @@ const [productWeight, setProductWeight] = useState('');
 const [storeView, setStoreView] = useState<
   'menu' | 'addProduct' | 'orders' | 'sellerApplications' | 'manageProducts' | 'coupons'
 >('menu');
+  // Store coupon management
+const [coupons, setCoupons] = useState<any[]>([]);
+const [loadingCoupons, setLoadingCoupons] = useState(false);
+const [savingCoupon, setSavingCoupon] = useState(false);
+
+const [couponCode, setCouponCode] = useState('');
+const [couponDescription, setCouponDescription] = useState('');
+const [couponDiscountType, setCouponDiscountType] = useState<'percent' | 'fixed'>('percent');
+const [couponDiscountValue, setCouponDiscountValue] = useState('');
+const [couponMinOrder, setCouponMinOrder] = useState('0');
+const [couponMaxDiscount, setCouponMaxDiscount] = useState('');
+const [couponMaxUses, setCouponMaxUses] = useState('');
+const [couponExpiry, setCouponExpiry] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showAdminSection, setShowAdminSection] = useState<
   'store' | 'pujaris' | 'banners' | 'messages' | null
