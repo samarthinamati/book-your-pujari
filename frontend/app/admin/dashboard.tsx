@@ -73,7 +73,7 @@ export default function AdminDashboard() {
   const [trackingEdits, setTrackingEdits] = useState<Record<string, {
   courier: string;
   tracking_number: string;
-  tracking_url: string;
+  
 }>>({});
 const [loadingStoreOrders, setLoadingStoreOrders] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -88,7 +88,7 @@ const [productWeight, setProductWeight] = useState('');
 const [savingProduct, setSavingProduct] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showAdminSection, setShowAdminSection] = useState<
-  'store' | 'pujaris' | 'banners' | null
+  'store' | 'pujaris' | 'banners' | 'messages' | null
 >(null);
   const [banners, setBanners] = useState<any[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(false);
