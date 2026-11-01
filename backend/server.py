@@ -2461,7 +2461,7 @@ async def create_store_order(
             "image_url": product.get("image_url", ""),
         })
 
-        discounted_subtotal = round(
+            discounted_subtotal = round(
         max(0, product_subtotal - discount_amount), 2
     )
 
