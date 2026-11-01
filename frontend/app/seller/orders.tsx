@@ -360,7 +360,91 @@ if (Platform.OS === 'web') {
           <Ionicons name="refresh-outline" size={20} color="#2874F0" />
           <Text style={styles.refreshText}>Refresh Orders</Text>
         </TouchableOpacity>
-      </ScrollView>
+            </ScrollView>
+
+      <Modal
+        visible={selectedLabelOrder !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedLabelOrder(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.labelModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Shipping Label Preview</Text>
+              <TouchableOpacity
+                onPress={() => setSelectedLabelOrder(null)}
+              >
+                <Ionicons name="close-circle" size={28} color="#667085" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedLabelOrder && (
+              <ScrollView>
+                <View style={styles.shippingLabel}>
+                  <Text style={styles.labelBrand}>PUJARIGO</Text>
+                  <Text style={styles.labelHeading}>SHIP TO</Text>
+
+                  <View style={styles.labelDivider} />
+
+                  <Text style={styles.labelOrder}>
+                    Order #{selectedLabelOrder.id}
+                  </Text>
+
+                  <Text style={styles.labelCustomer}>
+                    {selectedLabelOrder.customer_name || 'Customer'}
+                  </Text>
+                  <Text style={styles.labelAddress}>
+                    {selectedLabelOrder.delivery_address || 'Address unavailable'}
+                  </Text>
+                  <Text style={styles.labelAddress}>
+                    {selectedLabelOrder.city || ''} - {selectedLabelOrder.pincode || ''}
+                  </Text>
+                  <Text style={styles.labelAddress}>
+                    Phone: {selectedLabelOrder.customer_phone || 'N/A'}
+                  </Text>
+
+                  <View style={styles.labelDivider} />
+
+                  <Text style={styles.labelSection}>PRODUCTS IN THIS PARCEL</Text>
+
+                  {(selectedLabelOrder.items || []).map((item, index) => (
+                    <View key={`${item.name}-${index}`} style={styles.labelItem}>
+                      <Text style={styles.labelItemName}>{item.name}</Text>
+                      <Text style={styles.labelItemQty}>
+                        Qty: {item.quantity}
+                      </Text>
+                    </View>
+                  ))}
+
+                  <View style={styles.labelDivider} />
+
+                  <Text style={styles.labelAddress}>
+                    Courier: {selectedLabelOrder.courier || 'Not assigned'}
+                  </Text>
+                  <Text style={styles.labelAddress}>
+                    AWB / Tracking: {selectedLabelOrder.tracking_number || 'Not assigned'}
+                  </Text>
+
+                  <Text style={styles.labelFooter}>
+                    Thank you for shopping with PujariGo
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.printLabelButton}
+                  onPress={() => printShippingLabel(selectedLabelOrder)}
+                >
+                  <Ionicons name="print-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.printLabelText}>
+                    Print Shipping Label
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
