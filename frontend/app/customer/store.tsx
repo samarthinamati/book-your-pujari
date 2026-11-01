@@ -524,6 +524,11 @@ const sendChatMessage = async () => {
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const updateQuantity = (product: Product, change: number) => {
+    if (appliedCoupon) {
+  setAppliedCoupon(null);
+  setDiscountAmount(0);
+  setCouponCode('');
+}
     setCart((prev) => {
       const cur = prev[product.id]?.quantity || 0;
       const next = cur + change;
