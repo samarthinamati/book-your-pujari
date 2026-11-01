@@ -1,6 +1,7 @@
 // frontend/app/customer/store.tsx
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NotificationBell } from '@/src/components/NotificationBell';
 import {
   ActivityIndicator,
