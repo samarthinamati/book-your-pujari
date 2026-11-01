@@ -332,12 +332,12 @@ if (Platform.OS === 'web') {
                   Tracking number: {order.tracking_number}
                 </Text>
               ) : null}
-              <TouchableOpacity
+  <TouchableOpacity
   style={styles.printLabelButton}
-  onPress={() => printShippingLabel(order)}
+  onPress={() => setSelectedLabelOrder(order)}
 >
-  <Ionicons name="print-outline" size={20} color="#FFFFFF" />
-  <Text style={styles.printLabelText}>Print Shipping Label</Text>
+  <Ionicons name="eye-outline" size={20} color="#FFFFFF" />
+  <Text style={styles.printLabelText}>View Label</Text>
 </TouchableOpacity>
 
               <Text style={styles.noticeText}>
