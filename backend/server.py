@@ -4152,9 +4152,9 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
     )
     return {"message": "Notification marked as read"}
     class StoreProductReviewCreate(BaseModel):
-    product_id: str
-    rating: int = Field(..., ge=1, le=5)
-    comment: str = Field(default="", max_length=1000)
+       product_id: str
+       rating: int = Field(..., ge=1, le=5)
+       comment: str = Field(default="", max_length=1000)
 
 @api_router.post("/store/products/{product_id}/reviews")
 async def create_product_review(
