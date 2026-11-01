@@ -138,10 +138,11 @@ const [showPujariSection, setShowPujariSection] = useState(false);
   }
 };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchSaints();
-  };
+ const onRefresh = () => {
+  setRefreshing(true);
+  fetchSaints();
+  fetchBanners();
+};
 
   if (loading && saints.length === 0) {
     return (
