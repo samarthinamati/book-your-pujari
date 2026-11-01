@@ -794,11 +794,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#222222',
   },
+ 
   bookingOptionSubtitle: {
     fontSize: 12,
     color: '#666666',
     marginTop: 5,
-      bannerSection: {
+  },
+
+  bannerSection: {
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -866,6 +869,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
-  },
-
 });
