@@ -1,4 +1,4 @@
-
+// frontend/app/customer/store.tsx
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -31,6 +31,9 @@ type Product = {
   image_url?: string;
   stock?: number;
   is_available?: boolean;
+  is_gift?: boolean;
+  tags?: string[];
+  weight_grams?: number;
 };
 
 type CartItem = {
@@ -44,33 +47,33 @@ type StoreOrder = {
   payment_status?: string;
   payment_method?: string;
   total_amount?: number;
-  total?: number;
-  amount?: number;
+  product_subtotal?: number;
+  discount_amount?: number;
+  coupon_code?: string;
+  shipping_fee?: number;
+  platform_fee?: number;
+  cod_fee?: number;
+  is_gift?: boolean;
+  gift_recipient_name?: string;
+  gift_message?: string;
   created_at?: string;
   courier?: string;
   tracking_number?: string;
   tracking_url?: string;
-  return_status?: string;
-  replacement_status?: string;
   items?: any[];
 };
 
 const BLUE = '#65BDF2';
 const DARK_BLUE = '#42A5E8';
 const GOLD = '#EAF7FF';
-const LIGHT_GOLD = '#FFFFFF';
 
 const CATEGORY_ICONS: Record<string, string> = {
   all: '🛍️',
   'puja samagri': '🪔',
   'puja kit': '🙏',
-  'puja kits': '🙏',
   diya: '🪔',
-  diyas: '🪔',
+  gifts: '🎁',
   incense: '🕯️',
-  flowers: '🌼',
-  idols: '🛕',
-  'pooja items': '🪷',
   default: '📿',
 };
 
@@ -78,8 +81,7 @@ const getOrderId = (order: any): string =>
   String(order?.id || order?.order_id || order?._id || '');
 
 const getOrderTotal = (order: StoreOrder): number =>
-  Number(order.total_amount ?? order.total ?? order.amount ?? 0);
-
+  Number(order.total_amount ?? 0);
 
 type StoreLanguage = 'en' | 'kn' | 'hi';
 
@@ -87,71 +89,41 @@ const STORE_TRANSLATIONS: Record<StoreLanguage, Record<string, string>> = {
   en: {
     home: 'Home', tagline: 'Your Trusted Partner for Every Puja',
     search: 'Search for products, puja kits...', myOrders: 'My Orders',
+    favourites: 'Wishlist', chat: 'Support Chat', gifts: 'Gift Store',
     shopCategory: 'Shop by Category', special: 'PUJARIGO SPECIAL',
-    everything: 'Everything for your Puja', ceremony: 'Make every ceremony special',
-    exploreNow: 'EXPLORE NOW ›', featured: 'Featured Products', explore: 'Explore ›',
-    exploreMore: 'Explore More', essentials: 'Puja Essentials', delivery: 'Home Delivery',
-    secure: 'Secure Payment', clearFilters: 'Clear filters', all: 'All',
-    addCart: 'ADD TO CART', outStock: 'Out of stock', viewDetails: 'View product details',
+    everything: 'Everything for your Puja', exploreNow: 'EXPLORE NOW ›',
+    featured: 'Featured Products', recentlyViewed: 'Recently Viewed',
+    addCart: 'ADD TO CART', outStock: 'Out of stock', viewDetails: 'View details',
     loading: 'Loading Puja Samagri...', cart: 'My Shopping Cart',
     emptyCart: 'Your cart is empty', startShopping: 'Start Shopping',
-    total: 'Total', deliveryDetails: 'Delivery Details', customerName: 'Customer name',
-    mobile: '10-digit mobile number', address: 'Full delivery address', city: 'City',
-    pin: '6-digit PIN code', viewCart: 'VIEW CART', selected: 'item(s) selected',
-    category: 'Category', description: 'Product Description',
-    noDescription: 'No description has been added for this product yet.',
-    available: 'Available', unavailable: 'Currently unavailable',
-    stock: 'item(s) in stock', cancel: 'Cancel Order', return: 'Return Item',
-    replace: 'Replace Item', orderStatus: 'Order status', payment: 'Payment',
-    paymentStatus: 'Payment status', orderTotal: 'Order total', tracking: 'Delivery Tracking',
-    searchResults: 'Search Results', productsComing: 'Products coming soon',
-    noMatches: 'No matching products', showAll: 'Show all products',
+    total: 'Total', deliveryDetails: 'Delivery Details', applyCoupon: 'Apply Coupon',
+    giftOption: '🎁 Send as a Gift / Hamper', invoice: 'Download PDF Invoice / Receipt',
   },
   kn: {
     home: 'ಮುಖಪುಟ', tagline: 'ಪ್ರತಿ ಪೂಜೆಗೆ ನಿಮ್ಮ ವಿಶ್ವಾಸಾರ್ಹ ಸಂಗಾತಿ',
     search: 'ಉತ್ಪನ್ನಗಳು ಮತ್ತು ಪೂಜಾ ಕಿಟ್‌ಗಳನ್ನು ಹುಡುಕಿ...', myOrders: 'ನನ್ನ ಆರ್ಡರ್‌ಗಳು',
+    favourites: 'ಇಷ್ಟಪಟ್ಟವು', chat: 'ಚಾಟ್ ಬೆಂಬಲ', gifts: 'ಉಡುಗೊರೆ ಅಂಗಡಿ',
     shopCategory: 'ವರ್ಗದ ಪ್ರಕಾರ ಖರೀದಿಸಿ', special: 'ಪೂಜಾರಿಗೋ ವಿಶೇಷ',
-    everything: 'ನಿಮ್ಮ ಪೂಜೆಗೆ ಬೇಕಾದ ಎಲ್ಲವೂ', ceremony: 'ಪ್ರತಿ ಸಮಾರಂಭವನ್ನೂ ವಿಶೇಷವಾಗಿಸಿ',
-    exploreNow: 'ಈಗ ಅನ್ವೇಷಿಸಿ ›', featured: 'ವಿಶೇಷ ಉತ್ಪನ್ನಗಳು', explore: 'ಅನ್ವೇಷಿಸಿ ›',
-    exploreMore: 'ಇನ್ನಷ್ಟು ಅನ್ವೇಷಿಸಿ', essentials: 'ಪೂಜಾ ಸಾಮಗ್ರಿಗಳು', delivery: 'ಮನೆಗೆ ತಲುಪಿಸುವಿಕೆ',
-    secure: 'ಸುರಕ್ಷಿತ ಪಾವತಿ', clearFilters: 'ಫಿಲ್ಟರ್‌ಗಳನ್ನು ತೆರವುಗೊಳಿಸಿ', all: 'ಎಲ್ಲವೂ',
-    addCart: 'ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ', outStock: 'ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಇಲ್ಲ', viewDetails: 'ಉತ್ಪನ್ನದ ವಿವರಗಳನ್ನು ನೋಡಿ',
+    everything: 'ನಿಮ್ಮ ಪೂಜೆಗೆ ಬೇಕಾದ ಎಲ್ಲವೂ', exploreNow: 'ಈಗ ಅನ್ವೇಷಿಸಿ ›',
+    featured: 'ವಿಶೇಷ ಉತ್ಪನ್ನಗಳು', recentlyViewed: 'ಇತ್ತೀಚೆಗೆ ವೀಕ್ಷಿಸಿದವು',
+    addCart: 'ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ', outStock: 'ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಇಲ್ಲ', viewDetails: 'ವಿವರಗಳನ್ನು ನೋಡಿ',
     loading: 'ಪೂಜಾ ಸಾಮಗ್ರಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...', cart: 'ನನ್ನ ಖರೀದಿ ಕಾರ್ಟ್',
     emptyCart: 'ನಿಮ್ಮ ಕಾರ್ಟ್ ಖಾಲಿಯಾಗಿದೆ', startShopping: 'ಖರೀದಿ ಪ್ರಾರಂಭಿಸಿ',
-    total: 'ಒಟ್ಟು', deliveryDetails: 'ವಿತರಣೆಯ ವಿವರಗಳು', customerName: 'ಗ್ರಾಹಕರ ಹೆಸರು',
-    mobile: '10 ಅಂಕಿಗಳ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', address: 'ಪೂರ್ಣ ವಿತರಣಾ ವಿಳಾಸ', city: 'ನಗರ',
-    pin: '6 ಅಂಕಿಗಳ ಪಿನ್ ಕೋಡ್', viewCart: 'ಕಾರ್ಟ್ ನೋಡಿ', selected: 'ವಸ್ತುಗಳು ಆಯ್ಕೆಯಾಗಿವೆ',
-    category: 'ವರ್ಗ', description: 'ಉತ್ಪನ್ನದ ವಿವರಣೆ',
-    noDescription: 'ಈ ಉತ್ಪನ್ನಕ್ಕೆ ಇನ್ನೂ ವಿವರಣೆ ಸೇರಿಸಲಾಗಿಲ್ಲ.',
-    available: 'ಲಭ್ಯವಿದೆ', unavailable: 'ಪ್ರಸ್ತುತ ಲಭ್ಯವಿಲ್ಲ',
-    stock: 'ವಸ್ತುಗಳು ಸ್ಟಾಕ್‌ನಲ್ಲಿವೆ', cancel: 'ಆರ್ಡರ್ ರದ್ದುಮಾಡಿ', return: 'ವಸ್ತುವನ್ನು ಹಿಂತಿರುಗಿಸಿ',
-    replace: 'ವಸ್ತುವನ್ನು ಬದಲಾಯಿಸಿ', orderStatus: 'ಆರ್ಡರ್ ಸ್ಥಿತಿ', payment: 'ಪಾವತಿ',
-    paymentStatus: 'ಪಾವತಿ ಸ್ಥಿತಿ', orderTotal: 'ಆರ್ಡರ್ ಒಟ್ಟು ಮೊತ್ತ', tracking: 'ವಿತರಣೆಯ ಮಾಹಿತಿ',
-    searchResults: 'ಹುಡುಕಾಟದ ಫಲಿತಾಂಶಗಳು', productsComing: 'ಉತ್ಪನ್ನಗಳು ಶೀಘ್ರದಲ್ಲೇ ಲಭ್ಯ',
-    noMatches: 'ಹೊಂದಾಣಿಕೆಯ ಉತ್ಪನ್ನಗಳಿಲ್ಲ', showAll: 'ಎಲ್ಲಾ ಉತ್ಪನ್ನಗಳನ್ನು ತೋರಿಸಿ',
+    total: 'ಒಟ್ಟು', deliveryDetails: 'ವಿತರಣೆಯ ವಿವರಗಳು', applyCoupon: 'ಕೂಪನ್ ಅನ್ವಯಿಸಿ',
+    giftOption: '🎁 ಉಡುಗೊರೆಯಾಗಿ ಕಳುಹಿಸಿ', invoice: 'ಪಿಡಿಎಫ್ ಇನ್‌ವಾಯ್ಸ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
   },
   hi: {
     home: 'होम', tagline: 'हर पूजा के लिए आपका भरोसेमंद साथी',
     search: 'उत्पाद और पूजा किट खोजें...', myOrders: 'मेरे ऑर्डर',
+    favourites: 'विशलिस्ट', chat: 'चैट सहायता', gifts: 'उपहार स्टोर',
     shopCategory: 'श्रेणी के अनुसार खरीदें', special: 'पूजारिगो विशेष',
-    everything: 'आपकी पूजा के लिए सब कुछ', ceremony: 'हर समारोह को खास बनाएं',
-    exploreNow: 'अभी देखें ›', featured: 'विशेष उत्पाद', explore: 'देखें ›',
-    exploreMore: 'और देखें', essentials: 'पूजा की आवश्यक सामग्री', delivery: 'घर तक डिलीवरी',
-    secure: 'सुरक्षित भुगतान', clearFilters: 'फ़िल्टर हटाएं', all: 'सभी',
-    addCart: 'कार्ट में जोड़ें', outStock: 'स्टॉक में नहीं', viewDetails: 'उत्पाद का विवरण देखें',
+    everything: 'आपकी पूजा के लिए सब कुछ', exploreNow: 'अभी देखें ›',
+    featured: 'विशेष उत्पाद', recentlyViewed: 'हाल ही में देखे गए',
+    addCart: 'कार्ट में जोड़ें', outStock: 'स्टॉक में नहीं', viewDetails: 'विवरण देखें',
     loading: 'पूजा सामग्री लोड हो रही है...', cart: 'मेरी शॉपिंग कार्ट',
     emptyCart: 'आपकी कार्ट खाली है', startShopping: 'खरीदारी शुरू करें',
-    total: 'कुल', deliveryDetails: 'डिलीवरी विवरण', customerName: 'ग्राहक का नाम',
-    mobile: '10 अंकों का मोबाइल नंबर', address: 'पूरा डिलीवरी पता', city: 'शहर',
-    pin: '6 अंकों का पिन कोड', viewCart: 'कार्ट देखें', selected: 'वस्तुएँ चुनी गईं',
-    category: 'श्रेणी', description: 'उत्पाद विवरण',
-    noDescription: 'इस उत्पाद का विवरण अभी नहीं जोड़ा गया है।',
-    available: 'उपलब्ध', unavailable: 'अभी उपलब्ध नहीं',
-    stock: 'वस्तुएँ स्टॉक में हैं', cancel: 'ऑर्डर रद्द करें', return: 'वस्तु वापस करें',
-    replace: 'वस्तु बदलें', orderStatus: 'ऑर्डर स्थिति', payment: 'भुगतान',
-    paymentStatus: 'भुगतान स्थिति', orderTotal: 'ऑर्डर की कुल राशि', tracking: 'डिलीवरी ट्रैकिंग',
-    searchResults: 'खोज परिणाम', productsComing: 'उत्पाद जल्द आ रहे हैं',
-    noMatches: 'कोई मेल खाता उत्पाद नहीं', showAll: 'सभी उत्पाद दिखाएं',
+    total: 'कुल', deliveryDetails: 'डिलीवरी विवरण', applyCoupon: 'कूपन लागू करें',
+    giftOption: '🎁 उपहार के रूप में भेजें', invoice: 'पीडीएफ चालान डाउनलोड करें',
   },
 };
 
@@ -163,44 +135,76 @@ const escapeHtml = (value: unknown): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const createProductPdfHtml = (product: Product): string => {
-  const image = product.image_url
-    ? `<img class="product-image" src="${escapeHtml(product.image_url)}" />`
-    : '';
+const createOrderInvoiceHtml = (order: StoreOrder): string => {
+  const itemsHtml = (order.items || [])
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(item.name)}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${Number(item.unit_price || 0).toFixed(2)}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${Number(item.line_total || 0).toFixed(2)}</td>
+      </tr>`
+    )
+    .join('');
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(product.name)} - PujariGo</title>
+  <title>Invoice - Order #${escapeHtml(order.id)}</title>
   <style>
-    body { font-family: Arial, sans-serif; color: #263238; padding: 28px; }
-    .brand { color: #42A5E8; font-size: 25px; font-weight: 700; }
-    .tagline { color: #64748b; font-size: 12px; margin-top: 3px; }
-    .line { height: 3px; background: #65BDF2; margin: 18px 0; }
-    .product-image { display: block; max-width: 100%; max-height: 280px; object-fit: contain; margin: 18px auto; }
-    h1 { font-size: 23px; margin-bottom: 8px; }
-    .price { color: #16834a; font-size: 22px; font-weight: 700; margin: 12px 0; }
-    .label { color: #64748b; font-size: 12px; margin-top: 16px; }
-    .value { font-size: 14px; line-height: 1.6; }
-    footer { color: #64748b; font-size: 11px; margin-top: 34px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+    body { font-family: Arial, sans-serif; color: #1e293b; padding: 30px; }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #65BDF2; padding-bottom: 15px; }
+    .brand { color: #42A5E8; font-size: 26px; font-weight: bold; }
+    .title { font-size: 20px; font-weight: bold; color: #0f172a; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 25px; }
+    th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; }
+    .summary { margin-top: 20px; float: right; width: 280px; font-size: 14px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; }
+    .total-row { font-weight: bold; font-size: 16px; border-top: 2px solid #cbd5e1; padding-top: 8px; color: #166534; }
   </style>
 </head>
 <body>
-  <div class="brand">PujariGo</div>
-  <div class="tagline">Your Trusted Partner for Every Puja</div>
-  <div class="line"></div>
-  ${image}
-  <h1>${escapeHtml(product.name)}</h1>
-  <div class="price">₹${Number(product.price || 0).toFixed(2)}</div>
-  <div class="label">Category</div>
-  <div class="value">${escapeHtml(product.category || 'Puja Samagri')}</div>
-  <div class="label">Description</div>
-  <div class="value">${escapeHtml(product.description?.trim() || 'No description has been added yet.')}</div>
-  <div class="label">Availability</div>
-  <div class="value">${product.is_available === false || (product.stock !== undefined && Number(product.stock) <= 0) ? 'Currently unavailable' : 'Available'}</div>
-  <footer>Product details shared from the PujariGo Store. Price and availability may change.</footer>
+  <div class="header">
+    <div>
+      <div class="brand">PujariGo Samagri Store</div>
+      <div style="font-size: 12px; color: #64748b;">Instant Vedic Rituals & Pure Samagri Delivery</div>
+    </div>
+    <div style="text-align: right;">
+      <strong>Order ID:</strong> #${escapeHtml(order.id)}<br/>
+      <strong>Date:</strong> ${escapeHtml(order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A')}<br/>
+      <strong>Payment:</strong> ${escapeHtml(order.payment_status || 'Pending')} (${escapeHtml(order.payment_method || 'Online')})
+    </div>
+  </div>
+
+  <div class="title">Tax Invoice / Payment Receipt</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item Description</th>
+        <th style="text-align: center;">Qty</th>
+        <th style="text-align: right;">Price</th>
+        <th style="text-align: right;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml}
+    </tbody>
+  </table>
+
+  <div class="summary">
+    <div class="summary-row"><span>Subtotal:</span> <span>₹${Number(order.product_subtotal || 0).toFixed(2)}</span></div>
+    ${Number(order.discount_amount || 0) > 0 ? `<div class="summary-row" style="color: #166534;"><span>Discount:</span> <span>-₹${Number(order.discount_amount).toFixed(2)}</span></div>` : ''}
+    <div class="summary-row"><span>Shipping Fee:</span> <span>₹${Number(order.shipping_fee || 0).toFixed(2)}</span></div>
+    <div class="summary-row"><span>Platform Fee:</span> <span>₹${Number(order.platform_fee || 0).toFixed(2)}</span></div>
+    <div class="summary-row total-row"><span>Total Paid:</span> <span>₹${getOrderTotal(order).toFixed(2)}</span></div>
+  </div>
+
+  <div style="clear: both; margin-top: 50px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center;">
+    Thank you for shopping with PujariGo! For support, contact PujariGo customer service.
+  </div>
 </body>
 </html>`;
 };
@@ -208,2045 +212,573 @@ const createProductPdfHtml = (product: Product): string => {
 export default function CustomerStoreScreen() {
   const [language, setLanguage] = useState<StoreLanguage>('en');
   const t = (key: string) => STORE_TRANSLATIONS[language][key] || STORE_TRANSLATIONS.en[key] || key;
+
   const [products, setProducts] = useState<Product[]>([]);
+  const [favourites, setFavourites] = useState<string[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [placingOrder, setPlacingOrder] = useState(false);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  // Feature Modals & States
   const [showCart, setShowCart] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showOrders, setShowOrders] = useState(false);
-  const [orders, setOrders] = useState<StoreOrder[]>([]);
-  const [ordersError, setOrdersError] = useState('');
+  const [showWishlist, setShowWishlist] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  // Gift & Coupon States
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftRecipientPhone, setGiftRecipientPhone] = useState('');
+  const [giftAddress, setGiftAddress] = useState('');
+  const [giftCity, setGiftCity] = useState('');
+  const [giftPin, setGiftPin] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  const [giftWrapping, setGiftWrapping] = useState(false);
+
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
+  // Chat States
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [activeConversationKey, setActiveConversationKey] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+
+  // Orders & Checkout
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
 
-  const loadProducts = useCallback(async () => {
-    setError('');
-
+  const loadStoreData = useCallback(async () => {
     try {
-      const result = await apiClient.get('/store/products');
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.products)
-          ? result.products
-          : [];
+      const [prodRes, favRes, recentRes] = await Promise.all([
+        apiClient.get('/store/products'),
+        apiClient.get('/store/favourites').catch(() => []),
+        apiClient.get('/store/recently-viewed').catch(() => []),
+      ]);
 
-      setProducts(
-        list.map((item: any) => ({
-          ...item,
-          id: String(item.id || item._id || item.product_id || ''),
-        })).filter((item: Product) => Boolean(item.id))
-      );
+      const list = Array.isArray(prodRes) ? prodRes : prodRes?.products || [];
+      setProducts(list.map((p: any) => ({ ...p, id: String(p.id || p._id) })));
+      setFavourites((Array.isArray(favRes) ? favRes : []).map((f: any) => String(f.id || f._id)));
+      setRecentlyViewed(Array.isArray(recentRes) ? recentRes : []);
     } catch (e: any) {
-      setError(e?.message || 'Could not load products.');
+      console.warn('Failed to load store data:', e?.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  const loadOrders = useCallback(async () => {
-    setLoadingOrders(true);
-    setOrdersError('');
-
-    try {
-      const result = await apiClient.get('/store/orders/my-orders');
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.orders)
-          ? result.orders
-          : [];
-
-      setOrders(
-        list.map((order: any) => ({
-          ...order,
-          id: getOrderId(order),
-        })).filter((order: StoreOrder) => Boolean(order.id))
-      );
-    } catch (e: any) {
-      setOrdersError(
-        e?.message ||
-          'Could not load your orders. Please try again.'
-      );
-    } finally {
-      setLoadingOrders(false);
-    }
-  }, []);
-
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    loadStoreData();
+  }, [loadStoreData]);
 
-  const categories = useMemo(() => {
-    const names = products
-      .map((product) => product.category?.trim())
-      .filter((name): name is string => Boolean(name));
+  // 1. ❤️ Favourites Toggle
+  const toggleFavourite = async (productId: string) => {
+    try {
+      if (favourites.includes(productId)) {
+        await apiClient.delete(`/store/favourites/${productId}`);
+        setFavourites(favourites.filter((id) => id !== productId));
+      } else {
+        await apiClient.post(`/store/favourites/${productId}`, {});
+        setFavourites([...favourites, productId]);
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not update wishlist.');
+    }
+  };
 
-    return ['All', ...Array.from(new Set(names))];
-  }, [products]);
+  // 6. 👀 Track Recently Viewed & Open Details
+  const handleOpenProduct = async (product: Product) => {
+    setSelectedProduct(product);
+    try {
+      await apiClient.post('/store/recently-viewed', { product_id: product.id });
+      // Refresh recently viewed list silently
+      const recent = await apiClient.get('/store/recently-viewed');
+      setRecentlyViewed(Array.isArray(recent) ? recent : []);
+    } catch (e) {
+      // Ignore background tracking error
+    }
+  };
+
+  // 4. 🏷️ Validate Coupon
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    try {
+      const subtotal = Object.values(cart).reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
+      const res = await apiClient.post('/store/coupons/validate', {
+        code: couponCode.trim(),
+        subtotal,
+      });
+      if (res?.valid) {
+        setAppliedCoupon(res.coupon);
+        setDiscountAmount(Number(res.discount_amount || 0));
+        Alert.alert('Success', `Coupon "${res.coupon.code}" applied successfully!`);
+      }
+    } catch (e: any) {
+      Alert.alert('Invalid Coupon', e?.message || 'Could not apply coupon.');
+    }
+  };
+
+  // 2. 💬 Chat Conversations & Messages
+  const loadConversations = async () => {
+    try {
+      const res = await apiClient.get('/store/chat/conversations');
+      setConversations(Array.isArray(res) ? res : []);
+    } catch (e) {
+      setConversations([]);
+    }
+  };
+
+  const openConversation = async (key: string) => {
+    setActiveConversationKey(key);
+    try {
+      const msgs = await apiClient.get(`/store/chat/messages/${key}`);
+      setChatMessages(Array.isArray(msgs) ? msgs : []);
+    } catch (e) {
+      setChatMessages([]);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    try {
+      if (activeConversationKey) {
+        await apiClient.post(`/store/chat/messages/${activeConversationKey}/reply`, {
+          message: chatInput.trim(),
+        });
+        openConversation(activeConversationKey);
+      } else {
+        // Start new chat with Admin / Support
+        await apiClient.post('/store/chat/messages', {
+          recipient_type: 'admin',
+          message: chatInput.trim(),
+        });
+        loadConversations();
+      }
+      setChatInput('');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not send message.');
+    }
+  };
+
+  // 5. 🧾 Download PDF Invoice / Receipt
+  const downloadOrderInvoice = async (order: StoreOrder) => {
+    try {
+      const html = createOrderInvoiceHtml(order);
+      if (Platform.OS === 'web') {
+        await Print.printAsync({ html });
+        return;
+      }
+      const file = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice #${order.id}`,
+        });
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not generate invoice PDF.');
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-
     return products.filter((product) => {
-      const matchesSearch =
-        !query ||
-        product.name?.toLowerCase().includes(query) ||
-        product.category?.toLowerCase().includes(query) ||
-        product.description?.toLowerCase().includes(query);
-
-      const matchesCategory =
-        selectedCategory === 'All' ||
-        product.category?.toLowerCase() === selectedCategory.toLowerCase();
-
+      const matchesSearch = !query || product.name?.toLowerCase().includes(query) || product.category?.toLowerCase().includes(query);
+      const matchesCategory = selectedCategory === 'All' || product.category?.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [products, search, selectedCategory]);
 
   const cartItems = Object.values(cart);
-
-  const total = cartItems.reduce(
-    (sum, item) => sum + Number(item.product.price) * item.quantity,
-    0
-  );
-
-  const itemCount = cartItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
+  const subtotal = cartItems.reduce((sum, item) => sum + Number(item.product.price) * item.quantity, 0);
+  const shippingFee = subtotal > 500 ? 0 : 50;
+  const platformFee = Math.round(subtotal * 0.02);
+  const total = Math.max(0, subtotal - discountAmount) + shippingFee + platformFee;
+  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const updateQuantity = (product: Product, change: number) => {
-    const stock = Number(product.stock ?? 50);
-
-    setCart((previous) => {
-      const current = previous[product.id]?.quantity || 0;
-      const next = current + change;
-      const updated = { ...previous };
-
-      if (next <= 0) {
-        delete updated[product.id];
-      } else if (next <= Math.min(stock, 50)) {
-        updated[product.id] = { product, quantity: next };
-      } else {
-        Alert.alert(
-          'Stock limit',
-          `Only ${stock} item(s) are currently available.`
-        );
-      }
-
+    setCart((prev) => {
+      const cur = prev[product.id]?.quantity || 0;
+      const next = cur + change;
+      const updated = { ...prev };
+      if (next <= 0) delete updated[product.id];
+      else updated[product.id] = { product, quantity: next };
       return updated;
     });
   };
 
-  const resetCheckout = () => {
-    setCart({});
-    setCustomerName('');
-    setCustomerPhone('');
-    setAddress('');
-    setCity('');
-    setPincode('');
-    setShowCart(false);
-  };
-
-  const openMyOrders = () => {
-    setShowCart(false);
-    setShowOrders(true);
-    loadOrders();
-  };
-
-  const scrollToProducts = () => {
-    setSearch('');
-    setSelectedCategory('All');
-    setShowCart(false);
-    setShowOrders(false);
-  };
-
+  // Place Order with Gift & Coupon details
   const placeOrder = async () => {
-    if (cartItems.length === 0) {
-      Alert.alert('Your cart is empty', 'Please select some products.');
-      return;
-    }
-
-    if (
-      !customerName.trim() ||
-      !customerPhone.trim() ||
-      !address.trim() ||
-      !city.trim() ||
-      !pincode.trim()
-    ) {
-      Alert.alert('Missing details', 'Please fill in all delivery details.');
-      return;
-    }
-
-    if (!/^\d{10}$/.test(customerPhone.trim())) {
-      Alert.alert('Invalid mobile number', 'Enter a 10-digit mobile number.');
-      return;
-    }
-
-    if (!/^\d{6}$/.test(pincode.trim())) {
-      Alert.alert('Invalid PIN code', 'Enter a 6-digit PIN code.');
+    if (cartItems.length === 0) return;
+    if (!customerName.trim() || !customerPhone.trim() || !address.trim() || !city.trim() || !pincode.trim()) {
+      Alert.alert('Missing Details', 'Please fill in all delivery details.');
       return;
     }
 
     setPlacingOrder(true);
-
-    let storeOrderId = '';
-
     try {
-      const order = await apiClient.post('/store/orders', {
-        items: cartItems.map((item) => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-        })),
+      const orderPayload: any = {
+        items: cartItems.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
         payment_method: paymentMethod,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         delivery_address: address.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
-      });
+        coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
+        is_gift: isGift,
+        gift_recipient_name: isGift ? giftRecipientName.trim() : undefined,
+        gift_recipient_phone: isGift ? giftRecipientPhone.trim() : undefined,
+        gift_delivery_address: isGift ? giftAddress.trim() : undefined,
+        gift_delivery_city: isGift ? giftCity.trim() : undefined,
+        gift_delivery_pincode: isGift ? giftPin.trim() : undefined,
+        gift_message: isGift ? giftMessage.trim() : undefined,
+        gift_wrapping: isGift ? giftWrapping : false,
+      };
 
-console.log('STORE ORDER RESPONSE:', JSON.stringify(order));
-console.log('STORE ORDER ID:', getOrderId(order));
+      const orderRes = await apiClient.post('/store/orders', orderPayload);
+      const storeOrderId = getOrderId(orderRes);
 
-      storeOrderId = getOrderId(order);
-
-      if (!storeOrderId) {
-        throw new Error(
-          'The order ID was not returned. Please check My Orders before placing another order.'
-        );
-      }
-
-      // COD orders do not go through Razorpay.
       if (paymentMethod === 'cod') {
-        resetCheckout();
-
-        Alert.alert(
-          'Order placed successfully!',
-          `Your Cash on Delivery order has been placed.\nOrder ID: ${storeOrderId}\nAmount to pay on delivery: ₹${total.toFixed(2)}`,
-          [{ text: 'View My Orders', onPress: openMyOrders }, { text: 'OK' }]
-        );
-
+        setCart({});
+        setShowCart(false);
+        Alert.alert('Order Placed', `Order ID: ${storeOrderId}\nPay ₹${total.toFixed(2)} on delivery.`);
         return;
       }
 
-      const paymentOrder = await apiClient.post(
-        '/store/payment/create-order',
-        { store_order_id: storeOrderId }
-      );
-
-      if (
-        !paymentOrder.key_id ||
-        !paymentOrder.razorpay_order_id ||
-        paymentOrder.amount == null
-      ) {
-        throw new Error('The payment order response is incomplete.');
-      }
-
-      const paymentResponse = await openRazorpayCheckout({
-        key: paymentOrder.key_id,
-        amount: String(paymentOrder.amount),
-        currency: paymentOrder.currency || 'INR',
-        name: 'PujariGo',
+      const payOrder = await apiClient.post('/store/payment/create-order', { store_order_id: storeOrderId });
+      const payRes = await openRazorpayCheckout({
+        key: payOrder.key_id,
+        amount: String(payOrder.amount),
+        currency: payOrder.currency || 'INR',
+        name: 'PujariGo Samagri',
         description: 'Puja Samagri Store Order',
-        order_id: paymentOrder.razorpay_order_id,
-        prefill: {
-          name: customerName.trim(),
-          contact: customerPhone.trim(),
-        },
+        order_id: payOrder.razorpay_order_id,
+        prefill: { name: customerName.trim(), contact: customerPhone.trim() },
         theme: { color: DARK_BLUE },
       });
 
-      const verification = await apiClient.post('/store/payment/verify', {
+      await apiClient.post('/store/payment/verify', {
         store_order_id: storeOrderId,
-        razorpay_order_id: paymentResponse.razorpay_order_id,
-        razorpay_payment_id: paymentResponse.razorpay_payment_id,
-        razorpay_signature: paymentResponse.razorpay_signature,
+        razorpay_order_id: payRes.razorpay_order_id,
+        razorpay_payment_id: payRes.razorpay_payment_id,
+        razorpay_signature: payRes.razorpay_signature,
       });
 
-      if (
-        verification.payment_status &&
-        verification.payment_status !== 'paid'
-      ) {
-        throw new Error(
-          'Payment verification is not complete. Please check your order status before trying again.'
-        );
-      }
-
-      resetCheckout();
-
-      Alert.alert(
-        'Payment successful!',
-        `Your Samagri order has been paid successfully.\nOrder ID: ${storeOrderId}`,
-        [{ text: 'View My Orders', onPress: openMyOrders }, { text: 'OK' }]
-      );
+      setCart({});
+      setShowCart(false);
+      Alert.alert('Payment Successful!', `Order #${storeOrderId} placed successfully.`);
     } catch (e: any) {
-      const errorCode = e?.code;
-      const errorMessage =
-        typeof e?.description === 'string'
-          ? e.description
-          : typeof e?.message === 'string'
-            ? e.message
-            : 'Please check your order status and try again.';
-console.log('COD ORDER ERROR:', e);
-console.log('COD ERROR MESSAGE:', errorMessage);
-
-      if (
-        errorCode === 'PAYMENT_CANCELLED' ||
-        /payment cancelled|checkout cancelled/i.test(errorMessage)
-      ) {
-        Alert.alert(
-          'Payment cancelled',
-          'Your cart has been kept. If an order was created, check My Orders before trying again.'
-        );
-      } else {
-        Alert.alert(
-          'Payment or order issue',
-          `${errorMessage}\n\nIf an order was created or money was deducted, check My Orders before attempting another payment.`
-        );
-      }
+      Alert.alert('Order Error', e?.message || 'Could not complete order.');
     } finally {
       setPlacingOrder(false);
     }
   };
 
-  const showComingSoon = (action: string, orderId: string) => {
-    Alert.alert(
-      `${action} — Coming Soon`,
-      `Order ID: ${orderId}\n\nThis button is ready in the store screen, but the backend request feature has not been connected yet. No ${action.toLowerCase()} request has been submitted.`
-    );
-  };
-
-  const shareProductOnWhatsApp = async (product: Product) => {
-    const storeUrl = 'https://book-your-pujari-frontend.onrender.com';
-    const message = [
-      `🛍️ ${product.name}`,
-      `Price: ₹${Number(product.price || 0).toFixed(2)}`,
-      `Category: ${product.category || 'Puja Samagri'}`,
-      product.description?.trim() ? `Details: ${product.description.trim()}` : '',
-      product.image_url ? `Product photo: ${product.image_url}` : '',
-      `Explore more on PujariGo: ${storeUrl}`,
-    ].filter(Boolean).join('\n');
-
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    try {
-      await Linking.openURL(whatsappUrl);
-    } catch {
-      Alert.alert(
-        'Unable to open WhatsApp',
-        'Please check that WhatsApp or a browser is available on your device.'
-      );
-    }
-  };
-
-  const downloadProductPdf = async (product: Product) => {
-    try {
-      const html = createProductPdfHtml(product);
-
-      // On web, open the browser print dialog so the user can choose Save as PDF.
-      if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
-        return;
-      }
-
-      const file = await Print.printToFileAsync({ html });
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Save ${product.name} PDF`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        Alert.alert(
-          'PDF created',
-          `The product PDF was created at: ${file.uri}`
-        );
-      }
-    } catch (e: any) {
-      Alert.alert(
-        'Could not create PDF',
-        e?.message || 'Please try again.'
-      );
-    }
-  };
-
-  const renderOrder = (order: StoreOrder) => {
-    const status = order.order_status || 'Order status unavailable';
-    const paymentStatus = order.payment_status || 'Pending';
-    const method = (order.payment_method || 'online').toLowerCase();
-    const returnStatus = order.return_status || 'Not Requested';
-    const replacementStatus = order.replacement_status || 'Not Requested';
-
-    const delivered = status.toLowerCase() === 'delivered';
-    const cancelled = status.toLowerCase() === 'cancelled';
-
-    return (
-      <View key={order.id} style={styles.orderCard}>
-        <Text style={styles.orderTitle}>Order #{order.id}</Text>
-
-        {order.created_at ? (
-          <Text style={styles.orderMeta}>
-            Placed: {new Date(order.created_at).toLocaleDateString()}
-          </Text>
-        ) : null}
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>{t('orderStatus')}</Text>
-          <Text style={styles.orderValue}>{status}</Text>
-        </View>
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>Payment</Text>
-          <Text style={styles.orderValue}>
-            {method === 'cod' ? 'Cash on Delivery' : 'Online'}
-          </Text>
-        </View>
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>{t('paymentStatus')}</Text>
-          <Text style={styles.orderValue}>{paymentStatus}</Text>
-        </View>
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>{t('orderTotal')}</Text>
-          <Text style={styles.orderTotal}>
-            ₹{getOrderTotal(order).toFixed(2)}
-          </Text>
-        </View>
-
-        <View style={styles.trackingBox}>
-          <Text style={styles.trackingTitle}>{t('tracking')}</Text>
-          <Text style={styles.trackingText}>
-            {order.courier ? `Courier: ${order.courier}\n` : ''}
-            {order.tracking_number
-              ? `Order ID: ${order.tracking_number}`
-              : 'Tracking details will appear when provided by the store.'}
-          </Text>
-
-          {order.tracking_number ? (
-  <TouchableOpacity
-    style={styles.secondaryButton}
-    onPress={async () => {
-      const trackingPage =
-        order.tracking_url?.trim() ||
-        'https://www.delhivery.com/tracking';
-
-      try {
-        await Linking.openURL(trackingPage);
-      } catch {
-        Alert.alert(
-          'Unable to open tracking',
-          'Please try opening Delhivery tracking in your browser.'
-        );
-      }
-    }}
-  >
-    <Text style={styles.secondaryButtonText}>
-      Track My Order ↗
-    </Text>
-  </TouchableOpacity>
-) : (
-  <Text style={styles.trackingText}>
-    Tracking will be available after the store adds a courier tracking number.
-  </Text>
-)}
-        </View>
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>Return status</Text>
-          <Text style={styles.orderValue}>{returnStatus}</Text>
-        </View>
-
-        <View style={styles.orderInfoRow}>
-          <Text style={styles.orderLabel}>Replacement status</Text>
-          <Text style={styles.orderValue}>{replacementStatus}</Text>
-        </View>
-
-        <View style={styles.orderActions}>
-          {!cancelled && !delivered && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon('Cancel Order', order.id)}
-            >
-              <Text style={styles.actionButtonText}>{t('cancel')}</Text>
-            </TouchableOpacity>
-          )}
-
-          {delivered && (
-            <>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => showComingSoon('Return Item', order.id)}
-              >
-                <Text style={styles.actionButtonText}>{t('return')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => showComingSoon('Replace Item', order.id)}
-              >
-                <Text style={styles.actionButtonText}>{t('replace')}</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <Text style={styles.orderFootnote}>
-          Return, replacement and cancellation requests will be connected when
-          backend support is added.
-        </Text>
-      </View>
-    );
-  };
-
-  const renderProduct = (item: Product) => {
-    const quantity = cart[item.id]?.quantity || 0;
-    const unavailable =
-      item.is_available === false ||
-      (item.stock !== undefined && Number(item.stock) <= 0);
-
-    const icon =
-      CATEGORY_ICONS[(item.category || '').toLowerCase()] ||
-      CATEGORY_ICONS.default;
-
-    return (
-      <View key={item.id} style={styles.productCard}>
-        <TouchableOpacity
-  activeOpacity={0.85}
-  onPress={() => setSelectedProduct(item)}
->
-          <View style={styles.imageContainer}>
-            {item.image_url ? (
-              <Image
-                source={{ uri: item.image_url }}
-                style={styles.productImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text style={styles.placeholderIcon}>{icon}</Text>
-                <Text style={styles.placeholderLabel}>Puja Samagri</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
-
-          <Text style={styles.productCategory} numberOfLines={1}>
-            {item.category || 'Puja Samagri'}
-          </Text>
-
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>
-              ₹{Number(item.price || 0).toFixed(0)}
-            </Text>
-          </View>
-
-          <Text style={styles.deliveryText}>{t('viewDetails')}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.productShareRow}>
-          <TouchableOpacity
-            style={styles.productShareButton}
-            onPress={() => shareProductOnWhatsApp(item)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.productShareButtonText}>WhatsApp</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.productPdfButton}
-            onPress={() => downloadProductPdf(item)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.productPdfButtonText}>PDF</Text>
-          </TouchableOpacity>
-        </View>
-
-        {unavailable ? (
-          <View style={styles.unavailableButton}>
-            <Text style={styles.unavailableText}>{t('outStock')}</Text>
-          </View>
-        ) : quantity === 0 ? (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => updateQuantity(item, 1)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.addButtonText}>{t('addCart')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.quantityRow}>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => updateQuantity(item, -1)}
-            >
-              <Text style={styles.quantityButtonText}>−</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.quantity}>{quantity}</Text>
-
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => updateQuantity(item, 1)}
-            >
-              <Text style={styles.quantityButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={BLUE} />
-        <Text style={styles.loadingText}>{t('loading')}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              loadProducts();
-              if (showOrders) loadOrders();
-            }}
-            colors={[BLUE]}
-          />
-        }
-      >
-        
-<View style={[styles.header, { backgroundColor: DARK_BLUE, paddingBottom: 18 }]}>
-  <View style={[styles.headerTop, { alignItems: 'center' }]}>
-    <TouchableOpacity
-      style={[
-        styles.backButton,
-        {
-          backgroundColor: 'rgba(255,255,255,0.14)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.25)',
-          borderRadius: 12,
-        },
-      ]}
-      onPress={() => {
-        if (showOrders || showCart) {
-          setShowOrders(false);
-          setShowCart(false);
-        } else {
-          router.back();
-        }
-      }}
-    >
-      <Text style={[styles.backArrow, { color: '#FFFFFF' }]}>‹</Text>
-    </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadStoreData(); }} />}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: DARK_BLUE }]}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Text style={{ color: '#FFF', fontSize: 28 }}>‹</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.brandTitle}>PujariGo Store</Text>
+              <Text style={styles.headerSubtitle}>{t('tagline')}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {(['en', 'kn', 'hi'] as StoreLanguage[]).map((lang) => (
+                <TouchableOpacity key={lang} onPress={() => setLanguage(lang)} style={[styles.langChip, language === lang && styles.langChipActive]}>
+                  <Text style={[styles.langText, language === lang && styles.langTextActive]}>{lang.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-    <View style={styles.headerTitleArea}>
-      <Text style={[styles.brandTitle, { color: '#FFFFFF' }]}>
-        PujariGo
-      </Text>
-      <Text
-        style={[
-          styles.headerSubtitle,
-          { color: LIGHT_GOLD, fontWeight: '600' },
-        ]}
-      >
-        {t('tagline')}
-      </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, gap: 6 }}>
-        {([
-          ['en', 'English'],
-          ['kn', 'ಕನ್ನಡ'],
-          ['hi', 'हिंदी'],
-        ] as [StoreLanguage, string][]).map(([code, label]) => (
-          <TouchableOpacity
-            key={code}
-            onPress={() => setLanguage(code)}
-            style={{
-              paddingHorizontal: 9,
-              paddingVertical: 4,
-              borderRadius: 12,
-              backgroundColor: language === code ? '#FFFFFF' : 'rgba(255,255,255,0.18)',
-            }}
-          >
-            <Text style={{
-              color: language === code ? DARK_BLUE : '#FFFFFF',
-              fontSize: 11,
-              fontWeight: '700',
-            }}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+          <View style={styles.searchBox}>
+            <Text style={{ fontSize: 20, marginRight: 8 }}>⌕</Text>
+            <TextInput style={styles.searchInput} placeholder={t('search')} placeholderTextColor="#777" value={search} onChangeText={setSearch} />
+          </View>
+        </View>
 
-    <TouchableOpacity
-      style={[
-        styles.headerAction,
-        {
-          backgroundColor: GOLD,
-          borderRadius: 12,
-        },
-      ]}
-      onPress={() => router.push('/customer/dashboard')}
-    >
-      <Text style={[styles.headerActionIcon, { color: DARK_BLUE }]}>⌂</Text>
-      <Text
-        style={[
-          styles.headerActionText,
-          { color: DARK_BLUE, fontWeight: '700' },
-        ]}
-      >
-        {t('home')}
-      </Text>
-    </TouchableOpacity>
-  </View>
-
-  {!showCart && !showOrders && (
-    <View
-      style={[
-        styles.searchBox,
-        {
-          backgroundColor: '#FFFFFF',
-          borderRadius: 14,
-          borderWidth: 2,
-          borderColor: GOLD,
-          marginTop: 16,
-        },
-      ]}
-    >
-      <Text style={styles.searchIcon}>⌕</Text>
-      <TextInput
-        style={styles.searchInput}
-        placeholder={t('search')}
-        placeholderTextColor="#777777"
-        value={search}
-        onChangeText={setSearch}
-        returnKeyType="search"
-      />
-      {search.length > 0 && (
-        <TouchableOpacity onPress={() => setSearch('')}>
-          <Text style={styles.clearSearch}>✕</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  )}
-</View>
-
-
+        {/* 1, 2, 3 Quick Feature Action Bar */}
         <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={openMyOrders}
-          >
-            <Text style={styles.quickActionIcon}>📦</Text>
-            <Text style={styles.quickActionText}>{t('myOrders')}</Text>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => setShowWishlist(true)}>
+            <Text style={{ fontSize: 20 }}>❤️</Text>
+            <Text style={styles.quickText}>{t('favourites')} ({favourites.length})</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => {
-              setShowOrders(false);
-              setShowCart(true);
-            }}
-          >
-            <Text style={styles.quickActionIcon}>🛒</Text>
-            <Text style={styles.quickActionText}>
-              Cart ({itemCount})
-            </Text>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => { setShowChat(true); loadConversations(); }}>
+            <Text style={{ fontSize: 20 }}>💬</Text>
+            <Text style={styles.quickText}>{t('chat')}</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() =>
-              Alert.alert(
-                'Returns & Replacements',
-                'You will be able to request a return or replacement for eligible delivered orders. Backend support is coming soon.'
-              )
-            }
-          >
-            <Text style={styles.quickActionIcon}>🔄</Text>
-            <Text style={styles.quickActionText}>Returns</Text>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => { setShowOrders(true); loadOrders(); }}>
+            <Text style={{ fontSize: 20 }}>📦</Text>
+            <Text style={styles.quickText}>{t('myOrders')}</Text>
           </TouchableOpacity>
         </View>
 
-        {showOrders ? (
-          <View style={styles.ordersSection}>
-            <Text style={styles.pageTitle}>{t('myOrders')}</Text>
-            <Text style={styles.pageSubtitle}>
-              View order status, payment and delivery tracking.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.refreshOrdersButton}
-              onPress={loadOrders}
-              disabled={loadingOrders}
-            >
-              <Text style={styles.refreshOrdersText}>
-                {loadingOrders ? 'Refreshing...' : 'Refresh Orders'}
-              </Text>
-            </TouchableOpacity>
-
-            {loadingOrders && (
-              <ActivityIndicator
-                size="large"
-                color={BLUE}
-                style={{ marginVertical: 20 }}
-              />
-            )}
-
-            {!!ordersError && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{ordersError}</Text>
-                <TouchableOpacity onPress={loadOrders}>
-                  <Text style={styles.retry}>Try again</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {!loadingOrders && !ordersError && orders.length === 0 && (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyIcon}>📦</Text>
-                <Text style={styles.emptyTitle}>No orders found</Text>
-                <Text style={styles.emptyText}>
-                  Your placed orders will appear here.
-                </Text>
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={scrollToProducts}
-                >
-                  <Text style={styles.resetButtonText}>{t('startShopping')}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {orders.map(renderOrder)}
-          </View>
-        ) : showCart ? (
-          <>
-            <View style={styles.cartPageHeader}>
-              <TouchableOpacity
-                style={styles.backToShop}
-                onPress={() => setShowCart(false)}
-              >
-                <Text style={styles.backToShopText}>‹ Continue Shopping</Text>
-              </TouchableOpacity>
-              <Text style={styles.cartPageTitle}>{t('cart')}</Text>
-              <Text style={styles.resultCount}>
-                {itemCount} item(s) in your cart
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              {cartItems.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyIcon}>🛒</Text>
-                  <Text style={styles.emptyTitle}>{t('emptyCart')}</Text>
-                  <Text style={styles.emptyText}>
-                    Add some puja essentials to get started.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.resetButton}
-                    onPress={() => setShowCart(false)}
-                  >
-                    <Text style={styles.resetButtonText}>{t('startShopping')}</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  {cartItems.map(({ product, quantity }) => (
-                    <View key={product.id} style={styles.cartRow}>
-                      {product.image_url ? (
-                        <Image
-                          source={{ uri: product.image_url }}
-                          style={styles.cartImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <View style={styles.cartImagePlaceholder}>
-                          <Text style={{ fontSize: 25 }}>🪔</Text>
-                        </View>
-                      )}
-
-                      <View style={styles.cartItemInfo}>
-                        <Text style={styles.cartName}>{product.name}</Text>
-                        <Text style={styles.cartPrice}>
-                          ₹{Number(product.price).toFixed(2)}
-                        </Text>
-                        <View style={styles.cartQuantityControls}>
-                          <TouchableOpacity
-                            style={styles.smallQuantityButton}
-                            onPress={() => updateQuantity(product, -1)}
-                          >
-                            <Text style={styles.smallQuantityText}>−</Text>
-                          </TouchableOpacity>
-                          <Text style={styles.quantity}>{quantity}</Text>
-                          <TouchableOpacity
-                            style={styles.smallQuantityButton}
-                            onPress={() => updateQuantity(product, 1)}
-                          >
-                            <Text style={styles.smallQuantityText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-
-                      <Text style={styles.cartLineTotal}>
-                        ₹{(Number(product.price) * quantity).toFixed(2)}
-                      </Text>
+        {/* Wishlist Modal */}
+        <Modal visible={showWishlist} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>❤️ My Wishlist</Text>
+              <ScrollView style={{ maxHeight: 350 }}>
+                {favourites.length === 0 ? (
+                  <Text style={{ color: '#666', textAlign: 'center', marginTop: 20 }}>No items in wishlist</Text>
+                ) : (
+                  products.filter((p) => favourites.includes(p.id)).map((p) => (
+                    <View key={p.id} style={styles.wishlistRow}>
+                      <Text style={{ flex: 1, fontWeight: '600' }}>{p.name}</Text>
+                      <Text style={{ fontWeight: 'bold', color: '#166534', marginRight: 10 }}>₹{p.price}</Text>
+                      <TouchableOpacity onPress={() => toggleFavourite(p.id)}><Text style={{ color: 'red' }}>Remove</Text></TouchableOpacity>
                     </View>
-                  ))}
-
-                  <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalAmount}>
-                      ₹{total.toFixed(2)}
-                    </Text>
-                  </View>
-                  <Text style={styles.checkoutNote}>
-                    Delivery charges, if applicable, may be added separately.
-                  </Text>
-                </>
-              )}
-            </View>
-
-            {cartItems.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionHeading}>{t('deliveryDetails')}</Text>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('customerName')}
-                  value={customerName}
-                  onChangeText={setCustomerName}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('mobile')}
-                  value={customerPhone}
-                  onChangeText={setCustomerPhone}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-
-                <TextInput
-                  style={[styles.input, styles.multiline]}
-                  placeholder={t('address')}
-                  value={address}
-                  onChangeText={setAddress}
-                  multiline
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="City"
-                  value={city}
-                  onChangeText={setCity}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('pin')}
-                  value={pincode}
-                  onChangeText={setPincode}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-
-                <Text style={styles.sectionHeading}>
-                  Choose Payment Method
-                </Text>
-
-                <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    paymentMethod === 'online' && styles.paymentOptionSelected,
-                  ]}
-                  onPress={() => setPaymentMethod('online')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.paymentOptionText}>
-                    {paymentMethod === 'online' ? '🔘' : '⚪'} Pay Online (UPI / Razorpay)
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    paymentMethod === 'cod' && styles.paymentOptionSelected,
-                  ]}
-                  onPress={() => setPaymentMethod('cod')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.paymentOptionText}>
-                    {paymentMethod === 'cod' ? '🔘' : '⚪'} Cash on Delivery
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.orderButton,
-                    placingOrder && styles.disabledButton,
-                  ]}
-                  disabled={placingOrder}
-                  onPress={placeOrder}
-                >
-                  {placingOrder ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.orderButtonText}>
-                      {paymentMethod === 'cod'
-                        ? `Place Order • ₹${total.toFixed(2)} (COD)`
-                        : `Pay ₹${total.toFixed(2)} Securely`}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-
-                <Text style={styles.paymentNote}>
-                  {paymentMethod === 'cod'
-                    ? 'Pay for your order when it is delivered.'
-                    : 'Secure online checkout powered by Razorpay.'}
-                </Text>
-              </View>
-            )}
-          </>
-        ) : (
-          <>
-            <View style={styles.categorySection}>
-              <Text style={styles.sectionHeading}>{t('shopCategory')}</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoryList}
-              >
-                {categories.map((category) => {
-                  const active = selectedCategory === category;
-                  const icon =
-                    CATEGORY_ICONS[category.toLowerCase()] ||
-                    CATEGORY_ICONS.default;
-
-                  return (
-                    <TouchableOpacity
-                      key={category}
-                      style={styles.categoryItem}
-                      onPress={() => setSelectedCategory(category)}
-                      activeOpacity={0.8}
-                    >
-                      <View
-                        style={[
-                          styles.categoryCircle,
-                          active && styles.categoryCircleActive,
-                        ]}
-                      >
-                        <Text style={styles.categoryEmoji}>{icon}</Text>
-                      </View>
-                      <Text
-                        style={[
-                          styles.categoryText,
-                          active && styles.categoryTextActive,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {category === 'All' ? t('all') : category}
-                      </Text>
-                      {active && <View style={styles.categoryUnderline} />}
-                    </TouchableOpacity>
-                  );
-                })}
+                  ))
+                )}
               </ScrollView>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setShowWishlist(false)}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text></TouchableOpacity>
             </View>
+          </View>
+        </Modal>
 
-            <View style={styles.promoBanner}>
-              <View style={styles.promoContent}>
-                <Text style={styles.promoEyebrow}>{t('special')}</Text>
-                <Text style={styles.promoTitle}>
-                  Everything for{'\n'}your Puja
-                </Text>
-                <Text style={styles.promoSubtitle}>
-                  Make every ceremony special
-                </Text>
-                <TouchableOpacity
-                  style={styles.shopNowButton}
-                  onPress={scrollToProducts}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.shopNowText}>{t('exploreNow')}</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.promoIllustration}>
-                <Text style={styles.promoLamp}>🪔</Text>
-                <Text style={styles.promoFlowers}>🌼 🙏 🌼</Text>
-              </View>
-            </View>
-
-            <View style={styles.benefitsStrip}>
-              {!search.trim() && selectedCategory === 'All' && products.length > 0 && (
-  <>
-    <View style={styles.featuredSection}>
-      <View style={styles.featuredHeadingRow}>
-        <Text style={styles.sectionHeading}>{t('featured')}</Text>
-        <Text style={styles.viewAll}>{t('explore')}</Text>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {products.slice(0, 6).map((product) => (
-          <TouchableOpacity
-            key={`featured-${product.id}`}
-            style={styles.featuredCard}
-            onPress={() => setSelectedProduct(product)}
-            activeOpacity={0.85}
-          >
-            {product.image_url ? (
-              <Image
-                source={{ uri: product.image_url }}
-                style={styles.featuredImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.featuredImagePlaceholder}>
-                <Text style={{ fontSize: 38 }}>🪔</Text>
-              </View>
-            )}
-
-            <Text style={styles.featuredName} numberOfLines={2}>
-              {product.name}
-            </Text>
-
-            <Text style={styles.featuredPrice}>
-              ₹{Number(product.price || 0).toFixed(0)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-
-    <View style={styles.featuredSection}>
-      <Text style={styles.sectionHeading}>{t('exploreMore')}</Text>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {products.slice(6).map((product) => (
-          <TouchableOpacity
-            key={`explore-${product.id}`}
-            style={styles.featuredCard}
-            onPress={() => setSelectedProduct(product)}
-            activeOpacity={0.85}
-          >
-            {product.image_url ? (
-              <Image
-                source={{ uri: product.image_url }}
-                style={styles.featuredImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.featuredImagePlaceholder}>
-                <Text style={{ fontSize: 38 }}>🙏</Text>
-              </View>
-            )}
-
-            <Text style={styles.featuredName} numberOfLines={2}>
-              {product.name}
-            </Text>
-
-            <Text style={styles.featuredPrice}>
-              ₹{Number(product.price || 0).toFixed(0)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  </>
-)}
-              <View style={styles.benefit}>
-                <Text style={styles.benefitIcon}>🪷</Text>
-                <Text style={styles.benefitText}>{t('essentials')}</Text>
-              </View>
-              <View style={styles.benefitDivider} />
-              <View style={styles.benefit}>
-                <Text style={styles.benefitIcon}>📦</Text>
-                <Text style={styles.benefitText}>{t('delivery')}</Text>
-              </View>
-              <View style={styles.benefitDivider} />
-              <View style={styles.benefit}>
-                <Text style={styles.benefitIcon}>🔒</Text>
-                <Text style={styles.benefitText}>{t('secure')}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.productsSection}>
-              <View style={styles.productsHeadingRow}>
-                <View style={styles.headingLeft}>
-                  <Text style={styles.sectionHeading}>
-                    {search.trim()
-                      ? 'Search Results'
-                      : selectedCategory === 'All'
-                        ? 'Recommended for You'
-                        : selectedCategory}
-                  </Text>
-                  <Text style={styles.resultCount}>
-                    {filteredProducts.length} products
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearch('');
-                    setSelectedCategory('All');
-                  }}
-                >
-                  <Text style={styles.viewAll}>{t('clearFilters')}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {!!error && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{error}</Text>
-                  <TouchableOpacity onPress={loadProducts}>
-                    <Text style={styles.retry}>Try again</Text>
+        {/* Chat Modal */}
+        <Modal visible={showChat} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContentLarge}>
+              <Text style={styles.modalTitle}>💬 PujariGo Support & Seller Chat</Text>
+              {!activeConversationKey ? (
+                <ScrollView style={{ maxHeight: 300 }}>
+                  <TouchableOpacity style={styles.startChatBtn} onPress={() => openConversation('support-admin')}>
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Chat with Admin / Support</Text>
                   </TouchableOpacity>
-                </View>
-              )}
-
-              {!error && products.length === 0 && (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyIcon}>🛍️</Text>
-                  <Text style={styles.emptyTitle}>{t('productsComing')}</Text>
-                  <Text style={styles.emptyText}>
-                    Please check again later.
-                  </Text>
-                </View>
-              )}
-
-              {!error && products.length > 0 && filteredProducts.length === 0 && (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyIcon}>🔎</Text>
-                  <Text style={styles.emptyTitle}>{t('noMatches')}</Text>
-                  <Text style={styles.emptyText}>
-                    Try another product name or category.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.resetButton}
-                    onPress={scrollToProducts}
-                  >
-                    <Text style={styles.resetButtonText}>{t('showAll')}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {filteredProducts.length > 0 && (
-                <View style={styles.productGrid}>
-                  {filteredProducts.map(renderProduct)}
-                </View>
-              )}
-            </View>
-          </>
-        )}
-      </ScrollView>
-      
-      <Modal
-        visible={selectedProduct !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedProduct(null)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 20,
-              maxHeight: '85%',
-            }}
-          >
-<ScrollView
-    showsVerticalScrollIndicator={true}
-    style={{ flexGrow: 0 }}
-    contentContainerStyle={{ paddingBottom: 20 }}
-    nestedScrollEnabled
->
-              <TouchableOpacity
-                onPress={() => setSelectedProduct(null)}
-                style={{ alignSelf: 'flex-end', padding: 8 }}
-              >
-                <Text style={{ fontSize: 24, color: '#333333' }}>✕</Text>
-              </TouchableOpacity>
-
-              {selectedProduct?.image_url ? (
-                <Image
-                  source={{ uri: selectedProduct.image_url }}
-                  style={{
-                    width: '100%',
-                    height: 220,
-                    borderRadius: 12,
-                    backgroundColor: '#F1F3F6',
-                  }}
-                  resizeMode="contain"
-                />
-              ) : (
-                <View
-                  style={{
-                    height: 160,
-                    backgroundColor: '#F1F3F6',
-                    borderRadius: 12,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ fontSize: 54 }}>🪔</Text>
-                  <Text style={{ color: '#666666' }}>Puja Samagri</Text>
-                </View>
-              )}
-
-              <Text
-                style={{
-                  fontSize: 23,
-                  fontWeight: '700',
-                  color: '#222222',
-                  marginTop: 18,
-                }}
-              >
-                {selectedProduct?.name}
-              </Text>
-
-              <Text
-                style={{
-                  color: BLUE,
-                  fontSize: 24,
-                  fontWeight: '700',
-                  marginTop: 8,
-                }}
-              >
-                ₹{Number(selectedProduct?.price || 0).toFixed(2)}
-              </Text>
-
-              <Text style={{ color: '#666666', marginTop: 8 }}>
-                Category: {selectedProduct?.category || 'Puja Samagri'}
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 17,
-                  fontWeight: '700',
-                  marginTop: 20,
-                  color: '#222222',
-                }}
-              >
-                Product Description
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 15,
-                  lineHeight: 23,
-                  color: '#444444',
-                  marginTop: 8,
-                  marginBottom: 20,
-                }}
-              >
-                {selectedProduct?.description?.trim() ||
-                  'No description has been added for this product yet.'}
-              </Text>
-
-              {selectedProduct && (
-                <View style={styles.detailActionRow}>
-                  <TouchableOpacity
-                    style={styles.detailWhatsAppButton}
-                    onPress={() => shareProductOnWhatsApp(selectedProduct)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.detailActionText}>Share on WhatsApp</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.detailPdfButton}
-                    onPress={() => downloadProductPdf(selectedProduct)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.detailActionText}>Download PDF</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {(() => {
-                const product = selectedProduct;
-                if (!product) return null;
-
-                const unavailable =
-                  product.is_available === false ||
-                  (product.stock !== undefined &&
-                    Number(product.stock) <= 0);
-
-                const quantity = cart[product.id]?.quantity || 0;
-
-                return (
-                  <>
-                    <Text style={{ color: '#666666', marginBottom: 12 }}>
-                      {unavailable
-                        ? 'Currently unavailable'
-                        : product.stock !== undefined
-                          ? `${product.stock} item(s) in stock`
-                          : 'Available'}
-                    </Text>
-
-                    <TouchableOpacity
-                      disabled={unavailable}
-                      onPress={() => {
-                        updateQuantity(product, 1);
-                        setSelectedProduct(null);
-                      }}
-                      style={{
-                        backgroundColor: unavailable ? '#999999' : BLUE,
-                        paddingVertical: 15,
-                        borderRadius: 10,
-                        alignItems: 'center',
-                        marginBottom: 12,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: '#FFFFFF',
-                          fontSize: 16,
-                          fontWeight: '700',
-                        }}
-                      >
-                        {unavailable
-                          ? 'OUT OF STOCK'
-                          : quantity > 0
-                            ? 'ADD ONE MORE TO CART'
-                            : 'ADD TO CART'}
-                      </Text>
+                  {conversations.map((c) => (
+                    <TouchableOpacity key={c.conversation_key} style={styles.chatConvItem} onPress={() => openConversation(c.conversation_key)}>
+                      <Text style={{ fontWeight: 'bold' }}>Conversation #{c.conversation_key.slice(-6)}</Text>
+                      <Text numberOfLines={1} style={{ color: '#666' }}>{c.last_message}</Text>
                     </TouchableOpacity>
-                  </>
-                );
-              })()}
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={{ flex: 1, maxHeight: 300 }}>
+                  <TouchableOpacity onPress={() => setActiveConversationKey(null)}><Text style={{ color: BLUE, marginBottom: 8 }}>‹ Back to Chats</Text></TouchableOpacity>
+                  <ScrollView style={{ flex: 1, backgroundColor: '#F8FAFC', padding: 8, borderRadius: 8 }}>
+                    {chatMessages.map((m) => (
+                      <View key={m.id} style={[styles.chatBubble, m.sender_role === 'customer' ? styles.chatBubbleUser : styles.chatBubbleOther]}>
+                        <Text style={{ fontSize: 13, color: '#1E293B' }}>{m.message}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                  <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+                    <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Type a message..." value={chatInput} onChangeText={setChatInput} />
+                    <TouchableOpacity style={styles.sendBtn} onPress={sendChatMessage}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Send</Text></TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <TouchableOpacity style={[styles.closeBtn, { marginTop: 12 }]} onPress={() => setShowChat(false)}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text></TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Recently Viewed Strip */}
+        {recentlyViewed.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionHeading}>👀 {t('recentlyViewed')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {recentlyViewed.map((p) => (
+                <TouchableOpacity key={`recent-${p.id}`} style={styles.miniCard} onPress={() => handleOpenProduct(p)}>
+                  <Image source={{ uri: p.image_url || 'https://via.placeholder.com/100' }} style={{ width: 80, height: 80, borderRadius: 6 }} resizeMode="contain" />
+                  <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', marginTop: 4 }}>{p.name}</Text>
+                  <Text style={{ fontSize: 12, color: '#166534', fontWeight: 'bold' }}>₹{p.price}</Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
-        </View>
-      </Modal>
+        )}
 
-      {!showCart && !showOrders && (
-
-
-     
-        <View style={styles.bottomBar}>
-          <View style={styles.bottomBarInfo}>
-            <Text style={styles.bottomBarTotal}>₹{total.toFixed(2)}</Text>
-            <Text style={styles.bottomBarCaption}>
-              {itemCount} item(s) selected
-            </Text>
+        {/* Main Product Grid */}
+        <View style={styles.productsSection}>
+          <Text style={styles.sectionHeading}>{t('shopCategory')}</Text>
+          <View style={styles.grid}>
+            {filteredProducts.map((p) => {
+              const isFav = favourites.includes(p.id);
+              return (
+                <View key={p.id} style={styles.productCard}>
+                  <TouchableOpacity onPress={() => toggleFavourite(p.id)} style={styles.favIcon}>
+                    <Text style={{ fontSize: 18 }}>{isFav ? '❤️' : '🤍'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleOpenProduct(p)}>
+                    <Image source={{ uri: p.image_url || 'https://via.placeholder.com/150' }} style={styles.productImg} resizeMode="contain" />
+                    <Text numberOfLines={2} style={styles.productTitle}>{p.name}</Text>
+                    <Text style={styles.productPrice}>₹{p.price}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.addCartBtn} onPress={() => updateQuantity(p, 1)}>
+                    <Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 11 }}>{t('addCart')}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
-
-          <TouchableOpacity
-            style={styles.viewCartButton}
-            onPress={() => setShowCart(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.viewCartIcon}>🛒</Text>
-            <Text style={styles.viewCartText}>
-              {itemCount > 0 ? `VIEW CART (${itemCount})` : 'VIEW CART'}
-            </Text>
-            <Text style={styles.viewCartArrow}>›</Text>
-          </TouchableOpacity>
         </View>
-      )}
+
+        {/* Cart / Checkout Modal */}
+        <Modal visible={showCart} animationType="slide">
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#F3FAFF', padding: 16 }}>
+            <TouchableOpacity onPress={() => setShowCart(false)}><Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 16 }}>‹ Back to Store</Text></TouchableOpacity>
+            <Text style={styles.modalTitle}>{t('cart')}</Text>
+            <ScrollView style={{ flex: 1 }}>
+              {cartItems.map(({ product, quantity }) => (
+                <View key={product.id} style={styles.cartRow}>
+                  <Text style={{ flex: 1, fontWeight: '600' }}>{product.name} (x{quantity})</Text>
+                  <Text style={{ fontWeight: 'bold' }}>₹{product.price * quantity}</Text>
+                </View>
+              ))}
+
+              {/* 3. 🎁 Gift Store & Delivery Options */}
+              <TouchableOpacity style={styles.giftToggle} onPress={() => setIsGift(!isGift)}>
+                <Text style={{ fontWeight: 'bold', color: '#B45309' }}>{isGift ? '☑' : '☐'} {t('giftOption')}</Text>
+              </TouchableOpacity>
+
+              {isGift && (
+                <View style={styles.giftBox}>
+                  <TextInput style={styles.input} placeholder="Recipient Name" value={giftRecipientName} onChangeText={setGiftRecipientName} />
+                  <TextInput style={styles.input} placeholder="Recipient Phone" value={giftRecipientPhone} onChangeText={setGiftRecipientPhone} keyboardType="phone-pad" />
+                  <TextInput style={styles.input} placeholder="Gift Delivery Address" value={giftAddress} onChangeText={setGiftAddress} />
+                  <TextInput style={styles.input} placeholder="City" value={giftCity} onChangeText={setGiftCity} />
+                  <TextInput style={styles.input} placeholder="6-digit PIN Code" value={giftPin} onChangeText={setGiftPin} maxLength={6} keyboardType="number-pad" />
+                  <TextInput style={styles.input} placeholder="Gift Message on Card" value={giftMessage} onChangeText={setGiftMessage} />
+                </View>
+              )}
+
+              {/* 4. 🏷️ Coupons and Discounts */}
+              <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
+                <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
+                <TouchableOpacity style={styles.applyCouponBtn} onPress={handleApplyCoupon}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Apply</Text></TouchableOpacity>
+              </View>
+              {appliedCoupon && <Text style={{ color: '#166534', fontSize: 12, marginTop: 4 }}>Applied: {appliedCoupon.description} (-₹{discountAmount})</Text>}
+
+              {/* Delivery Details */}
+              <Text style={[styles.sectionHeading, { marginTop: 16 }]}>{t('deliveryDetails')}</Text>
+              <TextInput style={styles.input} placeholder="Your Name" value={customerName} onChangeText={setCustomerName} />
+              <TextInput style={styles.input} placeholder="Mobile Number" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" maxLength={10} />
+              <TextInput style={styles.input} placeholder="Delivery Address" value={address} onChangeText={setAddress} />
+              <TextInput style={styles.input} placeholder="City" value={city} onChangeText={setCity} />
+              <TextInput style={styles.input} placeholder="PIN Code" value={pincode} onChangeText={setPincode} maxLength={6} keyboardType="number-pad" />
+
+              <View style={styles.summaryBox}>
+                <Text>Subtotal: ₹{subtotal.toFixed(2)}</Text>
+                {discountAmount > 0 && <Text style={{ color: '#166534' }}>Discount: -₹{discountAmount.toFixed(2)}</Text>}
+                <Text>Shipping: ₹{shippingFee.toFixed(2)}</Text>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 4 }}>Total: ₹{total.toFixed(2)}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.checkoutBtn} disabled={placingOrder} onPress={placeOrder}>
+                {placingOrder ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Confirm & Pay ₹{total.toFixed(2)}</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        {/* My Orders & Invoices Modal */}
+        <Modal visible={showOrders} animationType="slide">
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#F3FAFF', padding: 16 }}>
+            <TouchableOpacity onPress={() => setShowOrders(false)}><Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 16 }}>‹ Back to Store</Text></TouchableOpacity>
+            <Text style={styles.modalTitle}>{t('myOrders')}</Text>
+            <ScrollView style={{ flex: 1 }}>
+              {orders.map((o) => (
+                <View key={o.id} style={styles.orderCard}>
+                  <Text style={{ fontWeight: 'bold' }}>Order #{o.id}</Text>
+                  <Text>Status: {o.order_status}</Text>
+                  <Text>Total: ₹{getOrderTotal(o).toFixed(2)}</Text>
+                  {/* 5. 🧾 Order Invoice / Receipt Download */}
+                  <TouchableOpacity style={styles.invoiceBtn} onPress={() => downloadOrderInvoice(o)}>
+                    <Text style={{ color: DARK_BLUE, fontWeight: 'bold', fontSize: 12 }}>{t('invoice')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+      </ScrollView>
+
+      {/* Bottom Cart Bar */}
+      <View style={styles.bottomBar}>
+        <View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold' }}>₹{total.toFixed(2)}</Text>
+          <Text style={{ fontSize: 10, color: '#666' }}>{itemCount} items</Text>
+        </View>
+        <TouchableOpacity style={styles.viewCartBarBtn} onPress={() => setShowCart(true)}>
+          <Text style={{ color: '#FFF', fontWeight: 'bold' }}>VIEW CART ›</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
- screen: { flex: 1, backgroundColor: '#F3FAFF' },
-  content: { paddingBottom: 100 },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#F1F3F6',
-  },
-  loadingText: { marginTop: 12, color: '#555555' },
-
-  header: {
-    backgroundColor: BLUE,
-    paddingHorizontal: 14,
-    paddingTop: 18,
-    paddingBottom: 14,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  backButton: { width: 34, justifyContent: 'center' },
-  backArrow: { fontSize: 36, lineHeight: 38, color: '#FFFFFF' },
-  headerTitleArea: { flex: 1 },
-  brandTitle: { color: '#FFFFFF', fontSize: 23, fontWeight: 'bold' },
-  headerSubtitle: { color: '#E7EEFF', fontSize: 10, marginTop: 3 },
-  headerAction: { alignItems: 'center', paddingLeft: 8 },
-  headerActionIcon: { fontSize: 24, color: '#FFFFFF' },
-  headerActionText: { fontSize: 10, color: '#FFFFFF', marginTop: 1 },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 5,
-    minHeight: 46,
-    paddingHorizontal: 12,
-  },
-  searchIcon: { fontSize: 27, color: BLUE, marginRight: 9 },
-  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: '#222222' },
-  clearSearch: { fontSize: 17, color: '#555555', padding: 5 },
-
-  quickActions: {
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    marginBottom: 9,
-  },
-  
-quickActionButton: {
-  alignItems: 'center',
-  justifyContent: 'center',
-  flex: 1,
-  gap: 6,
-  paddingVertical: 5,
-},
-quickActionIcon: {
-  fontSize: 23,
-},
-quickActionText: {
-  fontSize: 11,
-  color: DARK_BLUE,
-  fontWeight: '700',
-},
-
-  categorySection: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 16,
-    paddingBottom: 8,
-    marginBottom: 9,
-    paddingHorizontal: 10,
-  },
-  sectionHeading: { fontSize: 17, fontWeight: 'bold', color: '#212121' },
-  categoryList: { paddingTop: 12, paddingBottom: 5, gap: 8 },
-  categoryItem: { width: 78, alignItems: 'center', paddingBottom: 5 },
-  categoryCircle: {
-    width: 55,
-    height: 55,
-    borderRadius: 28,
-    backgroundColor: '#F1F5FC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5EAF2',
-  },
-  categoryCircleActive: {
-    backgroundColor: '#E2EDFF',
-    borderColor: BLUE,
-    borderWidth: 2,
-  },
-  categoryEmoji: { fontSize: 27 },
-  categoryText: {
-    color: '#333333',
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: 7,
-    minHeight: 25,
-  },
-  categoryTextActive: { color: BLUE, fontWeight: 'bold' },
-  categoryUnderline: {
-    height: 3,
-    width: 28,
-    borderRadius: 2,
-    backgroundColor: BLUE,
-    marginTop: 2,
-  },
-
-  promoBanner: {
-    backgroundColor: '#DCEBFF',
-    marginHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 7,
-    minHeight: 178,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
-  promoContent: { flex: 1 },
-  promoEyebrow: {
-    color: DARK_BLUE,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 7,
-  },
-  promoTitle: {
-    color: '#172B4D',
-    fontSize: 25,
-    fontWeight: '800',
-    lineHeight: 30,
-  },
-  promoSubtitle: { color: '#46566F', fontSize: 11, marginTop: 7 },
-  shopNowButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: BLUE,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    borderRadius: 4,
-    marginTop: 12,
-  },
-  shopNowText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
-  promoIllustration: { width: 105, alignItems: 'center', justifyContent: 'center' },
-  promoLamp: { fontSize: 68 },
-  promoFlowers: { fontSize: 18, marginTop: 4 },
-
-  benefitsStrip: {
-    backgroundColor: '#FFFFFF',
-    marginBottom: 9,
-    paddingVertical: 13,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  benefit: { flex: 1, alignItems: 'center', gap: 4 },
-  benefitIcon: { fontSize: 20 },
-  benefitText: { color: '#4A4A4A', fontSize: 9, textAlign: 'center' },
-  benefitDivider: { width: 1, height: 30, backgroundColor: '#E5E7EB' },
-  featuredSection: {
-  backgroundColor: '#FFFFFF',
-  paddingHorizontal: 12,
-  paddingVertical: 15,
-  marginBottom: 9,
-},
-
-featuredHeadingRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 12,
-},
-
-featuredCard: {
-  width: 145,
-  backgroundColor: '#FFFFFF',
-  borderWidth: 1,
-  borderColor: '#D6EEFF',
-  borderRadius: 10,
-  padding: 8,
-  marginRight: 10,
-},
-
-featuredImage: {
-  width: '100%',
-  height: 115,
-  backgroundColor: '#F3FAFF',
-  borderRadius: 7,
-},
-
-featuredImagePlaceholder: {
-  height: 115,
-  backgroundColor: '#F3FAFF',
-  borderRadius: 7,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-featuredName: {
-  fontSize: 12,
-  fontWeight: '600',
-  color: '#17324D',
-  marginTop: 8,
-  minHeight: 34,
-},
-
-featuredPrice: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  color: DARK_BLUE,
-  marginTop: 5,
-},
-
-  productsSection: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingTop: 16,
-    paddingBottom: 18,
-  },
-  productsHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  headingLeft: { flex: 1 },
-  resultCount: { color: '#777777', fontSize: 11, marginTop: 4 },
-  viewAll: { color: BLUE, fontSize: 11, paddingLeft: 8 },
-  productGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 9,
-  },
-  productCard: {
-    width: '49%',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D6EEFF',
-    borderRadius: 5,
-    padding: 9,
-    marginBottom: 2,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 150,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 4,
-    marginBottom: 9,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  productImage: { width: '100%', height: '100%' },
-  imagePlaceholder: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFD',
-  },
-  placeholderIcon: { fontSize: 43 },
-  placeholderLabel: { fontSize: 10, color: '#888888', marginTop: 5 },
-  productName: {
-    color: '#212121',
-    fontSize: 13,
-    fontWeight: '600',
-    minHeight: 35,
-    lineHeight: 17,
-  },
-  productCategory: { color: '#777777', fontSize: 10, marginTop: 3 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 7 },
-  price: { color: '#212121', fontSize: 17, fontWeight: 'bold' },
-  deliveryText: {
-    color: '#287C46',
-    fontSize: 9,
-    marginTop: 5,
-    marginBottom: 9,
-  },
-  productShareRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
-  },
-  productShareButton: {
-    flex: 1,
-    minHeight: 30,
-    borderRadius: 4,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  productShareButtonText: { color: '#1B7A38', fontSize: 9, fontWeight: '700' },
-  productPdfButton: {
-    flex: 1,
-    minHeight: 30,
-    borderRadius: 4,
-    backgroundColor: '#EAF7FF',
-    borderWidth: 1,
-    borderColor: BLUE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  productPdfButtonText: { color: DARK_BLUE, fontSize: 9, fontWeight: '700' },
-  detailActionRow: { flexDirection: 'row', gap: 9, marginTop: 4, marginBottom: 12 },
-  detailWhatsAppButton: {
-    flex: 1,
-    backgroundColor: '#1B9B50',
-    borderRadius: 8,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  detailPdfButton: {
-    flex: 1,
-    backgroundColor: BLUE,
-    borderRadius: 8,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  detailActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  addButton: {
-    minHeight: 35,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: BLUE,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: { color: BLUE, fontWeight: 'bold', fontSize: 10 },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: BLUE,
-    borderRadius: 4,
-    minHeight: 35,
-    paddingHorizontal: 5,
-  },
-  quantityButton: {
-    width: 27,
-    height: 27,
-    borderRadius: 4,
-    backgroundColor: BLUE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityButtonText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' },
-  quantity: { color: '#212121', fontWeight: 'bold' },
-  unavailableButton: { minHeight: 35, justifyContent: 'center', alignItems: 'center' },
-  unavailableText: { color: '#B42318', fontSize: 11 },
-
-  emptyBox: { alignItems: 'center', padding: 24 },
-  emptyIcon: { fontSize: 38, marginBottom: 8 },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333333',
-    textAlign: 'center',
-  },
-  emptyText: { fontSize: 13, color: '#777777', textAlign: 'center', marginTop: 6 },
-  resetButton: {
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: BLUE,
-    borderRadius: 5,
-  },
-  resetButtonText: { color: '#FFFFFF', fontWeight: 'bold' },
-  errorBox: {
-    backgroundColor: '#FDECEC',
-    padding: 14,
-    borderRadius: 6,
-    marginBottom: 14,
-  },
-  errorText: { color: '#B42318' },
-  retry: { color: BLUE, fontWeight: 'bold', marginTop: 8 },
-
-  cartPageHeader: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 9 },
-  backToShop: { alignSelf: 'flex-start', marginBottom: 12 },
-  backToShopText: { color: BLUE, fontWeight: '600' },
-  cartPageTitle: { fontSize: 21, color: '#212121', fontWeight: 'bold' },
-  section: { backgroundColor: '#FFFFFF', padding: 16, marginBottom: 9 },
-  cartRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  cartImage: { width: 65, height: 70, backgroundColor: '#FAFAFA', borderRadius: 5 },
-  cartImagePlaceholder: {
-    width: 65,
-    height: 70,
-    backgroundColor: '#F8FAFD',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 5,
-  },
-  cartItemInfo: { flex: 1 },
-  cartName: { color: '#333333', fontWeight: '600', fontSize: 13 },
-  cartPrice: { fontWeight: 'bold', color: '#212121', marginTop: 4 },
-  cartLineTotal: { color: '#212121', fontWeight: 'bold', fontSize: 12 },
-  cartQuantityControls: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
-  smallQuantityButton: {
-    width: 25,
-    height: 25,
-    borderWidth: 1,
-    borderColor: BLUE,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  smallQuantityText: { fontSize: 18, color: BLUE, fontWeight: 'bold' },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#DDDDDD',
-    paddingTop: 14,
-    marginTop: 12,
-  },
-  totalLabel: { fontSize: 17, fontWeight: 'bold', color: '#212121' },
-  totalAmount: { fontSize: 19, fontWeight: 'bold', color: '#15803D' },
-  checkoutNote: { fontSize: 11, color: '#777777', marginTop: 10 },
-
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D9DDE3',
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 12,
-    fontSize: 14,
-    marginTop: 12,
-    color: '#222222',
-  },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
-  paymentOption: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D5D9E0',
-    borderRadius: 8,
-    padding: 13,
-    marginTop: 8,
-  },
-  paymentOptionSelected: { borderColor: BLUE, backgroundColor: '#EAF2FF' },
-  paymentOptionText: { fontSize: 14, color: '#222222', fontWeight: '600' },
-  orderButton: {
-    backgroundColor: BLUE,
-    borderRadius: 5,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  disabledButton: { opacity: 0.5 },
-  orderButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
-  paymentNote: {
-    fontSize: 11,
-    color: '#777777',
-    marginTop: 10,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
-
-  ordersSection: { padding: 12 },
-  pageTitle: { fontSize: 23, fontWeight: 'bold', color: '#212121' },
-  pageSubtitle: { fontSize: 12, color: '#666666', marginTop: 5, marginBottom: 12 },
-  refreshOrdersButton: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: BLUE,
-    borderRadius: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  refreshOrdersText: { color: BLUE, fontWeight: 'bold' },
-  orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E6EC',
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 12,
-  },
-  orderTitle: { fontSize: 15, fontWeight: 'bold', color: '#212121' },
-  orderMeta: { fontSize: 11, color: '#777777', marginTop: 5, marginBottom: 8 },
-  orderInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F1F3',
-  },
-  orderLabel: { fontSize: 12, color: '#666666', flex: 1 },
-  orderValue: { fontSize: 12, color: '#222222', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
-  orderTotal: { fontSize: 14, color: '#15803D', fontWeight: 'bold' },
-  trackingBox: {
-    backgroundColor: '#F5F8FF',
-    padding: 11,
-    borderRadius: 6,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  trackingTitle: { fontSize: 13, fontWeight: 'bold', color: DARK_BLUE },
-  trackingText: { fontSize: 12, color: '#444444', marginTop: 5, lineHeight: 18 },
-  secondaryButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: BLUE,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 4,
-    marginTop: 8,
-  },
-  secondaryButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
-  orderActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  actionButton: {
-    borderWidth: 1,
-    borderColor: BLUE,
-    borderRadius: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    backgroundColor: '#FFFFFF',
-  },
-  actionButtonText: { color: BLUE, fontSize: 11, fontWeight: 'bold' },
-  orderFootnote: { fontSize: 10, color: '#888888', marginTop: 10, lineHeight: 15 },
-
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    minHeight: 68,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E1E5EA',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  bottomBarInfo: { flex: 1 },
-  bottomBarTotal: { color: '#212121', fontSize: 18, fontWeight: 'bold' },
-  bottomBarCaption: { color: '#777777', fontSize: 10, marginTop: 3 },
-  viewCartButton: {
-    backgroundColor: BLUE,
-    borderRadius: 5,
-    paddingHorizontal: 15,
-    minHeight: 43,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-  viewCartIcon: { fontSize: 17 },
-  viewCartText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11 },
-  viewCartArrow: { color: '#FFFFFF', fontSize: 22 },
+  screen: { flex: 1, backgroundColor: '#F3FAFF' },
+  content: { paddingBottom: 90 },
+  header: { padding: 16, paddingTop: 20 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  backButton: { width: 36, alignItems: 'center', justifyContent: 'center' },
+  brandTitle: { color: '#FFF', fontSize: 22, fontWeight: 'bold' },
+  headerSubtitle: { color: '#E7EEFF', fontSize: 10 },
+  langChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)' },
+  langChipActive: { backgroundColor: '#FFF' },
+  langText: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
+  langTextActive: { color: DARK_BLUE },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 10, height: 42 },
+  searchInput: { flex: 1, fontSize: 14 },
+  quickActions: { flexDirection: 'row', backgroundColor: '#FFF', paddingVertical: 10, justifyContent: 'space-around', marginBottom: 8 },
+  quickBtn: { alignItems: 'center', flex: 1 },
+  quickText: { fontSize: 11, fontWeight: '700', color: DARK_BLUE, marginTop: 2 },
+  sectionContainer: { backgroundColor: '#FFF', padding: 12, marginBottom: 8 },
+  sectionHeading: { fontSize: 16, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },
+  miniCard: { width: 90, marginRight: 10, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 6, borderRadius: 8 },
+  productsSection: { backgroundColor: '#FFF', padding: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  productCard: { width: '48%', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 8, position: 'relative', marginBottom: 8 },
+  favIcon: { position: 'absolute', top: 6, right: 6, zIndex: 2 },
+  productImg: { width: '100%', height: 120, marginBottom: 6 },
+  productTitle: { fontSize: 12, fontWeight: '600', height: 32 },
+  productPrice: { fontSize: 14, fontWeight: 'bold', color: '#166534', marginTop: 4 },
+  addCartBtn: { marginTop: 6, padding: 6, borderWidth: 1, borderColor: BLUE, borderRadius: 4, alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 12, padding: 16 },
+  modalContentLarge: { backgroundColor: '#FFF', borderRadius: 12, padding: 16, height: '70%' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  closeBtn: { backgroundColor: DARK_BLUE, padding: 10, borderRadius: 6, alignItems: 'center', marginTop: 12 },
+  wishlistRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  startChatBtn: { backgroundColor: '#16A34A', padding: 12, borderRadius: 6, alignItems: 'center', marginBottom: 10 },
+  chatConvItem: { padding: 10, backgroundColor: '#F8FAFC', borderRadius: 6, marginBottom: 6 },
+  chatBubble: { padding: 8, borderRadius: 8, marginVertical: 4, maxWidth: '80%' },
+  chatBubbleUser: { backgroundColor: '#DCFCE7', alignSelf: 'flex-end' },
+  chatBubbleOther: { backgroundColor: '#E2E8F0', alignSelf: 'flex-start' },
+  sendBtn: { backgroundColor: BLUE, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 6 },
+  cartRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  giftToggle: { backgroundColor: '#FEF3C7', padding: 10, borderRadius: 6, marginTop: 10 },
+  giftBox: { backgroundColor: '#FFFBEB', padding: 10, borderRadius: 6, marginTop: 6 },
+  input: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: '#FFF' },
+  applyCouponBtn: { backgroundColor: '#16A34A', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 6 },
+  summaryBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8, marginTop: 14 },
+  checkoutBtn: { backgroundColor: '#166534', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 14 },
+  orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 12, marginBottom: 10 },
+  invoiceBtn: { marginTop: 8, backgroundColor: GOLD, padding: 8, borderRadius: 6, alignItems: 'center' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  viewCartBarBtn: { backgroundColor: BLUE, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6 },
 });
