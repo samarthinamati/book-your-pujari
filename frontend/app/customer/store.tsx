@@ -182,8 +182,15 @@ const createOrderInvoiceHtml = (order: StoreOrder): string => {
     </div>
   </div>
 
-  <div class="title">Tax Invoice / Payment Receipt</div>
+ <div class="title">Tax Invoice / Order Receipt</div>
 
+<div style="margin-top: 18px; padding: 12px; background: #f8fafc; border-radius: 6px;">
+  <strong>Bill To:</strong><br/>
+  ${escapeHtml((order as any).customer_name || 'Customer')}<br/>
+  ${escapeHtml((order as any).delivery_address || 'Address not available')}<br/>
+  ${escapeHtml((order as any).city || '')} - ${escapeHtml((order as any).pincode || '')}<br/>
+  Phone: ${escapeHtml((order as any).customer_phone || 'N/A')}
+</div>
   <table>
     <thead>
       <tr>
