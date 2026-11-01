@@ -519,6 +519,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 14,
   },
+  printLabelButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#2874F0',
+  padding: 13,
+  borderRadius: 10,
+  marginTop: 16,
+},
+printLabelText: {
+  color: '#FFFFFF',
+  fontSize: 14,
+  fontWeight: 'bold',
+  marginLeft: 8,
+},
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
