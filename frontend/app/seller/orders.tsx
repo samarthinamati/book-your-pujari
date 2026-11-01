@@ -190,7 +190,16 @@ export default function SellerOrdersScreen() {
       </html>
     `;
 
-    await Print.printAsync({ html });
+   const result = await Print.printToFileAsync({ html });
+
+if (Platform.OS === 'web') {
+  await Print.printAsync({ html });
+} else {
+  Alert.alert(
+    'Shipping Label Ready',
+    'Your individual order shipping label PDF has been created.'
+  );
+}
   } catch (error: any) {
     Alert.alert(
       'Print Error',
