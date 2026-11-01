@@ -47,6 +47,11 @@ type CartItem = {
 
 type StoreOrder = {
   id: string;
+  customer_name?: string;
+  customer_phone?: string;
+  delivery_address?: string;
+  city?: string;
+  pincode?: string;
   order_status?: string;
   payment_status?: string;
   payment_method?: string;
