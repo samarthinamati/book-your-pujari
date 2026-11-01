@@ -3996,7 +3996,49 @@ async def refresh_my_delhivery_tracking(
         "delhivery_status": status_text,
         "status_type": status_type,
     }
+# ==================== NOTIFICATIONS SYSTEM ====================
 
+class NotificationCreate(BaseModel):
+    user_id: str
+    title: str = Field(..., max_length=120)
+    message: str = Field(..., max_length=500)
+    notification_type: str = Field(default="general")
+    reference_id: Optional[str] = None
+
+async def create_notification(user_id: str, title: str, message: str, notification_type: str = "general", reference_id: str = None):
+    doc = {
+        "user_id": user_id,
+        "title": title,
+        "message": message,
+        "notification_type": notification_type,
+        "reference_id": reference_id,
+        "is_read": False,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    await db.store_notifications.insert_one(doc)
+
+@api_router.get("/store/notifications")
+async def get_my_notifications(user: dict = Depends(get_current_user)):
+    notifications = await db.store_notifications.find({
+        "user_id": user["id"]
+    }).sort("created_at", -1).to_list(100)
+
+    for n in notifications:
+        n["id"] = str(n.pop("_id"))
+    return notifications
+
+@api_router.put("/store/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+    try:
+        oid = ObjectId(notification_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid notification ID")
+    
+    await db.store_notifications.update_one(
+        {"_id": oid, "user_id": user["id"]},
+        {"$set": {"is_read": True}}
+    )
+    return {"message": "Notification marked as read"}
 
 # ==================== DELHIVERY API CONFIG CHECK ====================
 
