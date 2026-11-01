@@ -2461,7 +2461,50 @@ async def create_store_order(
             "image_url": product.get("image_url", ""),
         })
 
-            discounted_subtotal = round(
+               # Validate coupons on the server; never trust a discount calculated by the app.
+    coupon = None
+    discount_amount = 0.0
+    coupon_code = (payload.coupon_code or "").strip().upper()
+
+    if coupon_code:
+        coupon = await db.store_coupons.find_one({
+            "code": coupon_code,
+            "is_active": True,
+        })
+
+        now_iso = datetime.utcnow().isoformat()
+
+        if not coupon:
+            raise HTTPException(status_code=400, detail="Invalid or inactive coupon code")
+
+        if coupon.get("starts_at") and coupon["starts_at"] > now_iso:
+            raise HTTPException(status_code=400, detail="This coupon is not active yet")
+
+        if coupon.get("expires_at") and coupon["expires_at"] < now_iso:
+            raise HTTPException(status_code=400, detail="This coupon has expired")
+
+        if product_subtotal < float(coupon.get("min_order_amount", 0)):
+            raise HTTPException(status_code=400, detail="Minimum order amount not reached for this coupon")
+
+        max_uses = coupon.get("max_uses")
+
+        if max_uses is not None and int(coupon.get("used_count", 0)) >= int(max_uses):
+            raise HTTPException(status_code=400, detail="This coupon has reached its usage limit")
+
+        discount_type = coupon.get("discount_type", "percent")
+
+        if discount_type == "fixed":
+            discount_amount = float(coupon.get("discount_value", 0))
+        else:
+            discount_amount = product_subtotal * float(coupon.get("discount_value", 0)) / 100
+
+            if coupon.get("max_discount") is not None:
+                discount_amount = min(discount_amount, float(coupon["max_discount"]))
+
+        discount_amount = round(min(discount_amount, product_subtotal), 2)
+
+    # Calculate final order amount after coupon discount.
+    discounted_subtotal = round(
         max(0, product_subtotal - discount_amount), 2
     )
 
@@ -2479,54 +2522,6 @@ async def create_store_order(
         + cod_fee,
         2,
     )
-    # Validate coupons on the server; never trust a discount calculated by the app.
-    coupon = None
-    discount_amount = 0.0
-    coupon_code = (payload.coupon_code or "").strip().upper()
-    if coupon_code:
-        coupon = await db.store_coupons.find_one({
-            "code": coupon_code,
-            "is_active": True,
-        })
-        now_iso = datetime.utcnow().isoformat()
-        if not coupon:
-            raise HTTPException(status_code=400, detail="Invalid or inactive coupon code")
-        if coupon.get("starts_at") and coupon["starts_at"] > now_iso:
-            raise HTTPException(status_code=400, detail="This coupon is not active yet")
-        if coupon.get("expires_at") and coupon["expires_at"] < now_iso:
-            raise HTTPException(status_code=400, detail="This coupon has expired")
-        if product_subtotal < float(coupon.get("min_order_amount", 0)):
-            raise HTTPException(status_code=400, detail="Minimum order amount not reached for this coupon")
-        max_uses = coupon.get("max_uses")
-        if max_uses is not None and int(coupon.get("used_count", 0)) >= int(max_uses):
-            raise HTTPException(status_code=400, detail="This coupon has reached its usage limit")
-        discount_type = coupon.get("discount_type", "percent")
-        if discount_type == "fixed":
-            discount_amount = float(coupon.get("discount_value", 0))
-        else:
-            discount_amount = product_subtotal * float(coupon.get("discount_value", 0)) / 100
-            if coupon.get("max_discount") is not None:
-                discount_amount = min(discount_amount, float(coupon["max_discount"]))
-        discount_amount = round(min(discount_amount, product_subtotal), 2)
-
-    discounted_subtotal = round(
-    max(0, product_subtotal - discount_amount), 2
-)
-
-platform_fee = round(discounted_subtotal * 0.02, 2)
-
-gift_wrapping_fee = 5.00 if payload.gift_wrapping else 0.00
-
-cod_fee = 10.00 if payment_method == "cod" else 0.00
-
-total_amount = round(
-    discounted_subtotal
-    + platform_fee
-    + shipping_fee
-    + gift_wrapping_fee
-    + cod_fee,
-    2,
-)
     # COD orders are confirmed at placement, so deduct their stock now.
     # Online orders remain pending and must NOT deduct stock until Razorpay
     # payment has been verified successfully.
