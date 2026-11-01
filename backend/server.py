@@ -2589,6 +2589,7 @@ total_amount = round(
         "gift_wrapping": payload.gift_wrapping,
         "platform_fee": platform_fee,
         "shipping_fee": shipping_fee,
+        "gift_wrapping_fee": gift_wrapping_fee,
         "cod_fee": cod_fee,
         "total_amount": total_amount,
         "payment_method": payment_method,
