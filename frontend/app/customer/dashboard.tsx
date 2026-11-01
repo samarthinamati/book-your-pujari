@@ -74,6 +74,15 @@ const [showPujariSection, setShowPujariSection] = useState(false);
       setRefreshing(false);
     }
   };
+  const fetchBanners = async () => {
+  try {
+    const data = await apiClient.get('/banners');
+    setBanners(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.log('Failed to load banners:', error);
+    setBanners([]);
+  }
+};
 
   const handleSearch = async () => {
     setLoading(true);
