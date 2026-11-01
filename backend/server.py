@@ -2461,19 +2461,24 @@ async def create_store_order(
             "image_url": product.get("image_url", ""),
         })
 
-    product_subtotal = round(product_subtotal, 2)
-    platform_fee = round(product_subtotal * 0.02, 2)
+        discounted_subtotal = round(
+        max(0, product_subtotal - discount_amount), 2
+    )
+
+    platform_fee = round(discounted_subtotal * 0.02, 2)
+
+    gift_wrapping_fee = 5.00 if payload.gift_wrapping else 0.00
+
     cod_fee = 10.00 if payment_method == "cod" else 0.00
 
-    # Always get the delivery estimate from Delhivery,
-# including orders with the same pickup and delivery PIN code.
-shipping_fee = await get_delhivery_shipping_fee(
-    pickup_pincode=seller_pickup_pincode,
-    delivery_pincode=delivery_pincode,
-    weight_grams=max(total_weight_grams, 1),
-    payment_mode="COD" if payment_method == "cod" else "Pre-paid",
-    shipping_mode="S",
-)
+    total_amount = round(
+        discounted_subtotal
+        + platform_fee
+        + shipping_fee
+        + gift_wrapping_fee
+        + cod_fee,
+        2,
+    )
     # Validate coupons on the server; never trust a discount calculated by the app.
     coupon = None
     discount_amount = 0.0
