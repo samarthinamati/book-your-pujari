@@ -175,6 +175,152 @@ const fetchStoreOrders = async () => {
     setLoadingStoreOrders(false);
   }
 };
+  
+const fetchCoupons = async () => {
+  try {
+    setLoadingCoupons(true);
+
+    const response = await apiClient.get('/store/admin/coupons');
+
+    setCoupons(Array.isArray(response) ? response : []);
+  } catch (error: any) {
+    Alert.alert(
+      'Coupon Error',
+      error?.message || 'Could not load coupons.'
+    );
+  } finally {
+    setLoadingCoupons(false);
+  }
+};
+
+const resetCouponForm = () => {
+  setCouponCode('');
+  setCouponDescription('');
+  setCouponDiscountType('percent');
+  setCouponDiscountValue('');
+  setCouponMinOrder('0');
+  setCouponMaxDiscount('');
+  setCouponMaxUses('');
+  setCouponExpiry('');
+};
+
+const saveCoupon = async () => {
+  const code = couponCode.trim().toUpperCase();
+  const discountValue = Number(couponDiscountValue);
+  const minOrder = Number(couponMinOrder || 0);
+  const maxDiscount = couponMaxDiscount.trim()
+    ? Number(couponMaxDiscount)
+    : null;
+  const maxUses = couponMaxUses.trim()
+    ? Number(couponMaxUses)
+    : null;
+
+  if (code.length < 3) {
+    Alert.alert('Invalid Coupon', 'Coupon code must have at least 3 characters.');
+    return;
+  }
+
+  if (!Number.isFinite(discountValue) || discountValue <= 0) {
+    Alert.alert('Invalid Discount', 'Enter a valid discount value.');
+    return;
+  }
+
+  if (couponDiscountType === 'percent' && discountValue > 100) {
+    Alert.alert('Invalid Discount', 'Percentage discount cannot exceed 100%.');
+    return;
+  }
+
+  if (!Number.isFinite(minOrder) || minOrder < 0) {
+    Alert.alert('Invalid Amount', 'Enter a valid minimum order amount.');
+    return;
+  }
+
+  if (
+    maxDiscount !== null &&
+    (!Number.isFinite(maxDiscount) || maxDiscount < 0)
+  ) {
+    Alert.alert('Invalid Amount', 'Enter a valid maximum discount.');
+    return;
+  }
+
+  if (
+    maxUses !== null &&
+    (!Number.isInteger(maxUses) || maxUses < 1)
+  ) {
+    Alert.alert('Invalid Limit', 'Maximum uses must be a whole number greater than zero.');
+    return;
+  }
+
+  setSavingCoupon(true);
+
+  try {
+    await apiClient.post('/store/admin/coupons', {
+      code,
+      description: couponDescription.trim(),
+      discount_type: couponDiscountType,
+      discount_value: discountValue,
+      min_order_amount: minOrder,
+      max_discount: maxDiscount,
+      max_uses: maxUses,
+      expires_at: couponExpiry.trim() || null,
+      is_active: true,
+    });
+
+    Alert.alert('Success', 'Coupon created successfully!');
+
+    resetCouponForm();
+    await fetchCoupons();
+  } catch (error: any) {
+    Alert.alert(
+      'Coupon Error',
+      error?.message || 'Could not create coupon.'
+    );
+  } finally {
+    setSavingCoupon(false);
+  }
+};
+
+const deactivateCoupon = async (coupon: any) => {
+  const couponId = String(coupon.id || coupon._id || '');
+
+  if (!couponId) {
+    Alert.alert('Error', 'Coupon ID is missing.');
+    return;
+  }
+
+  const confirmDeactivate = async () => {
+    try {
+      await apiClient.delete(`/store/admin/coupons/${couponId}`);
+      Alert.alert('Success', 'Coupon deactivated.');
+      await fetchCoupons();
+    } catch (error: any) {
+      Alert.alert(
+        'Coupon Error',
+        error?.message || 'Could not deactivate coupon.'
+      );
+    }
+  };
+
+  if (Platform.OS === 'web') {
+    if (window.confirm(`Deactivate coupon ${coupon.code}?`)) {
+      await confirmDeactivate();
+    }
+  } else {
+    Alert.alert(
+      'Deactivate Coupon',
+      `Are you sure you want to deactivate ${coupon.code}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate',
+          style: 'destructive',
+          onPress: confirmDeactivate,
+        },
+      ]
+    );
+  }
+};
+
   const fetchSellerApplications = async () => {
   try {
     setLoadingSellerApplications(true);
