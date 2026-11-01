@@ -178,7 +178,119 @@ class AdminApprovalRequest(BaseModel):
 
 class SellerApprovalRequest(BaseModel):
     approved: bool
+class StoreOrderCreate(BaseModel):
+    items: List[StoreOrderItem]
+    customer_name: str = Field(..., min_length=2, max_length=120)
+    customer_phone: str = Field(..., min_length=10, max_length=10)
+    delivery_address: str = Field(..., min_length=5, max_length=1000)
+    city: str = Field(..., min_length=2, max_length=100)
+    pincode: str = Field(..., min_length=6, max_length=6)
+    payment_method: str = Field(default="online")
+    coupon_code: Optional[str] = Field(default=None, max_length=40)
+    is_gift: bool = False
+    gift_wrapping: bool = False
+    gift_recipient_name: Optional[str] = Field(default=None, max_length=120)
+    gift_recipient_phone: Optional[str] = Field(default=None, max_length=10)
+    gift_delivery_address: Optional[str] = Field(default=None, max_length=1000)
+    gift_message: Optional[str] = Field(default=None, max_length=500)
 
+@api_router.post("/store/orders")
+async def create_store_order(
+    payload: StoreOrderCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["customer"])
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    product_subtotal = 0.0
+    order_items = []
+
+    for item in payload.items:
+        try:
+            product_oid = ObjectId(item.product_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+
+        product = await db.store_products.find_one({"_id": product_oid, "is_available": True})
+        if not product:
+            raise HTTPException(status_code=404, detail="A product is unavailable")
+        
+        if product.get("stock", 0) < item.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for {product.get('name')}")
+
+        unit_price = float(product["price"])
+        line_total = round(unit_price * item.quantity, 2)
+        product_subtotal += line_total
+
+        order_items.append({
+            "product_id": str(product["_id"]),
+            "name": product["name"],
+            "unit_price": unit_price,
+            "quantity": item.quantity,
+            "line_total": line_total
+        })
+
+    product_subtotal = round(product_subtotal, 2)
+
+    # Calculate Coupon Discount securely on backend
+    discount_amount = 0.0
+    coupon_code = (payload.coupon_code or "").strip().upper()
+    if coupon_code:
+        coupon = await db.store_coupons.find_one({"code": coupon_code, "is_active": True})
+        if not coupon:
+            raise HTTPException(status_code=400, detail="Invalid coupon code")
+        
+        min_order = float(coupon.get("min_order_amount", 0))
+        if product_subtotal < min_order:
+            raise HTTPException(status_code=400, detail=f"Minimum order of ₹{min_order} required for this coupon")
+        
+        if coupon.get("discount_type") == "fixed":
+            discount_amount = float(coupon.get("discount_value", 0))
+        else:
+            discount_amount = product_subtotal * float(coupon.get("discount_value", 0)) / 100
+            if coupon.get("max_discount") is not None:
+                discount_amount = min(discount_amount, float(coupon["max_discount"]))
+        discount_amount = round(min(discount_amount, product_subtotal), 2)
+
+    # Taxes, Delivery, and Gift Wrapping Charges
+    tax_amount = round(product_subtotal * 0.05, 2) # 5% standard GST example
+    shipping_fee = 40.00 if product_subtotal < 500 else 0.00
+    gift_wrapping_fee = 20.00 if payload.gift_wrapping else 0.00
+
+    final_amount = round(
+        max(0, product_subtotal - discount_amount) + tax_amount + shipping_fee + gift_wrapping_fee,
+        2
+    )
+
+    order_doc = {
+        "customer_id": user["id"],
+        "items": order_items,
+        "customer_name": payload.customer_name.strip(),
+        "customer_phone": payload.customer_phone.strip(),
+        "delivery_address": payload.delivery_address.strip(),
+        "city": payload.city.strip(),
+        "pincode": payload.pincode.strip(),
+        "product_subtotal": product_subtotal,
+        "discount_amount": discount_amount,
+        "coupon_code": coupon_code,
+        "tax_amount": tax_amount,
+        "shipping_fee": shipping_fee,
+        "gift_wrapping_fee": gift_wrapping_fee,
+        "total_amount": final_amount,
+        "payment_method": payload.payment_method.lower(),
+        "payment_status": "pending",
+        "order_status": "Order Placed" if payload.payment_method.lower() == "cod" else "Awaiting Payment",
+        "is_gift": payload.is_gift,
+        "gift_recipient_name": payload.gift_recipient_name or "",
+        "gift_message": payload.gift_message or "",
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    result = await db.store_orders.insert_one(order_doc)
+    order_doc["id"] = str(result.inserted_id)
+    order_doc.pop("_id", None)
+    return order_doc
 
 # ==================== AUTHENTICATION ====================
 
