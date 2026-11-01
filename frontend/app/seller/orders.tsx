@@ -320,6 +320,13 @@ export default function SellerOrdersScreen() {
                   Tracking number: {order.tracking_number}
                 </Text>
               ) : null}
+              <TouchableOpacity
+  style={styles.printLabelButton}
+  onPress={() => printShippingLabel(order)}
+>
+  <Ionicons name="print-outline" size={20} color="#FFFFFF" />
+  <Text style={styles.printLabelText}>Print Shipping Label</Text>
+</TouchableOpacity>
 
               <Text style={styles.noticeText}>
                 For customer delivery details and shipment updates, use the
