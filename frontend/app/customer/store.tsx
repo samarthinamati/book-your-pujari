@@ -1,6 +1,7 @@
 // frontend/app/customer/store.tsx
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { NotificationBell } from '@/src/components/NotificationBell';
 import {
   ActivityIndicator,
   Alert,
