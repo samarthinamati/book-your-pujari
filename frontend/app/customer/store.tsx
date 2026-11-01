@@ -348,24 +348,66 @@ export default function CustomerStoreScreen() {
     }
   };
 
-  // 4. 🏷️ Validate Coupon
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return;
-    try {
-      const subtotal = Object.values(cart).reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
-      const res = await apiClient.post('/store/coupons/validate', {
-        code: couponCode.trim(),
-        subtotal,
-      });
-      if (res?.valid) {
-        setAppliedCoupon(res.coupon);
-        setDiscountAmount(Number(res.discount_amount || 0));
-        Alert.alert('Success', `Coupon "${res.coupon.code}" applied successfully!`);
-      }
-    } catch (e: any) {
-      Alert.alert('Invalid Coupon', e?.message || 'Could not apply coupon.');
+ 
+const handleApplyCoupon = async () => {
+  if (!couponCode.trim()) {
+    Alert.alert('Enter Coupon', 'Please enter a coupon code.');
+    return;
+  }
+
+  if (Object.keys(cart).length === 0) {
+    Alert.alert('Empty Cart', 'Add products before applying a coupon.');
+    return;
+  }
+
+  try {
+    const cartSubtotal = Object.values(cart).reduce(
+      (sum, item) =>
+        sum + Number(item.product.price) * item.quantity,
+      0
+    );
+
+    const res = await apiClient.post('/store/coupons/validate', {
+      code: couponCode.trim().toUpperCase(),
+      subtotal: cartSubtotal,
+    });
+
+    if (res?.valid && res?.coupon) {
+      setAppliedCoupon(res.coupon);
+      setCouponCode(res.coupon.code);
+      setDiscountAmount(Number(res.discount_amount || 0));
+
+      Alert.alert(
+        'Success',
+        `Coupon ${res.coupon.code} applied successfully!`
+      );
+    } else {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+
+      Alert.alert(
+        'Invalid Coupon',
+        res?.message || 'This coupon is not valid.'
+      );
     }
-  };
+  } catch (e: any) {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+
+    Alert.alert(
+      'Invalid Coupon',
+      e?.message || 'Could not apply coupon.'
+    );
+  }
+};
+
+const removeCoupon = () => {
+  setAppliedCoupon(null);
+  setDiscountAmount(0);
+  setCouponCode('');
+  Alert.alert('Coupon Removed', 'Your coupon has been removed.');
+};
+
 
   // 2. 💬 Chat Conversations & Messages
   const loadConversations = async () => {
