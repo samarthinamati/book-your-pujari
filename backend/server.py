@@ -2285,6 +2285,181 @@ async def get_all_store_products(
         for product in products
     ]
 
+# ==================== ADMIN BANNER MANAGEMENT ====================
+
+class BannerCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    description: Optional[str] = Field(default="", max_length=500)
+    image_url: str = Field(..., min_length=5, max_length=2000)
+    cta_text: Optional[str] = Field(default="", max_length=40)
+    link_url: Optional[str] = Field(default="", max_length=2000)
+    start_at: Optional[str] = None
+    end_at: Optional[str] = None
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class BannerUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    image_url: Optional[str] = Field(default=None, min_length=5, max_length=2000)
+    cta_text: Optional[str] = Field(default=None, max_length=40)
+    link_url: Optional[str] = Field(default=None, max_length=2000)
+    start_at: Optional[str] = None
+    end_at: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+def serialize_banner(banner: dict) -> dict:
+    return {
+        "id": str(banner["_id"]),
+        "title": banner.get("title", ""),
+        "description": banner.get("description", ""),
+        "image_url": banner.get("image_url", ""),
+        "cta_text": banner.get("cta_text", ""),
+        "link_url": banner.get("link_url", ""),
+        "start_at": banner.get("start_at"),
+        "end_at": banner.get("end_at"),
+        "is_active": banner.get("is_active", True),
+        "sort_order": banner.get("sort_order", 0),
+        "created_at": banner.get("created_at", ""),
+        "updated_at": banner.get("updated_at", ""),
+    }
+
+
+def banner_is_in_schedule(banner: dict, now: datetime) -> bool:
+    if not banner.get("is_active", True):
+        return False
+
+    try:
+        start_at = banner.get("start_at")
+        end_at = banner.get("end_at")
+
+        if start_at:
+            start_date = datetime.fromisoformat(start_at)
+            if start_date > now:
+                return False
+
+        if end_at:
+            end_date = datetime.fromisoformat(end_at)
+            if end_date < now:
+                return False
+
+        return True
+
+    except (ValueError, TypeError):
+        return False
+
+
+# Customer homepage: show only active banners within their schedule.
+@api_router.get("/banners")
+async def get_customer_banners():
+    banners = await db.banners.find({
+        "is_active": True
+    }).sort([
+        ("sort_order", 1),
+        ("created_at", -1)
+    ]).to_list(100)
+
+    now = datetime.utcnow()
+    visible_banners = [
+        serialize_banner(banner)
+        for banner in banners
+        if banner_is_in_schedule(banner, now)
+    ]
+
+    return visible_banners
+
+
+# Admin: list all banners, including inactive and scheduled banners.
+@api_router.get("/admin/banners")
+async def admin_get_banners(
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    banners = await db.banners.find().sort([
+        ("sort_order", 1),
+        ("created_at", -1)
+    ]).to_list(500)
+
+    return [serialize_banner(banner) for banner in banners]
+
+
+# Admin: create a banner.
+@api_router.post("/admin/banners")
+async def admin_create_banner(
+    payload: BannerCreate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    banner = payload.dict()
+    banner["created_at"] = datetime.utcnow().isoformat()
+    banner["updated_at"] = datetime.utcnow().isoformat()
+
+    result = await db.banners.insert_one(banner)
+    banner["_id"] = result.inserted_id
+
+    return serialize_banner(banner)
+
+
+# Admin: update a banner.
+@api_router.put("/admin/banners/{banner_id}")
+async def admin_update_banner(
+    banner_id: str,
+    payload: BannerUpdate,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    try:
+        banner_oid = ObjectId(banner_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid banner ID")
+
+    update = payload.dict(exclude_unset=True)
+
+    if not update:
+        raise HTTPException(status_code=400, detail="No changes provided")
+
+    update["updated_at"] = datetime.utcnow().isoformat()
+
+    result = await db.banners.update_one(
+        {"_id": banner_oid},
+        {"$set": update}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Banner not found")
+
+    banner = await db.banners.find_one({"_id": banner_oid})
+    return serialize_banner(banner)
+
+
+# Admin: delete a banner.
+@api_router.delete("/admin/banners/{banner_id}")
+async def admin_delete_banner(
+    banner_id: str,
+    user: dict = Depends(get_current_user)
+):
+    await require_role(user, ["admin"])
+
+    try:
+        banner_oid = ObjectId(banner_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid banner ID")
+
+    result = await db.banners.delete_one({"_id": banner_oid})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Banner not found")
+
+    return {"message": "Banner deleted successfully"}
+
+# ==================== END ADMIN BANNER MANAGEMENT ====================
+
 # ==================== SAMAGRI STORE ORDERS ====================
 
 class StoreOrderItem(BaseModel):
