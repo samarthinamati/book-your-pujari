@@ -14,6 +14,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/src/api/client';
+import * as Print from 'expo-print';
 
 type OrderItem = {
   name: string;
