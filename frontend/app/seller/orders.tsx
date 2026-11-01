@@ -74,6 +74,130 @@ export default function SellerOrdersScreen() {
 
     return date.toLocaleString();
   };
+  const printShippingLabel = async (order: SellerOrder) => {
+  try {
+    const itemsHtml = (order.items || [])
+      .map(
+        (item) => `
+          <tr>
+            <td>${String(item.name || '').replace(/[&<>"']/g, '')}</td>
+            <td>${Number(item.quantity || 0)}</td>
+          </tr>
+        `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 18px;
+            color: #172B4D;
+          }
+          .label {
+            border: 2px solid #222;
+            padding: 20px;
+            max-width: 500px;
+            margin: auto;
+          }
+          .brand {
+            font-size: 25px;
+            font-weight: bold;
+            text-align: center;
+          }
+          .heading {
+            text-align: center;
+            font-size: 17px;
+            margin: 12px 0;
+            font-weight: bold;
+          }
+          .section {
+            border-top: 1px solid #777;
+            padding: 12px 0;
+          }
+          .order {
+            font-size: 16px;
+            font-weight: bold;
+          }
+          .address {
+            font-size: 17px;
+            line-height: 1.6;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          th, td {
+            border: 1px solid #999;
+            padding: 8px;
+            text-align: left;
+          }
+          .tracking {
+            font-weight: bold;
+            overflow-wrap: anywhere;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <div class="brand">PUJARIGO</div>
+          <div class="heading">SHIP TO</div>
+
+          <div class="section">
+            <div class="order">
+              Order #${String(order.id || '').slice(-8)}
+            </div>
+          </div>
+
+          <div class="section address">
+            <strong>${String(order.customer_name || 'Customer').replace(/[&<>"']/g, '')}</strong><br/>
+            ${String(order.delivery_address || '').replace(/[&<>"']/g, '')}<br/>
+            ${String(order.city || '').replace(/[&<>"']/g, '')} -
+            ${String(order.pincode || '').replace(/[&<>"']/g, '')}<br/>
+            Phone: ${String(order.customer_phone || '').replace(/[&<>"']/g, '')}
+          </div>
+
+          <div class="section">
+            <strong>Items in this parcel</strong>
+            <table>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+              </tr>
+              ${itemsHtml}
+            </table>
+          </div>
+
+          <div class="section">
+            Courier: ${String(order.courier || 'Not assigned').replace(/[&<>"']/g, '')}<br/>
+            <span class="tracking">
+              AWB / Tracking: ${String(order.tracking_number || 'Not assigned').replace(/[&<>"']/g, '')}
+            </span>
+          </div>
+
+          <div class="footer">Thank you for shopping with PujariGo</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await Print.printAsync({ html });
+  } catch (error: any) {
+    Alert.alert(
+      'Print Error',
+      error?.message || 'Unable to print shipping label.'
+    );
+  }
+};
 
   if (loading) {
     return (
