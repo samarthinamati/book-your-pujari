@@ -4052,19 +4052,17 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid notification ID")
     
-    await db.store_notifications.update_one(
+        await db.store_notifications.update_one(
         {"_id": oid, "user_id": user["id"]},
         {"$set": {"is_read": True}}
     )
     return {"message": "Notification marked as read"}
-    class StoreProductReviewCreate(BaseModel):
-       product_id: str
-       rating: int = Field(..., ge=1, le=5)
-       comment: str = Field(default="", max_length=1000)
+
 
 class StoreProductReviewCreate(BaseModel):
-    rating: int
-    comment: str
+    rating: int = Field(..., ge=1, le=5)
+    comment: str = Field(default="", max_length=1000)
+
 
 @api_router.post("/store/products/{product_id}/reviews")
 async def create_product_review(
@@ -4073,7 +4071,7 @@ async def create_product_review(
     user: dict = Depends(get_current_user)
 ):
     await require_role(user, ["customer"])
-    
+
     try:
         product_oid = ObjectId(product_id)
     except Exception:
