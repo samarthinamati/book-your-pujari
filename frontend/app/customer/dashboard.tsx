@@ -53,6 +53,7 @@ export default function CustomerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchLocation, setSearchLocation] = useState('');
   const [searchPooja, setSearchPooja] = useState('');
+  const [banners, setBanners] = useState<Banner[]>([]);
 // ADD THIS LINE
 const [showPujariSection, setShowPujariSection] = useState(false);
   const { user, logout } = useAuth();
