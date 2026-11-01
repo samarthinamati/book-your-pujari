@@ -1138,6 +1138,28 @@ tracking_url: tracking.tracking_url,
           </View>
           <Ionicons name="chevron-forward" size={22} color="#888" />
         </TouchableOpacity>
+                <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => {
+            setShowAdminSection('messages');
+            setSelectedConversation(null);
+            setChatMessages([]);
+            setReplyText('');
+            fetchChatConversations();
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="chatbubbles-outline" size={28} color="#00838F" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#222' }}>
+              Customer Messages
+            </Text>
+            <Text style={{ color: '#666', marginTop: 4 }}>
+              Read customer messages and reply to them
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color="#888" />
+        </TouchableOpacity>
       </View>
     )}
       
