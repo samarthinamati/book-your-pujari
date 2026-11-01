@@ -37,6 +37,15 @@ interface Saint {
   rating: number;
   total_bookings: number;
 }
+interface Banner {
+  id: string;
+  title: string;
+  description?: string;
+  image_url: string;
+  cta_text?: string;
+  link_url?: string;
+  sort_order?: number;
+}
 
 export default function CustomerDashboard() {
   const [saints, setSaints] = useState<Saint[]>([]);
