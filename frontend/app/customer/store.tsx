@@ -262,6 +262,10 @@ export default function CustomerStoreScreen() {
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
 
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [productReviews, setProductReviews] = useState<any[]>([]);
+
   const loadStoreData = useCallback(async () => {
     try {
       const [prodRes, favRes, recentRes] = await Promise.all([
