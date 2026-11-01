@@ -187,6 +187,55 @@ const [showPujariSection, setShowPujariSection] = useState(false);
         }
       >
         
+{banners.length > 0 && (
+  <View style={styles.bannerSection}>
+    <Text style={styles.bannerHeading}>What's New</Text>
+
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.bannerList}
+    >
+      {banners.map((banner) => (
+        <View key={banner.id} style={styles.bannerCard}>
+          <Image
+            source={{ uri: banner.image_url }}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+
+          <View style={styles.bannerDetails}>
+            <Text style={styles.bannerTitle}>
+              {banner.title}
+            </Text>
+
+            {!!banner.description && (
+              <Text style={styles.bannerDescription}>
+                {banner.description}
+              </Text>
+            )}
+
+            {!!banner.cta_text && !!banner.link_url && (
+              <TouchableOpacity
+                style={styles.bannerButton}
+                onPress={() => handleBannerPress(banner.link_url)}
+              >
+                <Text style={styles.bannerButtonText}>
+                  {banner.cta_text}
+                </Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={16}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  </View>
+)}
         
 <View style={styles.bookingOptions}>
   <TouchableOpacity
