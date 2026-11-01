@@ -2504,11 +2504,24 @@ shipping_fee = await get_delhivery_shipping_fee(
                 discount_amount = min(discount_amount, float(coupon["max_discount"]))
         discount_amount = round(min(discount_amount, product_subtotal), 2)
 
-    total_amount = round(
-        max(0, product_subtotal - discount_amount) + platform_fee + shipping_fee + cod_fee,
-        2,
-    )
+    discounted_subtotal = round(
+    max(0, product_subtotal - discount_amount), 2
+)
 
+platform_fee = round(discounted_subtotal * 0.02, 2)
+
+gift_wrapping_fee = 5.00 if payload.gift_wrapping else 0.00
+
+cod_fee = 10.00 if payment_method == "cod" else 0.00
+
+total_amount = round(
+    discounted_subtotal
+    + platform_fee
+    + shipping_fee
+    + gift_wrapping_fee
+    + cod_fee,
+    2,
+)
     # COD orders are confirmed at placement, so deduct their stock now.
     # Online orders remain pending and must NOT deduct stock until Razorpay
     # payment has been verified successfully.
