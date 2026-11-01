@@ -43,6 +43,8 @@ type SellerOrder = {
 export default function SellerOrdersScreen() {
   const router = useRouter();
   const [orders, setOrders] = useState<SellerOrder[]>([]);
+  const [selectedLabelOrder, setSelectedLabelOrder] =
+  useState<SellerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
