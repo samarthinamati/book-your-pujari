@@ -1460,6 +1460,239 @@ tracking_url: tracking.tracking_url,
           <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 16, color: '#222' }}>Add New Product</Text>
         </>
       )}
+      
+{storeView === 'coupons' && (
+  <View style={{ gap: 14, marginBottom: 25 }}>
+    <TouchableOpacity
+      onPress={() => setStoreView('menu')}
+      style={{ flexDirection: 'row', alignItems: 'center' }}
+    >
+      <Ionicons name="arrow-back" size={22} color="#FF6B35" />
+      <Text style={{ marginLeft: 8, color: '#333', fontWeight: 'bold' }}>
+        Back to Store Menu
+      </Text>
+    </TouchableOpacity>
+
+    <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#222' }}>
+      Manage Coupons
+    </Text>
+
+    <View style={{
+      backgroundColor: '#FFF',
+      padding: 15,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#DDD',
+      gap: 10,
+    }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
+        Create New Coupon
+      </Text>
+
+      <TextInput
+        placeholder="Coupon code (example: PUJA20)"
+        value={couponCode}
+        onChangeText={setCouponCode}
+        autoCapitalize="characters"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        placeholder="Coupon description"
+        value={couponDescription}
+        onChangeText={setCouponDescription}
+        style={productInputStyle}
+      />
+
+      <Text style={{ fontWeight: 'bold' }}>Discount Type</Text>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TouchableOpacity
+          onPress={() => setCouponDiscountType('percent')}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 8,
+            backgroundColor: couponDiscountType === 'percent' ? '#2874F0' : '#EEE',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{
+            color: couponDiscountType === 'percent' ? '#FFF' : '#333',
+            fontWeight: 'bold',
+          }}>
+            Percentage (%)
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setCouponDiscountType('fixed')}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 8,
+            backgroundColor: couponDiscountType === 'fixed' ? '#2874F0' : '#EEE',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{
+            color: couponDiscountType === 'fixed' ? '#FFF' : '#333',
+            fontWeight: 'bold',
+          }}>
+            Fixed Amount (₹)
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <TextInput
+        placeholder={couponDiscountType === 'percent' ? 'Discount percentage' : 'Discount amount in rupees'}
+        value={couponDiscountValue}
+        onChangeText={setCouponDiscountValue}
+        keyboardType="numeric"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        placeholder="Minimum order amount (₹)"
+        value={couponMinOrder}
+        onChangeText={setCouponMinOrder}
+        keyboardType="numeric"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        placeholder="Maximum discount (₹) - optional"
+        value={couponMaxDiscount}
+        onChangeText={setCouponMaxDiscount}
+        keyboardType="numeric"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        placeholder="Maximum uses - optional"
+        value={couponMaxUses}
+        onChangeText={setCouponMaxUses}
+        keyboardType="numeric"
+        style={productInputStyle}
+      />
+
+      <TextInput
+        placeholder="Expiry date/time (ISO format, optional)"
+        value={couponExpiry}
+        onChangeText={setCouponExpiry}
+        style={productInputStyle}
+      />
+
+      <TouchableOpacity
+        disabled={savingCoupon}
+        onPress={saveCoupon}
+        style={{
+          backgroundColor: '#2E7D32',
+          padding: 14,
+          borderRadius: 8,
+          alignItems: 'center',
+          opacity: savingCoupon ? 0.6 : 1,
+        }}
+      >
+        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+          {savingCoupon ? 'Saving...' : 'Create Coupon'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+
+    <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#222' }}>
+      Existing Coupons
+    </Text>
+
+    <TouchableOpacity
+      onPress={fetchCoupons}
+      style={{
+        backgroundColor: '#2874F0',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+        Refresh Coupons
+      </Text>
+    </TouchableOpacity>
+
+    {loadingCoupons ? (
+      <ActivityIndicator size="large" color="#2874F0" />
+    ) : coupons.length === 0 ? (
+      <Text style={{ color: '#666', textAlign: 'center' }}>
+        No coupons created yet.
+      </Text>
+    ) : (
+      coupons.map((coupon: any, index: number) => (
+        <View
+          key={String(coupon.id || coupon._id || index)}
+          style={{
+            backgroundColor: '#FFF',
+            padding: 14,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: '#DDD',
+            gap: 6,
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#AD1457' }}>
+            {coupon.code}
+          </Text>
+
+          <Text>{coupon.description || 'No description'}</Text>
+
+          <Text>
+            Discount: {coupon.discount_type === 'percent'
+              ? `${coupon.discount_value}%`
+              : `₹${coupon.discount_value}`}
+          </Text>
+
+          <Text>Minimum order: ₹{coupon.min_order_amount || 0}</Text>
+
+          {coupon.max_discount != null && (
+            <Text>Maximum discount: ₹{coupon.max_discount}</Text>
+          )}
+
+          <Text>
+            Uses: {coupon.used_count || 0}
+            {coupon.max_uses ? ` / ${coupon.max_uses}` : ' / Unlimited'}
+          </Text>
+
+          {coupon.expires_at && (
+            <Text>Expires: {String(coupon.expires_at)}</Text>
+          )}
+
+          <Text style={{
+            fontWeight: 'bold',
+            color: coupon.is_active ? '#2E7D32' : '#C62828',
+          }}>
+            {coupon.is_active ? 'Active' : 'Inactive'}
+          </Text>
+
+          {coupon.is_active && (
+            <TouchableOpacity
+              onPress={() => deactivateCoupon(coupon)}
+              style={{
+                backgroundColor: '#C62828',
+                padding: 10,
+                borderRadius: 7,
+                alignItems: 'center',
+                marginTop: 5,
+              }}
+            >
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                Deactivate Coupon
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))
+    )}
+  </View>
+)}
+
       {storeView === 'orders' && (
         <>
           <TouchableOpacity onPress={() => setStoreView('menu')} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
