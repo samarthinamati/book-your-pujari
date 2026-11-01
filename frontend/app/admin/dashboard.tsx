@@ -1912,7 +1912,293 @@ placeholder="Enter weight in grams"
         </ScrollView>
       </>
     )}
+    {showAdminSection === 'messages' && (
+      <>
+        <TouchableOpacity
+          onPress={() => {
+            setShowAdminSection(null);
+            setSelectedConversation(null);
+            setChatMessages([]);
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 12,
+            backgroundColor: '#FFF',
+          }}
+        >
+          <Ionicons name="arrow-back" size={22} color="#FF6B35" />
+          <Text style={{ marginLeft: 8, fontWeight: 'bold', color: '#333' }}>
+            Back to Admin Menu
+          </Text>
+        </TouchableOpacity>
 
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#222' }}>
+              Customer Messages
+            </Text>
+
+            <TouchableOpacity
+              onPress={fetchChatConversations}
+              style={{
+                backgroundColor: '#EAF1FF',
+                padding: 10,
+                borderRadius: 8,
+              }}
+            >
+              <Ionicons name="refresh" size={21} color="#2874F0" />
+            </TouchableOpacity>
+          </View>
+
+          {!selectedConversation ? (
+            <>
+              <Text style={{ color: '#666' }}>
+                Select a customer conversation to read and reply.
+              </Text>
+
+              {loadingConversations ? (
+                <ActivityIndicator size="large" color="#2874F0" />
+              ) : chatConversations.length === 0 ? (
+                <View
+                  style={{
+                    backgroundColor: '#FFF',
+                    padding: 25,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={45}
+                    color="#BBB"
+                  />
+                  <Text style={{ color: '#666', marginTop: 10 }}>
+                    No customer conversations yet.
+                  </Text>
+                </View>
+              ) : (
+                chatConversations.map((conversation: any, index: number) => (
+                  <TouchableOpacity
+                    key={String(
+                      conversation.conversation_key || index
+                    )}
+                    onPress={() => openChatConversation(conversation)}
+                    style={{
+                      backgroundColor: '#FFF',
+                      padding: 15,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: '#E5E5E5',
+                      gap: 6,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontWeight: 'bold', color: '#222' }}>
+                        Customer conversation
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color="#888"
+                      />
+                    </View>
+
+                    <Text style={{ color: '#666', fontSize: 12 }}>
+                      Customer ID: {conversation.other_party_id || '—'}
+                    </Text>
+
+                    {conversation.order_id ? (
+                      <Text style={{ color: '#666', fontSize: 12 }}>
+                        Order ID: {conversation.order_id}
+                      </Text>
+                    ) : null}
+
+                    <Text
+                      numberOfLines={2}
+                      style={{ color: '#444', marginTop: 3 }}
+                    >
+                      {conversation.last_message || 'Open conversation'}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedConversation(null);
+                  setChatMessages([]);
+                  setReplyText('');
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                }}
+              >
+                <Ionicons name="arrow-back" size={20} color="#2874F0" />
+                <Text
+                  style={{
+                    marginLeft: 7,
+                    color: '#2874F0',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Back to conversations
+                </Text>
+              </TouchableOpacity>
+
+              <View
+                style={{
+                  backgroundColor: '#EAF1FF',
+                  padding: 13,
+                  borderRadius: 9,
+                }}
+              >
+                <Text style={{ fontWeight: 'bold', color: '#222' }}>
+                  Customer Conversation
+                </Text>
+                <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+                  Customer ID: {selectedConversation.other_party_id || '—'}
+                </Text>
+              </View>
+
+              {loadingChatMessages ? (
+                <ActivityIndicator size="large" color="#2874F0" />
+              ) : chatMessages.length === 0 ? (
+                <Text style={{ color: '#777', textAlign: 'center', padding: 20 }}>
+                  No messages found in this conversation.
+                </Text>
+              ) : (
+                chatMessages.map((message: any, index: number) => {
+                  const isAdmin =
+                    String(message.sender_role || '').toLowerCase() === 'admin';
+
+                  return (
+                    <View
+                      key={String(message.id || message._id || index)}
+                      style={{
+                        alignSelf: isAdmin ? 'flex-end' : 'flex-start',
+                        maxWidth: '88%',
+                        backgroundColor: isAdmin ? '#E5F3E8' : '#FFF',
+                        padding: 12,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: '#E5E5E5',
+                        gap: 5,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: '#777',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {message.sender_name ||
+                          (isAdmin ? 'Admin' : 'Customer')}
+                      </Text>
+
+                      <Text style={{ color: '#222', fontSize: 14 }}>
+                        {message.message || ''}
+                      </Text>
+
+                      {message.created_at ? (
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            color: '#888',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {formatDate(message.created_at)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+                })
+              )}
+
+              <View
+                style={{
+                  backgroundColor: '#FFF',
+                  padding: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: '#DDD',
+                  gap: 10,
+                  marginTop: 8,
+                }}
+              >
+                <Text style={{ fontWeight: 'bold', color: '#222' }}>
+                  Reply to Customer
+                </Text>
+
+                <TextInput
+                  value={replyText}
+                  onChangeText={setReplyText}
+                  placeholder="Type your reply..."
+                  multiline
+                  style={[
+                    productInputStyle,
+                    {
+                      minHeight: 85,
+                      textAlignVertical: 'top',
+                    },
+                  ]}
+                />
+
+                <TouchableOpacity
+                  onPress={sendChatReply}
+                  disabled={sendingChatReply}
+                  style={{
+                    backgroundColor: sendingChatReply ? '#999' : '#2874F0',
+                    padding: 13,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                  }}
+                >
+                  {sendingChatReply ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+                      Send Reply
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => openChatConversation(selectedConversation)}
+                  style={{ padding: 8, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#2874F0', fontWeight: 'bold' }}>
+                    Refresh Conversation
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </>
+    )}
     {showAdminSection === 'pujaris' && (
       <>
       <TouchableOpacity
