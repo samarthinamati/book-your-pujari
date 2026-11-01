@@ -4221,18 +4221,24 @@ async def get_my_notifications(user: dict = Depends(get_current_user)):
     return notifications
 
 @api_router.put("/store/notifications/{notification_id}/read")
-async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+async def mark_notification_read(
+    notification_id: str,
+    user: dict = Depends(get_current_user)
+):
     try:
         oid = ObjectId(notification_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid notification ID")
-    
-        await db.store_notifications.update_one(
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid notification ID"
+        )
+
+    await db.store_notifications.update_one(
         {"_id": oid, "user_id": user["id"]},
         {"$set": {"is_read": True}}
     )
-    return {"message": "Notification marked as read"}
 
+    return {"message": "Notification marked as read"}
 
 class StoreProductReviewCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
