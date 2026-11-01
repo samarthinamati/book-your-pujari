@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NotificationBell } from '@/src/components/NotificationBell';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   Alert,
@@ -428,6 +427,18 @@ export default function CustomerStoreScreen() {
     }
   };
 
+  const loadOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const res = await apiClient.get('/store/orders/my-orders');
+      setOrders(Array.isArray(res) ? res : []);
+    } catch (e) {
+      setOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     return products.filter((product) => {
@@ -792,11 +803,42 @@ export default function CustomerStoreScreen() {
               <TextInput style={styles.input} placeholder="City" value={city} onChangeText={setCity} />
               <TextInput style={styles.input} placeholder="PIN Code" value={pincode} onChangeText={setPincode} maxLength={6} keyboardType="number-pad" />
 
+              {/* Payment Method Selector */}
+              <Text style={[styles.sectionHeading, { marginTop: 16 }]}>Payment Method</Text>
+              <TouchableOpacity
+                style={[styles.paymentOption, paymentMethod === 'online' && styles.paymentOptionSelected]}
+                onPress={() => setPaymentMethod('online')}
+              >
+                <Text style={styles.paymentOptionText}>💳 Pay Online (UPI / Razorpay)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentOption, paymentMethod === 'cod' && styles.paymentOptionSelected]}
+                onPress={() => setPaymentMethod('cod')}
+              >
+                <Text style={styles.paymentOptionText}>💵 Cash on Delivery (COD)</Text>
+              </TouchableOpacity>
+
+              {/* Comprehensive Calculation Summary Breakdown */}
               <View style={styles.summaryBox}>
-                <Text>Subtotal: ₹{subtotal.toFixed(2)}</Text>
-                {discountAmount > 0 && <Text style={{ color: '#166534' }}>Discount: -₹{discountAmount.toFixed(2)}</Text>}
-                <Text>Shipping: ₹{shippingFee.toFixed(2)}</Text>
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 4 }}>Total: ₹{total.toFixed(2)}</Text>
+                <View style={styles.summaryRow}>
+                  <Text>Product Subtotal:</Text>
+                  <Text>₹{subtotal.toFixed(2)}</Text>
+                </View>
+                {discountAmount > 0 && (
+                  <View style={styles.summaryRow}>
+                    <Text style={{ color: '#166534' }}>Coupon Discount:</Text>
+                    <Text style={{ color: '#166534' }}>-₹{discountAmount.toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={styles.summaryRow}>
+                  <Text>Delivery Charge:</Text>
+                  <Text>₹{shippingFee.toFixed(2)} {subtotal > 500 ? '(Free over ₹500)' : ''}</Text>
+                </View>
+                <View style={[styles.summaryRow, { borderTopWidth: 1, borderColor: '#CBD5E1', marginTop: 6, paddingTop: 6 }]}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Final Amount:</Text>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#166534' }}>₹{total.toFixed(2)}</Text>
+                </View>
               </View>
 
               <TouchableOpacity style={styles.checkoutBtn} disabled={placingOrder} onPress={placeOrder}>
@@ -889,9 +931,14 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: '#FFF' },
   applyCouponBtn: { backgroundColor: '#16A34A', paddingHorizontal: 16, justifyContent: 'center', borderRadius: 6 },
   summaryBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8, marginTop: 14 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  paymentOption: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, padding: 12, marginTop: 8, backgroundColor: '#FFF' },
+  paymentOptionSelected: { borderColor: BLUE, backgroundColor: '#EBF8FF' },
+  paymentOptionText: { fontWeight: '600', color: '#1E293B' },
   checkoutBtn: { backgroundColor: '#166534', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 14 },
   orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 12, marginBottom: 10 },
   invoiceBtn: { marginTop: 8, backgroundColor: GOLD, padding: 8, borderRadius: 6, alignItems: 'center' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   viewCartBarBtn: { backgroundColor: BLUE, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6 },
 });
+ 
