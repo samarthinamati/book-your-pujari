@@ -203,7 +203,14 @@ const createOrderInvoiceHtml = (order: StoreOrder): string => {
     ${Number(order.discount_amount || 0) > 0 ? `<div class="summary-row" style="color: #166534;"><span>Discount:</span> <span>-₹${Number(order.discount_amount).toFixed(2)}</span></div>` : ''}
     <div class="summary-row"><span>Shipping Fee:</span> <span>₹${Number(order.shipping_fee || 0).toFixed(2)}</span></div>
     <div class="summary-row"><span>Platform Fee:</span> <span>₹${Number(order.platform_fee || 0).toFixed(2)}</span></div>
-    <div class="summary-row total-row"><span>Total Paid:</span> <span>₹${getOrderTotal(order).toFixed(2)}</span></div>
+    <div class="summary-row"><span>COD Fee:</span> <span>₹${Number(order.cod_fee || 0).toFixed(2)}</span></div>
+<div class="summary-row total-row">
+  <span>${String(order.payment_status || '').toLowerCase() === 'paid' ? 'Total Paid:' : 'Order Total:'}</span>
+  <span>₹${getOrderTotal(order).toFixed(2)}</span>
+</div>
+<div style="margin-top: 12px; font-weight: bold;">
+  Payment Status: ${escapeHtml(order.payment_status || 'Pending')}
+</div>
   </div>
 
   <div style="clear: both; margin-top: 50px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center;">
