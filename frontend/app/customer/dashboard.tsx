@@ -798,6 +798,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666666',
     marginTop: 5,
+      bannerSection: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+
+  bannerHeading: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+
+  bannerList: {
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+
+  bannerCard: {
+    width: 300,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E0E5ED',
+    marginBottom: 8,
+  },
+
+  bannerImage: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#EEEEEE',
+  },
+
+  bannerDetails: {
+    padding: 14,
+  },
+
+  bannerTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#222222',
+  },
+
+  bannerDescription: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 6,
+    lineHeight: 19,
+  },
+
+  bannerButton: {
+    backgroundColor: '#2874F0',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+
+  bannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
   },
 
 });
