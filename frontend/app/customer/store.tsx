@@ -872,7 +872,14 @@ const sendChatMessage = async () => {
 
               {/* 🏷️ Coupons and Discounts */}
               <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
-                <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
+                <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode}onChangeText={(value) => {
+  setCouponCode(value);
+
+  if (appliedCoupon) {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+  }
+}} autoCapitalize="characters" />
                 <TouchableOpacity style={styles.applyCouponBtn} onPress={handleApplyCoupon}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Apply</Text></TouchableOpacity>
               </View>
              {appliedCoupon && (
