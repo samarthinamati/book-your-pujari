@@ -2465,18 +2465,15 @@ async def create_store_order(
     platform_fee = round(product_subtotal * 0.02, 2)
     cod_fee = 10.00 if payment_method == "cod" else 0.00
 
-    # Same-pincode orders have a fixed customer delivery charge of Rs. 10.
-    # For different pincodes, use the Delhivery shipping estimate.
-    if seller_pickup_pincode == delivery_pincode:
-        shipping_fee = 10.00
-    else:
-        shipping_fee = await get_delhivery_shipping_fee(
-            pickup_pincode=seller_pickup_pincode,
-            delivery_pincode=delivery_pincode,
-            weight_grams=max(total_weight_grams, 1),
-            payment_mode="COD" if payment_method == "cod" else "Pre-paid",
-            shipping_mode="S",
-        )
+    # Always get the delivery estimate from Delhivery,
+# including orders with the same pickup and delivery PIN code.
+shipping_fee = await get_delhivery_shipping_fee(
+    pickup_pincode=seller_pickup_pincode,
+    delivery_pincode=delivery_pincode,
+    weight_grams=max(total_weight_grams, 1),
+    payment_mode="COD" if payment_method == "cod" else "Pre-paid",
+    shipping_mode="S",
+)
     # Validate coupons on the server; never trust a discount calculated by the app.
     coupon = None
     discount_amount = 0.0
