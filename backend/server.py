@@ -2591,6 +2591,7 @@ total_amount = round(
         "shipping_fee": shipping_fee,
         "gift_wrapping_fee": gift_wrapping_fee,
         "cod_fee": cod_fee,
+        "gift_wrapping_fee": order.get("gift_wrapping_fee", 0),
         "total_amount": total_amount,
         "payment_method": payment_method,
         "payment_status": "pending",
