@@ -124,6 +124,19 @@ const [showPujariSection, setShowPujariSection] = useState(false);
       },
     ]);
   };
+  const handleBannerPress = async (link?: string) => {
+  if (!link) return;
+
+  try {
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+      await Linking.openURL(link);
+    } else if (link.startsWith('/')) {
+      router.push(link as any);
+    }
+  } catch (error) {
+    Alert.alert('Error', 'Unable to open this banner link.');
+  }
+};
 
   const onRefresh = () => {
     setRefreshing(true);
