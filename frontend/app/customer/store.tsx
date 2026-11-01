@@ -35,6 +35,8 @@ type Product = {
   is_gift?: boolean;
   tags?: string[];
   weight_grams?: number;
+  average_rating?: number;
+  review_count?: number;
 };
 
 type CartItem = {
@@ -262,6 +264,7 @@ export default function CustomerStoreScreen() {
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
 
+  // Product Reviews & Ratings States
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [productReviews, setProductReviews] = useState<any[]>([]);
@@ -305,12 +308,38 @@ export default function CustomerStoreScreen() {
     }
   };
 
+  // Fetch reviews for selected product
+  const fetchReviews = async (productId: string) => {
+    try {
+      const res = await apiClient.get(`/store/products/${productId}/reviews`);
+      setProductReviews(Array.isArray(res) ? res : []);
+    } catch (e) {
+      setProductReviews([]);
+    }
+  };
+
+  const submitReview = async (productId: string) => {
+    try {
+      await apiClient.post(`/store/products/${productId}/reviews`, {
+        product_id: productId,
+        rating: newRating,
+        comment: newComment.trim(),
+      });
+      Alert.alert('Success', 'Thank you for your review!');
+      setNewComment('');
+      fetchReviews(productId);
+      loadStoreData(); // Refresh product ratings
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not submit review.');
+    }
+  };
+
   // 6. 👀 Track Recently Viewed & Open Details
   const handleOpenProduct = async (product: Product) => {
     setSelectedProduct(product);
+    fetchReviews(product.id);
     try {
       await apiClient.post('/store/recently-viewed', { product_id: product.id });
-      // Refresh recently viewed list silently
       const recent = await apiClient.get('/store/recently-viewed');
       setRecentlyViewed(Array.isArray(recent) ? recent : []);
     } catch (e) {
@@ -366,7 +395,6 @@ export default function CustomerStoreScreen() {
         });
         openConversation(activeConversationKey);
       } else {
-        // Start new chat with Admin / Support
         await apiClient.post('/store/chat/messages', {
           recipient_type: 'admin',
           message: chatInput.trim(),
@@ -426,7 +454,6 @@ export default function CustomerStoreScreen() {
     });
   };
 
-  // Place Order with Gift & Coupon details
   const placeOrder = async () => {
     if (cartItems.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim() || !address.trim() || !city.trim() || !pincode.trim()) {
@@ -507,7 +534,8 @@ export default function CustomerStoreScreen() {
               <Text style={styles.brandTitle}>PujariGo Store</Text>
               <Text style={styles.headerSubtitle}>{t('tagline')}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
+            <NotificationBell />
+            <View style={{ flexDirection: 'row', gap: 6, marginLeft: 8 }}>
               {(['en', 'kn', 'hi'] as StoreLanguage[]).map((lang) => (
                 <TouchableOpacity key={lang} onPress={() => setLanguage(lang)} style={[styles.langChip, language === lang && styles.langChipActive]}>
                   <Text style={[styles.langText, language === lang && styles.langTextActive]}>{lang.toUpperCase()}</Text>
@@ -522,7 +550,7 @@ export default function CustomerStoreScreen() {
           </View>
         </View>
 
-        {/* 1, 2, 3 Quick Feature Action Bar */}
+        {/* Quick Action Bar */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickBtn} onPress={() => setShowWishlist(true)}>
             <Text style={{ fontSize: 20 }}>❤️</Text>
@@ -629,6 +657,15 @@ export default function CustomerStoreScreen() {
                   <TouchableOpacity onPress={() => handleOpenProduct(p)}>
                     <Image source={{ uri: p.image_url || 'https://via.placeholder.com/150' }} style={styles.productImg} resizeMode="contain" />
                     <Text numberOfLines={2} style={styles.productTitle}>{p.name}</Text>
+                    
+                    {/* Star Rating Display on Product Card */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 3 }}>
+                      <Text style={{ color: '#F59E0B', fontSize: 12 }}>★</Text>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginLeft: 3 }}>
+                        {p.average_rating ? p.average_rating.toFixed(1) : 'No reviews'} ({p.review_count || 0})
+                      </Text>
+                    </View>
+
                     <Text style={styles.productPrice}>₹{p.price}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.addCartBtn} onPress={() => updateQuantity(p, 1)}>
@@ -639,6 +676,76 @@ export default function CustomerStoreScreen() {
             })}
           </View>
         </View>
+
+        {/* Product Details & Reviews Modal */}
+        <Modal
+          visible={selectedProduct !== null}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedProduct(null)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 20 }}>
+                <TouchableOpacity onPress={() => setSelectedProduct(null)} style={{ alignSelf: 'flex-end', padding: 8 }}>
+                  <Text style={{ fontSize: 24, color: '#333' }}>✕</Text>
+                </TouchableOpacity>
+
+                {selectedProduct?.image_url ? (
+                  <Image source={{ uri: selectedProduct.image_url }} style={{ width: '100%', height: 200, borderRadius: 12, backgroundColor: '#F1F3F6' }} resizeMode="contain" />
+                ) : null}
+
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#222', marginTop: 12 }}>{selectedProduct?.name}</Text>
+                <Text style={{ color: '#166534', fontSize: 20, fontWeight: '700', marginTop: 6 }}>₹{Number(selectedProduct?.price || 0).toFixed(2)}</Text>
+
+                <Text style={{ fontSize: 15, color: '#444', marginTop: 10, lineHeight: 20 }}>
+                  {selectedProduct?.description?.trim() || 'No description has been added for this product yet.'}
+                </Text>
+
+                {/* Customer Reviews Section */}
+                <View style={{ marginTop: 20, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 16 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Customer Reviews</Text>
+                  {productReviews.length === 0 ? (
+                    <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>No reviews yet. Be the first to review!</Text>
+                  ) : (
+                    productReviews.map((rev) => (
+                      <View key={rev.id} style={{ backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{rev.customer_name}</Text>
+                          <Text style={{ color: '#F59E0B', fontSize: 12 }}>{'★'.repeat(rev.rating)}</Text>
+                        </View>
+                        {rev.comment ? <Text style={{ fontSize: 13, color: '#334155', marginTop: 4 }}>{rev.comment}</Text> : null}
+                      </View>
+                    ))
+                  )}
+
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', marginTop: 12, marginBottom: 6 }}>Write a Review</Text>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity key={star} onPress={() => setNewRating(star)}>
+                        <Text style={{ fontSize: 24, color: star <= newRating ? '#F59E0B' : '#CBD5E1' }}>★</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 6, padding: 10, backgroundColor: '#FFF', minHeight: 60, textAlignVertical: 'top' }}
+                    placeholder="Share your experience..."
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#2874F0', padding: 12, borderRadius: 6, alignItems: 'center', marginTop: 8 }}
+                    onPress={() => selectedProduct && submitReview(selectedProduct.id)}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Submit Review</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* Cart / Checkout Modal */}
         <Modal visible={showCart} animationType="slide">
@@ -653,7 +760,7 @@ export default function CustomerStoreScreen() {
                 </View>
               ))}
 
-              {/* 3. 🎁 Gift Store & Delivery Options */}
+              {/* 🎁 Gift Store & Delivery Options */}
               <TouchableOpacity style={styles.giftToggle} onPress={() => setIsGift(!isGift)}>
                 <Text style={{ fontWeight: 'bold', color: '#B45309' }}>{isGift ? '☑' : '☐'} {t('giftOption')}</Text>
               </TouchableOpacity>
@@ -669,7 +776,7 @@ export default function CustomerStoreScreen() {
                 </View>
               )}
 
-              {/* 4. 🏷️ Coupons and Discounts */}
+              {/* 🏷️ Coupons and Discounts */}
               <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                 <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
                 <TouchableOpacity style={styles.applyCouponBtn} onPress={handleApplyCoupon}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Apply</Text></TouchableOpacity>
@@ -709,7 +816,7 @@ export default function CustomerStoreScreen() {
                   <Text style={{ fontWeight: 'bold' }}>Order #{o.id}</Text>
                   <Text>Status: {o.order_status}</Text>
                   <Text>Total: ₹{getOrderTotal(o).toFixed(2)}</Text>
-                  {/* 5. 🧾 Order Invoice / Receipt Download */}
+                  {/* 🧾 Order Invoice / Receipt Download */}
                   <TouchableOpacity style={styles.invoiceBtn} onPress={() => downloadOrderInvoice(o)}>
                     <Text style={{ color: DARK_BLUE, fontWeight: 'bold', fontSize: 12 }}>{t('invoice')}</Text>
                   </TouchableOpacity>
