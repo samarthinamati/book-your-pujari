@@ -291,6 +291,41 @@ async def require_role(user: dict, roles: List[str]):
             status_code=403,
             detail="Unauthorized role access"
         )
+@api_router.post("/store/shipping/estimate")
+async def estimate_store_shipping(
+    payload: DelhiveryShippingEstimateRequest,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["customer", "admin"])
+
+    if payload.payment_mode not in {"Pre-paid", "COD"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment mode must be Pre-paid or COD"
+        )
+
+    if payload.shipping_mode not in {"E", "S"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Shipping mode must be E (Express) or S (Surface)"
+        )
+
+    shipping_fee = await get_delhivery_shipping_fee(
+        pickup_pincode=payload.pickup_pincode,
+        delivery_pincode=payload.delivery_pincode,
+        weight_grams=payload.weight_grams,
+        payment_mode=payload.payment_mode,
+        shipping_mode=payload.shipping_mode,
+    )
+
+    return {
+        "provider": "Delhivery",
+        "currency": "INR",
+        "shipping_mode": payload.shipping_mode,
+        "payment_mode": payload.payment_mode,
+        "shipping_fee": shipping_fee,
+        "note": "Estimated charges only. Final courier charges may differ.",
+    }
 async def get_delhivery_shipping_fee(
     pickup_pincode: str,
     delivery_pincode: str,
