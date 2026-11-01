@@ -110,7 +110,14 @@ const [savingProduct, setSavingProduct] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rejectingSaintId, setRejectingSaintId] = useState<string | null>(null);
-
+  // Customer support chat
+  const [chatConversations, setChatConversations] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [replyText, setReplyText] = useState('');
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingChatMessages, setLoadingChatMessages] = useState(false);
+  const [sendingChatReply, setSendingChatReply] = useState(false);
   const { logout } = useAuth();
   const router = useRouter();
 
