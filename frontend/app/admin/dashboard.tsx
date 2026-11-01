@@ -85,7 +85,9 @@ const [productPrice, setProductPrice] = useState('');
 const [productImageUrl, setProductImageUrl] = useState('');
 const [productStock, setProductStock] = useState('');
 const [productWeight, setProductWeight] = useState('');
-const [savingProduct, setSavingProduct] = useState(false);
+const [storeView, setStoreView] = useState<
+  'menu' | 'addProduct' | 'orders' | 'sellerApplications' | 'manageProducts' | 'coupons'
+>('menu');
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showAdminSection, setShowAdminSection] = useState<
   'store' | 'pujaris' | 'banners' | 'messages' | null
