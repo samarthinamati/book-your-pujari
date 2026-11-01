@@ -870,7 +870,27 @@ const sendChatMessage = async () => {
                 <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
                 <TouchableOpacity style={styles.applyCouponBtn} onPress={handleApplyCoupon}><Text style={{ color: '#FFF', fontWeight: 'bold' }}>Apply</Text></TouchableOpacity>
               </View>
-              {appliedCoupon && <Text style={{ color: '#166534', fontSize: 12, marginTop: 4 }}>Applied: {appliedCoupon.description} (-₹{discountAmount})</Text>}
+             {appliedCoupon && (
+  <View style={{
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#DCFCE7',
+    padding: 10,
+    borderRadius: 6,
+    marginTop: 6,
+  }}>
+    <Text style={{ color: '#166534', flex: 1, fontSize: 12 }}>
+      Applied: {appliedCoupon.description || appliedCoupon.code} (-₹{discountAmount.toFixed(2)})
+    </Text>
+
+    <TouchableOpacity onPress={removeCoupon}>
+      <Text style={{ color: '#B91C1C', fontWeight: 'bold' }}>
+        Remove
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
 
               {/* Delivery Details */}
               <Text style={[styles.sectionHeading, { marginTop: 16 }]}>{t('deliveryDetails')}</Text>
