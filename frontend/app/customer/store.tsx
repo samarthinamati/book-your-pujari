@@ -609,9 +609,18 @@ export default function CustomerStoreScreen() {
               <Text style={styles.modalTitle}>💬 PujariGo Support & Seller Chat</Text>
               {!activeConversationKey ? (
                 <ScrollView style={{ maxHeight: 300 }}>
-                  <TouchableOpacity style={styles.startChatBtn} onPress={() => openConversation('support-admin')}>
-                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Chat with Admin / Support</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity
+  style={styles.startChatBtn}
+  onPress={() => {
+    setChatMessages([]);
+    setChatInput('');
+    setActiveConversationKey('new');
+  }}
+>
+  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+    Chat with Admin / Support
+  </Text>
+</TouchableOpacity>
                   {conversations.map((c) => (
                     <TouchableOpacity key={c.conversation_key} style={styles.chatConvItem} onPress={() => openConversation(c.conversation_key)}>
                       <Text style={{ fontWeight: 'bold' }}>Conversation #{c.conversation_key.slice(-6)}</Text>
