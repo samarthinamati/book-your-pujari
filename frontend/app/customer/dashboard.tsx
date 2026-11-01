@@ -60,8 +60,9 @@ const [showPujariSection, setShowPujariSection] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    fetchSaints();
-  }, []);
+  fetchSaints();
+  fetchBanners();
+}, []);
 
   const fetchSaints = async () => {
     try {
