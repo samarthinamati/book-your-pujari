@@ -187,25 +187,28 @@ const createOrderInvoiceHtml = (order: StoreOrder): string => {
     </div>
   </div>
 
- <div class="title">Tax Invoice / Order Receipt</div>
+ </div>
+
+<div class="title">Order Invoice / Payment Receipt</div>
 
 <div style="margin-top: 18px; padding: 12px; background: #f8fafc; border-radius: 6px;">
   <strong>Bill To:</strong><br/>
-  ${escapeHtml((order as any).customer_name || 'Customer')}<br/>
-  ${escapeHtml((order as any).delivery_address || 'Address not available')}<br/>
-  ${escapeHtml((order as any).city || '')} - ${escapeHtml((order as any).pincode || '')}<br/>
-  Phone: ${escapeHtml((order as any).customer_phone || 'N/A')}
+  ${escapeHtml(order.customer_name || 'Customer')}<br/>
+  ${escapeHtml(order.delivery_address || 'Address not available')}<br/>
+  ${escapeHtml(order.city || '')} - ${escapeHtml(order.pincode || '')}<br/>
+  Phone: ${escapeHtml(order.customer_phone || 'N/A')}
 </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Item Description</th>
-        <th style="text-align: center;">Qty</th>
-        <th style="text-align: right;">Price</th>
-        <th style="text-align: right;">Total</th>
-      </tr>
-    </thead>
-    <tbody>
+
+<table>
+  <thead>
+    <tr>
+      <th>Item Description</th>
+      <th style="text-align: center;">Qty</th>
+      <th style="text-align: right;">Price</th>
+      <th style="text-align: right;">Total</th>
+    </tr>
+  </thead>
+  <tbody>
       ${itemsHtml}
     </tbody>
   </table>
