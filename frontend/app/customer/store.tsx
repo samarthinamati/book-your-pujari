@@ -387,26 +387,51 @@ export default function CustomerStoreScreen() {
     }
   };
 
-  const sendChatMessage = async () => {
-    if (!chatInput.trim()) return;
-    try {
-      if (activeConversationKey) {
-        await apiClient.post(`/store/chat/messages/${activeConversationKey}/reply`, {
-          message: chatInput.trim(),
-        });
-        openConversation(activeConversationKey);
-      } else {
-        await apiClient.post('/store/chat/messages', {
-          recipient_type: 'admin',
-          message: chatInput.trim(),
-        });
-        loadConversations();
-      }
+  
+const sendChatMessage = async () => {
+  const messageText = chatInput.trim();
+
+  if (!messageText) return;
+
+  try {
+    if (activeConversationKey && activeConversationKey !== 'new') {
+      // Send a reply to an existing conversation
+      await apiClient.post(
+        `/store/chat/messages/${encodeURIComponent(activeConversationKey)}/reply`,
+        {
+          message: messageText,
+        }
+      );
+
       setChatInput('');
-    } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not send message.');
+      await openConversation(activeConversationKey);
+    } else {
+      // Create a new conversation with Admin
+      const response = await apiClient.post('/store/chat/messages', {
+        recipient_type: 'admin',
+        message: messageText,
+      });
+
+      const newConversationKey =
+        response?.conversation_key || response?.data?.conversation_key;
+
+      if (!newConversationKey) {
+        throw new Error('Message sent, but conversation ID was not returned.');
+      }
+
+      setChatInput('');
+      setActiveConversationKey(newConversationKey);
+
+      await openConversation(newConversationKey);
+      await loadConversations();
     }
-  };
+  } catch (e: any) {
+    Alert.alert(
+      'Error',
+      e?.message || 'Could not send message.'
+    );
+  }
+};
 
   // 5. 🧾 Download PDF Invoice / Receipt
   const downloadOrderInvoice = async (order: StoreOrder) => {
