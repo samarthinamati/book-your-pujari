@@ -823,6 +823,18 @@ const sendChatMessage = async () => {
 
                 <Text style={{ fontSize: 22, fontWeight: '700', color: '#222', marginTop: 12 }}>{selectedProduct?.name}</Text>
                 <Text style={{ color: '#166534', fontSize: 20, fontWeight: '700', marginTop: 6 }}>₹{Number(selectedProduct?.price || 0).toFixed(2)}</Text>
+                <Text
+  style={{
+    fontSize: 13,
+    color: selectedProduct?.is_returnable ? '#16803D' : '#D92D20',
+    marginTop: 6,
+    fontWeight: '600',
+  }}
+>
+  {selectedProduct?.is_returnable
+    ? 'Returnable within 7 days after delivery'
+    : 'This product is non-returnable'}
+</Text>
 
                 <Text style={{ fontSize: 15, color: '#444', marginTop: 10, lineHeight: 20 }}>
                   {selectedProduct?.description?.trim() || 'No description has been added for this product yet.'}
