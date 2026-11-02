@@ -89,6 +89,7 @@ export default function SellerProductsScreen() {
     setImageUrl('');
     setSelectedImageUri('');
     setSelectedImageFile(null);
+    setIsReturnable(false);
   };
 
   const startEdit = (product: Product) => {
