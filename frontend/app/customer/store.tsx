@@ -34,6 +34,7 @@ type Product = {
   stock?: number;
   is_available?: boolean;
   is_gift?: boolean;
+  is_returnable?: boolean;
   tags?: string[];
   weight_grams?: number;
   average_rating?: number;
