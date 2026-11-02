@@ -2639,6 +2639,7 @@ async def create_store_order(
             "line_total": line_total,
             "weight_grams": item_weight,
             "image_url": product.get("image_url", ""),
+            "is_returnable": product.get("is_returnable", False),
         })
 
                # Validate coupons on the server; never trust a discount calculated by the app.
