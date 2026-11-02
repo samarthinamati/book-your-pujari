@@ -536,6 +536,55 @@ const sendChatMessage = async () => {
       setLoadingOrders(false);
     }
   };
+  const submitReturnRequest = async () => {
+  if (!selectedReturnOrder || !selectedReturnItem) return;
+
+  if (returnReason.trim().length < 5) {
+    Alert.alert('Reason Required', 'Please enter at least 5 characters.');
+    return;
+  }
+
+  const quantity = Number(returnQuantity);
+
+  if (
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > Number(selectedReturnItem.quantity || 0)
+  ) {
+    Alert.alert('Invalid Quantity', 'Please enter a valid return quantity.');
+    return;
+  }
+
+  try {
+    setSubmittingReturn(true);
+
+    await apiClient.post('/store/returns/request', {
+      order_id: getOrderId(selectedReturnOrder),
+      product_id: String(
+        selectedReturnItem.product_id || selectedReturnItem.id
+      ),
+      quantity,
+      reason: returnReason.trim(),
+    });
+
+    Alert.alert('Success', 'Your return request has been submitted.');
+
+    setShowReturnModal(false);
+    setSelectedReturnOrder(null);
+    setSelectedReturnItem(null);
+    setReturnReason('');
+    setReturnQuantity('1');
+
+    await loadOrders();
+  } catch (e: any) {
+    Alert.alert(
+      'Return Request Failed',
+      e?.message || 'Could not submit your return request.'
+    );
+  } finally {
+    setSubmittingReturn(false);
+  }
+};
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
