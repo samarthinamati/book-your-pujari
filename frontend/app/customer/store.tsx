@@ -1112,6 +1112,26 @@ const sendChatMessage = async () => {
             </ScrollView>
           </SafeAreaView>
         </Modal>
+        {/* My Orders & Invoices Modal */}
+<Modal visible={showOrders} animationType="slide">
+
+  {/* Your existing My Orders content */}
+
+</Modal>
+
+
+{/* PASTE THE COMPLETE RETURN REQUEST MODAL HERE */}
+<Modal
+  visible={showReturnModal}
+  transparent
+  animationType="slide"
+  onRequestClose={() => setShowReturnModal(false)}
+>
+  {/* Return form content goes here */}
+</Modal>
+
+
+</ScrollView>
 
       </ScrollView>
 
