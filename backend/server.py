@@ -2988,6 +2988,11 @@ async def update_seller_order_tracking(
         "tracking_url": (payload.tracking_url or "").strip(),
         "updated_at": datetime.utcnow().isoformat(),
     }
+        if (
+        payload.order_status == "Delivered"
+        and not existing_order.get("delivered_at")
+    ):
+        updates["delivered_at"] = datetime.utcnow().isoformat()
 
     await db.store_orders.update_one(
         {"_id": object_id},
