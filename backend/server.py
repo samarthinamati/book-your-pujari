@@ -2004,6 +2004,7 @@ def serialize_store_product(product: dict) -> dict:
         "tags": product.get("tags", []),
         "price": product.get("price", 0),
         "image_url": product.get("image_url", ""),
+        "is_returnable": product.get("is_returnable", False),
         "stock": product.get("stock", 0),
        "weight_grams": product.get("weight_grams", 0),
         "is_available": product.get("is_available", True),
