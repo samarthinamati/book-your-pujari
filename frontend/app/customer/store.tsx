@@ -784,6 +784,15 @@ const sendChatMessage = async () => {
                     </View>
 
                     <Text style={styles.productPrice}>₹{p.price}</Text>
+                    <Text
+  style={{
+    fontSize: 10,
+    color: p.is_returnable ? '#16803D' : '#D92D20',
+    marginTop: 3,
+  }}
+>
+  {p.is_returnable ? '7-day returns' : 'Non-returnable'}
+</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.addCartBtn} onPress={() => updateQuantity(p, 1)}>
                     <Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 11 }}>{t('addCart')}</Text>
