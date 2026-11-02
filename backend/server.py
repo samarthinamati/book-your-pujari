@@ -2982,6 +2982,29 @@ async def create_store_return_request(
         "status": "Pending",
     }
 
+@api_router.get("/store/returns/requests")
+async def get_store_return_requests(
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller", "admin"])
+
+    if user.get("role") == "admin":
+        query = {}
+    else:
+        query = {"seller_id": user["id"]}
+
+    requests = await db.store_return_requests.find(
+        query
+    ).sort("created_at", -1).to_list(200)
+
+    result = []
+
+    for request in requests:
+        request["id"] = str(request.pop("_id"))
+        result.append(request)
+
+    return result
+
 
 
 class StorePaymentCreate(BaseModel):
