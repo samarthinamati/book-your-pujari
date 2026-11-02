@@ -373,6 +373,31 @@ export default function SellerProductsScreen() {
   placeholder="Enter weight in grams"
   keyboardType="number-pad"
 />
+<View style={styles.inputGroup}>
+  <Text style={styles.label}>Return Policy</Text>
+
+  <View style={styles.row}>
+    <TouchableOpacity
+      style={[
+        styles.optionButton,
+        isReturnable && styles.optionButtonActive,
+      ]}
+      onPress={() => setIsReturnable(true)}
+    >
+      <Text>Returnable</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[
+        styles.optionButton,
+        !isReturnable && styles.optionButtonActive,
+      ]}
+      onPress={() => setIsReturnable(false)}
+    >
+      <Text>Non-returnable</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
 <Text style={styles.label}>Stock quantity *</Text>
 <TextInput
