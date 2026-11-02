@@ -626,6 +626,26 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     marginTop: 12,
   },
+  inputGroup: {
+  marginTop: 10,
+},
+row: {
+  flexDirection: 'row',
+  gap: 10,
+},
+optionButton: {
+  flex: 1,
+  padding: 12,
+  borderWidth: 1,
+  borderColor: '#D0D5DD',
+  borderRadius: 10,
+  alignItems: 'center',
+  backgroundColor: '#FFFFFF',
+},
+optionButtonActive: {
+  borderColor: '#2874F0',
+  backgroundColor: '#EAF2FF',
+},
   input: {
     minHeight: 48,
     borderWidth: 1,
