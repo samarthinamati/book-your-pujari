@@ -4195,17 +4195,22 @@ async def refresh_my_delhivery_tracking(
     elif status_type == "UD" and "out for delivery" in status_text.lower():
         mapped_status = "Out for Delivery"
 
+            tracking_updates = {
+        "delhivery_tracking_response": tracking_data,
+        "delhivery_last_status": status_text,
+        "delhivery_last_status_type": status_type,
+        "order_status": mapped_status,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    if mapped_status == "Delivered" and not order.get("delivered_at"):
+        tracking_updates["delivered_at"] = datetime.utcnow().isoformat()
+
     await db.store_orders.update_one(
         {"_id": order_object_id},
-        {"$set": {
-            "delhivery_tracking_response": tracking_data,
-            "delhivery_last_status": status_text,
-            "delhivery_last_status_type": status_type,
-            "order_status": mapped_status,
-            "updated_at": datetime.utcnow().isoformat(),
-        }},
+        {"$set": tracking_updates},
     )
-    return {
+        return {
         "order_id": order_id,
         "courier": "Delhivery",
         "tracking_number": waybill,
