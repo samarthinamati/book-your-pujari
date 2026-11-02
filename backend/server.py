@@ -3216,7 +3216,7 @@ async def update_seller_order_tracking(
             detail="Order not found for this seller",
         )
 
-       updates = {
+    updates = {
         "order_status": payload.order_status,
         "courier": (payload.courier or "").strip(),
         "tracking_number": (payload.tracking_number or "").strip(),
