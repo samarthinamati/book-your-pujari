@@ -3005,6 +3005,76 @@ async def get_store_return_requests(
 
     return result
 
+@api_router.put("/store/returns/{return_id}/review")
+async def review_store_return_request(
+    return_id: str,
+    payload: StoreReturnReview,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller", "admin"])
+
+    if payload.status not in {"Approved", "Rejected"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Status must be Approved or Rejected",
+        )
+
+    try:
+        return_object_id = ObjectId(return_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid return request ID",
+        )
+
+    request = await db.store_return_requests.find_one({
+        "_id": return_object_id
+    })
+
+    if not request:
+        raise HTTPException(
+            status_code=404,
+            detail="Return request not found",
+        )
+
+    # Sellers can review only their own products.
+    if (
+        user.get("role") == "seller"
+        and request.get("seller_id") != user["id"]
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot review another seller's return request",
+        )
+
+    if request.get("status") != "Pending":
+        raise HTTPException(
+            status_code=400,
+            detail="This return request has already been reviewed",
+        )
+
+    now = datetime.utcnow().isoformat()
+
+    await db.store_return_requests.update_one(
+        {
+            "_id": return_object_id,
+            "status": "Pending",
+        },
+        {
+            "$set": {
+                "status": payload.status,
+                "review_note": (payload.review_note or "").strip(),
+                "reviewed_at": now,
+                "reviewed_by": user["id"],
+            }
+        },
+    )
+
+    return {
+        "message": f"Return request {payload.status.lower()} successfully",
+        "status": payload.status,
+    }
+
 
 
 class StorePaymentCreate(BaseModel):
