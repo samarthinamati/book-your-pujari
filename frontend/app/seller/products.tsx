@@ -545,14 +545,15 @@ export default function SellerProductsScreen() {
 
               <View style={styles.productActions}>
                 <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => startEdit(product)}
-                >
-                  setIsReturnable(product.is_returnable ?? false);
-                  <Ionicons name="create-outline" size={18} color="#2874F0" />
-                  <Text style={styles.editText}>Edit</Text>
-                </TouchableOpacity>
-
+  style={styles.editButton}
+  onPress={() => {
+    startEdit(product);
+    setIsReturnable(product.is_returnable ?? false);
+  }}
+>
+  <Ionicons name="create-outline" size={18} color="#2874F0" />
+  <Text style={styles.editText}>Edit</Text>
+</TouchableOpacity>
                 {product.is_available && (
                   <TouchableOpacity
                     style={styles.hideButton}
