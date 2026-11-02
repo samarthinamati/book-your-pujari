@@ -2982,16 +2982,17 @@ async def update_seller_order_tracking(
             detail="Order not found for this seller",
         )
 
-    updates = {
+       updates = {
         "order_status": payload.order_status,
         "courier": (payload.courier or "").strip(),
         "tracking_number": (payload.tracking_number or "").strip(),
         "tracking_url": (payload.tracking_url or "").strip(),
         "updated_at": datetime.utcnow().isoformat(),
     }
-        if (
+
+    if (
         payload.order_status == "Delivered"
-        and not existing_order.get("delivered_at")
+        and not order.get("delivered_at")
     ):
         updates["delivered_at"] = datetime.utcnow().isoformat()
 
@@ -2999,7 +3000,6 @@ async def update_seller_order_tracking(
         {"_id": object_id},
         {"$set": updates},
     )
-
     return {"message": "Seller order tracking updated successfully"}
 
 @api_router.get("/store/admin/orders")
