@@ -2047,6 +2047,7 @@ class StoreProductUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=2000)
     category: Optional[str] = Field(default=None, max_length=80)
     is_gift: Optional[bool] = None
+    is_returnable: Optional[bool] = None
     tags: Optional[List[str]] = None
     price: Optional[float] = Field(default=None, gt=0, le=100000)
     image_url: Optional[str] = Field(default=None, max_length=2000)
