@@ -2816,14 +2816,15 @@ async def get_my_store_orders(
 
     result = []
 
-    for order in orders:
-        serialized_order = serialize_store_order(order)
-        # Include customer delivery details for the invoice
-serialized_order["customer_name"] = order.get("customer_name", "")
-serialized_order["customer_phone"] = order.get("customer_phone", "")
-serialized_order["delivery_address"] = order.get("delivery_address", "")
-serialized_order["city"] = order.get("city", "")
-serialized_order["pincode"] = order.get("pincode", "")
+   for order in orders:
+    serialized_order = serialize_store_order(order)
+
+    # Include customer delivery details for the invoice
+    serialized_order["customer_name"] = order.get("customer_name", "")
+    serialized_order["customer_phone"] = order.get("customer_phone", "")
+    serialized_order["delivery_address"] = order.get("delivery_address", "")
+    serialized_order["city"] = order.get("city", "")
+    serialized_order["pincode"] = order.get("pincode", "")
 
         # Include seller contact and shop details for the customer.
         serialized_order["items"] = [
