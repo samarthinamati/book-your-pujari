@@ -2000,6 +2000,7 @@ def serialize_store_product(product: dict) -> dict:
         "description": product.get("description", ""),
         "category": product.get("category", "Puja Samagri"),
         "is_gift": product.get("is_gift", False),
+        "is_returnable": product.get("is_returnable", False),
         "tags": product.get("tags", []),
         "price": product.get("price", 0),
         "image_url": product.get("image_url", ""),
