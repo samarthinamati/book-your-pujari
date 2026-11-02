@@ -2850,6 +2850,138 @@ async def get_my_store_orders(
 
     return result
 
+@api_router.post("/store/returns/request")
+async def create_store_return_request(
+    payload: StoreReturnRequest,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["customer"])
+
+    # Validate order ID
+    try:
+        order_object_id = ObjectId(payload.order_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid order ID")
+
+    # Find an order belonging to this customer
+    order = await db.store_orders.find_one({
+        "_id": order_object_id,
+        "customer_id": user["id"],
+    })
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Returns are allowed only after delivery
+    if order.get("order_status") != "Delivered":
+        raise HTTPException(
+            status_code=400,
+            detail="You can request a return only after delivery",
+        )
+
+    delivered_at = order.get("delivered_at")
+
+    if not delivered_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery date is unavailable for this order",
+        )
+
+    try:
+        delivered_date = datetime.fromisoformat(
+            delivered_at.replace("Z", "+00:00")
+        )
+
+        # Existing timestamps are stored in UTC.
+        if delivered_date.tzinfo is not None:
+            delivered_date = delivered_date.replace(tzinfo=None)
+
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid delivery date",
+        )
+
+    if datetime.utcnow() > delivered_date + timedelta(days=7):
+        raise HTTPException(
+            status_code=400,
+            detail="The 7-day return period has expired",
+        )
+
+    # Find the purchased product in this order
+    order_item = next(
+        (
+            item for item in order.get("items", [])
+            if item.get("product_id") == payload.product_id
+        ),
+        None,
+    )
+
+    if not order_item:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found in this order",
+        )
+
+    # Check the return policy saved at purchase time
+    if order_item.get("is_returnable") is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="This product is not eligible for returns",
+        )
+
+    purchased_quantity = int(order_item.get("quantity", 0))
+
+    if payload.quantity > purchased_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="Return quantity exceeds purchased quantity",
+        )
+
+    # Prevent duplicate active return requests.
+    existing_requests = await db.store_return_requests.find({
+        "order_id": payload.order_id,
+        "product_id": payload.product_id,
+        "customer_id": user["id"],
+        "status": {"$in": ["Pending", "Approved"]},
+    }).to_list(200)
+
+    already_requested = sum(
+        int(request.get("quantity", 0))
+        for request in existing_requests
+    )
+
+    if already_requested + payload.quantity > purchased_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="A return request already exists for this quantity",
+        )
+
+    now = datetime.utcnow().isoformat()
+
+    return_request = {
+        "order_id": payload.order_id,
+        "product_id": payload.product_id,
+        "customer_id": user["id"],
+        "seller_id": order_item.get("seller_id", ""),
+        "product_name": order_item.get("name", ""),
+        "quantity": payload.quantity,
+        "reason": payload.reason.strip(),
+        "status": "Pending",
+        "created_at": now,
+        "reviewed_at": "",
+        "reviewed_by": "",
+        "review_note": "",
+    }
+
+    result = await db.store_return_requests.insert_one(return_request)
+
+    return {
+        "message": "Return request submitted successfully",
+        "return_request_id": str(result.inserted_id),
+        "status": "Pending",
+    }
+
 
 
 class StorePaymentCreate(BaseModel):
