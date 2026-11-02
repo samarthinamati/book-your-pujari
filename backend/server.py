@@ -3002,6 +3002,10 @@ class StoreReturnRequest(BaseModel):
     product_id: str
     quantity: int = Field(..., ge=1, le=50)
     reason: str = Field(..., min_length=5, max_length=500)
+
+class StoreReturnReview(BaseModel):
+    status: str
+    review_note: Optional[str] = Field(default="", max_length=500)
     
 class StoreOrderTrackingUpdate(BaseModel):
     order_status: str
