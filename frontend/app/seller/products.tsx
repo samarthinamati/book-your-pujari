@@ -33,6 +33,7 @@ type Product = {
   stock: number;
   weight_grams?: number;
   is_available: boolean;
+  is_returnable: boolean;
 };
 
 export default function SellerProductsScreen() {
@@ -54,6 +55,7 @@ export default function SellerProductsScreen() {
   const [imageUrl, setImageUrl] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState<any>(null);
+  const [isReturnable, setIsReturnable] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
