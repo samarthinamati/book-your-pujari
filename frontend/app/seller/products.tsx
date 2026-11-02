@@ -254,8 +254,7 @@ export default function SellerProductsScreen() {
     } finally {
       setSaving(false);
     }
-  };
-  setIsReturnable(false);
+   };
 
   const hideProduct = (product: Product) => {
     Alert.alert(
