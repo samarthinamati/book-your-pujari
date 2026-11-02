@@ -1988,6 +1988,7 @@ class StoreProductCreate(BaseModel):
     weight_grams: int = Field(..., gt=0, le=100000)
     is_available: bool = True
     is_gift: bool = False
+    is_returnable: bool = False
     tags: List[str] = []
 
 
