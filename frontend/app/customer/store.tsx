@@ -1068,6 +1068,41 @@ const sendChatMessage = async () => {
                   <Text style={{ fontWeight: 'bold' }}>Order #{o.id}</Text>
                   <Text>Status: {o.order_status}</Text>
                   <Text>Total: ₹{getOrderTotal(o).toFixed(2)}</Text>
+                  {/* Return Request Options */}
+{o.order_status === 'Delivered' && (o.items || []).map((item: any, index: number) => (
+  <View key={`${item.product_id || item.id || index}`} style={{ marginTop: 8 }}>
+    <Text style={{ fontSize: 13, color: '#334155' }}>
+      {item.product_name || item.name || item.title || 'Product'}
+    </Text>
+
+    {item.is_returnable === true ? (
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#E0F2FE',
+          padding: 9,
+          borderRadius: 6,
+          marginTop: 5,
+          alignItems: 'center',
+        }}
+        onPress={() => {
+          setSelectedReturnOrder(o);
+          setSelectedReturnItem(item);
+          setReturnReason('');
+          setReturnQuantity('1');
+          setShowReturnModal(true);
+        }}
+      >
+        <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
+          Request Return
+        </Text>
+      </TouchableOpacity>
+    ) : (
+      <Text style={{ color: '#DC2626', fontSize: 11 }}>
+        Non-returnable product
+      </Text>
+    )}
+  </View>
+))}
                   {/* 🧾 Order Invoice / Receipt Download */}
                   <TouchableOpacity style={styles.invoiceBtn} onPress={() => downloadOrderInvoice(o)}>
                     <Text style={{ color: DARK_BLUE, fontWeight: 'bold', fontSize: 12 }}>{t('invoice')}</Text>
