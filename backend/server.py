@@ -2865,7 +2865,12 @@ class StorePaymentVerify(BaseModel):
 
 
 # ==================== ADMIN STORE ORDER TRACKING ====================
-
+class StoreReturnRequest(BaseModel):
+    order_id: str
+    product_id: str
+    quantity: int = Field(..., ge=1, le=50)
+    reason: str = Field(..., min_length=5, max_length=500)
+    
 class StoreOrderTrackingUpdate(BaseModel):
     order_status: str
     courier: Optional[str] = "DTDC"
