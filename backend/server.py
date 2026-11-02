@@ -3288,7 +3288,7 @@ async def update_store_order_tracking(
             status_code=400,
             detail="Invalid order ID"
         )
-               existing_order = await db.store_orders.find_one({
+    existing_order = await db.store_orders.find_one({
         "_id": object_id
     })
     if not existing_order:
