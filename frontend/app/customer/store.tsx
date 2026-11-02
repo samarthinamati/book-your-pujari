@@ -800,6 +800,121 @@ const sendChatMessage = async () => {
           </View>
         </Modal>
 
+        
+{/* My Orders Modal */}
+<Modal
+  visible={showOrders}
+  animationType="slide"
+  transparent
+  onRequestClose={() => setShowOrders(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={[styles.modalContentLarge, { maxHeight: '85%' }]}>
+      <Text style={styles.modalTitle}>📦 My Orders</Text>
+
+      {loadingOrders ? (
+        <ActivityIndicator size="large" color={DARK_BLUE} />
+      ) : orders.length === 0 ? (
+        <Text style={{ textAlign: 'center', color: '#64748B', padding: 20 }}>
+          You have not placed any orders yet.
+        </Text>
+      ) : (
+        <ScrollView style={{ maxHeight: 480 }}>
+          {orders.map((order) => (
+            <View key={getOrderId(order)} style={styles.orderCard}>
+              <Text style={{ fontWeight: 'bold', fontSize: 14 }}>
+                Order #{getOrderId(order)}
+              </Text>
+
+              <Text style={{ marginTop: 5 }}>
+                Date: {order.created_at
+                  ? new Date(order.created_at).toLocaleDateString()
+                  : 'N/A'}
+              </Text>
+
+              <Text style={{ marginTop: 4 }}>
+                Status: {order.order_status || 'Order Placed'}
+              </Text>
+
+              <Text style={{ marginTop: 4 }}>
+                Payment: {order.payment_status || 'Pending'}
+              </Text>
+
+              <Text style={{ fontWeight: 'bold', marginTop: 6 }}>
+                Total: ₹{getOrderTotal(order).toFixed(2)}
+              </Text>
+
+              {(order.items || []).map((item: any, index: number) => (
+                <View
+                  key={`${item.product_id || index}`}
+                  style={{
+                    borderTopWidth: 1,
+                    borderColor: '#E2E8F0',
+                    marginTop: 10,
+                    paddingTop: 8,
+                  }}
+                >
+                  <Text style={{ fontWeight: '600' }}>
+                    {item.name} × {item.quantity}
+                  </Text>
+
+                  <Text>₹{Number(item.line_total || 0).toFixed(2)}</Text>
+
+                  {order.order_status === 'Delivered' &&
+                    item.is_returnable === true && (
+                      <TouchableOpacity
+                        style={styles.invoiceBtn}
+                        onPress={() => {
+                          setSelectedReturnOrder(order);
+                          setSelectedReturnItem(item);
+                          setReturnReason('');
+                          setReturnQuantity('1');
+                          setShowReturnModal(true);
+                        }}
+                      >
+                        <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
+                          Request Return
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                </View>
+              ))}
+
+              {order.tracking_url ? (
+                <TouchableOpacity
+                  style={styles.invoiceBtn}
+                  onPress={() => Linking.openURL(order.tracking_url!)}
+                >
+                  <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
+                    Track Order
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.invoiceBtn}
+                onPress={() => downloadOrderInvoice(order)}
+              >
+                <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
+                  Download Invoice / Receipt
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      <TouchableOpacity
+        style={styles.closeBtn}
+        onPress={() => setShowOrders(false)}
+      >
+        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
+
         {/* Recently Viewed Strip */}
         {recentlyViewed.length > 0 && (
           <View style={styles.sectionContainer}>
