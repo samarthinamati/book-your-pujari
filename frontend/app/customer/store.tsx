@@ -1057,83 +1057,75 @@ const sendChatMessage = async () => {
           </SafeAreaView>
         </Modal>
 
-        {/* My Orders & Invoices Modal */}
-        <Modal visible={showOrders} animationType="slide">
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#F3FAFF', padding: 16 }}>
-            <TouchableOpacity onPress={() => setShowOrders(false)}><Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 16 }}>‹ Back to Store</Text></TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('myOrders')}</Text>
-            <ScrollView style={{ flex: 1 }}>
-              {orders.map((o) => (
-                <View key={o.id} style={styles.orderCard}>
-                  <Text style={{ fontWeight: 'bold' }}>Order #{o.id}</Text>
-                  <Text>Status: {o.order_status}</Text>
-                  <Text>Total: ₹{getOrderTotal(o).toFixed(2)}</Text>
-                  {/* Return Request Options */}
-{o.order_status === 'Delivered' && (o.items || []).map((item: any, index: number) => (
-  <View key={`${item.product_id || item.id || index}`} style={{ marginTop: 8 }}>
-    <Text style={{ fontSize: 13, color: '#334155' }}>
-      {item.product_name || item.name || item.title || 'Product'}
-    </Text>
+        
 
-    {item.is_returnable === true ? (
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#E0F2FE',
-          padding: 9,
-          borderRadius: 6,
-          marginTop: 5,
-          alignItems: 'center',
-        }}
-        onPress={() => {
-          setSelectedReturnOrder(o);
-          setSelectedReturnItem(item);
-          setReturnReason('');
-          setReturnQuantity('1');
-          setShowReturnModal(true);
-        }}
-      >
-        <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
-          Request Return
-        </Text>
-      </TouchableOpacity>
-    ) : (
-      <Text style={{ color: '#DC2626', fontSize: 11 }}>
-        Non-returnable product
-      </Text>
-    )}
-  </View>
-))}
-                  {/* 🧾 Order Invoice / Receipt Download */}
-                  <TouchableOpacity style={styles.invoiceBtn} onPress={() => downloadOrderInvoice(o)}>
-                    <Text style={{ color: DARK_BLUE, fontWeight: 'bold', fontSize: 12 }}>{t('invoice')}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
-        {/* My Orders & Invoices Modal */}
-<Modal visible={showOrders} animationType="slide">
-
-  {/* Your existing My Orders content */}
-
-</Modal>
-
-
-{/* PASTE THE COMPLETE RETURN REQUEST MODAL HERE */}
+{/* Return Request Modal */}
 <Modal
   visible={showReturnModal}
   transparent
   animationType="slide"
   onRequestClose={() => setShowReturnModal(false)}
 >
-  {/* Return form content goes here */}
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <Text style={styles.modalTitle}>Request Product Return</Text>
+
+      <Text>
+        Product: {selectedReturnItem?.product_name ||
+          selectedReturnItem?.name ||
+          selectedReturnItem?.title ||
+          'Selected Product'}
+      </Text>
+
+      <Text style={{ fontWeight: 'bold', marginTop: 8 }}>
+        Return Quantity
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        keyboardType="number-pad"
+        value={returnQuantity}
+        onChangeText={setReturnQuantity}
+        placeholder="Enter quantity"
+      />
+
+      <Text style={{ fontWeight: 'bold', marginTop: 12 }}>
+        Reason for Return
+      </Text>
+
+      <TextInput
+        style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
+        multiline
+        value={returnReason}
+        onChangeText={setReturnReason}
+        placeholder="Explain your reason"
+      />
+
+      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 8 }}>
+        Returns are allowed within 7 days of delivery for eligible products.
+      </Text>
+
+      <TouchableOpacity
+        style={styles.closeBtn}
+        disabled={submittingReturn}
+        onPress={submitReturnRequest}
+      >
+        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>
+          {submittingReturn ? 'Submitting...' : 'Submit Return Request'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => setShowReturnModal(false)}
+        style={{ padding: 10, alignItems: 'center' }}
+      >
+        <Text>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
 </Modal>
 
-
 </ScrollView>
-
-      </ScrollView>
 
       {/* Bottom Cart Bar */}
       <View style={styles.bottomBar}>
