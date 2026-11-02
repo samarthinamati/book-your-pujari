@@ -4421,40 +4421,7 @@ async def refresh_my_delhivery_tracking(
     if isinstance(shipment_data, list) and shipment_data and isinstance(shipment_data[0], dict):
         shipment = shipment_data[0].get("Shipment", {}) or {}
 
-    status_info = shipment.get("Status", {}) if isinstance(shipment, dict) else {}
-    status_text = str(status_info.get("Status") or "").strip()
-    status_type = str(status_info.get("StatusType") or "").strip().upper()
-    mapped_status = order.get("order_status", "Shipped")
-    if status_type == "DL" or status_text.lower() == "delivered":
-        mapped_status = "Delivered"
-    elif status_type == "UD" and "out for delivery" in status_text.lower():
-        mapped_status = "Out for Delivery"
-
-            tracking_updates = {
-        "delhivery_tracking_response": tracking_data,
-        "delhivery_last_status": status_text,
-        "delhivery_last_status_type": status_type,
-        "order_status": mapped_status,
-        "updated_at": datetime.utcnow().isoformat(),
-    }
-
-    if mapped_status == "Delivered" and not order.get("delivered_at"):
-        tracking_updates["delivered_at"] = datetime.utcnow().isoformat()
-
-    await db.store_orders.update_one(
-        {"_id": order_object_id},
-        {"$set": tracking_updates},
-    )
-        return {
-        "order_id": order_id,
-        "courier": "Delhivery",
-        "tracking_number": waybill,
-        "tracking_url": order.get("tracking_url", ""),
-        "order_status": mapped_status,
-        "delhivery_status": status_text,
-        "status_type": status_type,
-    }
-# ==================== NOTIFICATIONS SYSTEM ====================
+    # ==================== NOTIFICATIONS SYSTEM ====================
 
 class NotificationCreate(BaseModel):
     user_id: str
@@ -4557,7 +4524,41 @@ async def list_product_reviews(product_id: str):
     for r in reviews:
         r["id"] = str(r.pop("_id"))
     return reviews
+    status_info = shipment.get("Status", {}) if isinstance(shipment, dict) else {}
+    status_text = str(status_info.get("Status") or "").strip()
+    status_type = str(status_info.get("StatusType") or "").strip().upper()
+    mapped_status = order.get("order_status", "Shipped")
 
+    if status_type == "DL" or status_text.lower() == "delivered":
+        mapped_status = "Delivered"
+    elif status_type == "UD" and "out for delivery" in status_text.lower():
+        mapped_status = "Out for Delivery"
+
+    tracking_updates = {
+        "delhivery_tracking_response": tracking_data,
+        "delhivery_last_status": status_text,
+        "delhivery_last_status_type": status_type,
+        "order_status": mapped_status,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    if mapped_status == "Delivered" and not order.get("delivered_at"):
+        tracking_updates["delivered_at"] = datetime.utcnow().isoformat()
+
+    await db.store_orders.update_one(
+        {"_id": order_object_id},
+        {"$set": tracking_updates},
+    )
+
+    return {
+        "order_id": order_id,
+        "courier": "Delhivery",
+        "tracking_number": waybill,
+        "tracking_url": order.get("tracking_url", ""),
+        "order_status": mapped_status,
+        "delhivery_status": status_text,
+        "status_type": status_type,
+    }
 # ==================== DELHIVERY API CONFIG CHECK ====================
 
 @api_router.get("/store/admin/delhivery/config-check")
