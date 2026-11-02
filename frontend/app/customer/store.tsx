@@ -280,6 +280,13 @@ export default function CustomerStoreScreen() {
   // Orders & Checkout
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  // Return Request States
+const [showReturnModal, setShowReturnModal] = useState(false);
+const [selectedReturnOrder, setSelectedReturnOrder] = useState<any>(null);
+const [selectedReturnItem, setSelectedReturnItem] = useState<any>(null);
+const [returnReason, setReturnReason] = useState('');
+const [returnQuantity, setReturnQuantity] = useState('1');
+const [submittingReturn, setSubmittingReturn] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [customerName, setCustomerName] = useState('');
