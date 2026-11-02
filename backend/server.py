@@ -2523,6 +2523,7 @@ def serialize_store_order(order: dict) -> dict:
         "tracking_number": order.get("tracking_number", ""),
         "tracking_url": order.get("tracking_url", ""),
         "return_status": order.get("return_status", "Not Requested"),
+        "delivered_at": order.get("delivered_at", ""),
         "created_at": order.get("created_at", ""),
         "paid_at": order.get("paid_at", ""),
         "razorpay_order_id": order.get("razorpay_order_id", ""),
