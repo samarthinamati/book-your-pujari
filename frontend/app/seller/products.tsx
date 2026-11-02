@@ -230,6 +230,7 @@ export default function SellerProductsScreen() {
         weight_grams: cleanWeight,
         image_url: uploadedImageUrl,
         is_available: cleanStock > 0,
+        is_returnable: isReturnable,
       };
 
       if (editingId) {
