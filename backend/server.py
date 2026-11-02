@@ -2525,6 +2525,7 @@ def serialize_store_order(order: dict) -> dict:
         "return_status": order.get("return_status", "Not Requested"),
         "delivered_at": order.get("delivered_at", ""),
         "created_at": order.get("created_at", ""),
+        "delivered_at": order.get("delivered_at", ""),
         "paid_at": order.get("paid_at", ""),
         "razorpay_order_id": order.get("razorpay_order_id", ""),
         "razorpay_payment_id": order.get("razorpay_payment_id", ""),
