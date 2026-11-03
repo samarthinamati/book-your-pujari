@@ -199,7 +199,7 @@ export default function SellerOrdersScreen() {
       setSavingParcelId(order.id);
 
       await apiClient.put(
-        `/store/seller/orders/${order.id}/parcel`,
+  '/store/seller/orders/' + order.id + '/parcel',
         {
           weight_grams: weight,
           length_cm: length,
