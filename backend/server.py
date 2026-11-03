@@ -3268,6 +3268,88 @@ async def get_seller_store_orders(
 
     return seller_orders
 
+@api_router.put("/store/seller/orders/{order_id}/parcel")
+async def update_seller_order_parcel(
+    order_id: str,
+    payload: SellerParcelDetailsUpdate,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    try:
+        order_object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order ID",
+        )
+
+    order = await db.store_orders.find_one({
+        "_id": order_object_id,
+        "items.seller_id": user["id"],
+    })
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found for this seller",
+        )
+
+    if order.get("tracking_number") or order.get("delhivery_status") in {
+        "creating",
+        "created",
+        "unknown",
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="Parcel details cannot be changed after shipment creation has started",
+        )
+
+    payment_method = str(
+        order.get("payment_method", "")
+    ).strip().lower()
+
+    if payment_method != "cod" and order.get("payment_status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Online payment must be verified before parcel preparation",
+        )
+
+    parcel_details = {
+        "weight_grams": payload.weight_grams,
+        "length_cm": payload.length_cm,
+        "width_cm": payload.width_cm,
+        "height_cm": payload.height_cm,
+        "updated_at": datetime.utcnow().isoformat(),
+        "ready_for_pickup": False,
+    }
+
+    await db.store_orders.update_one(
+        {"_id": order_object_id},
+        {
+            "$set": {
+                "seller_parcel": parcel_details,
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        },
+    )
+
+    return {
+        "message": "Parcel details saved successfully",
+        "parcel": parcel_details,
+    }
+
 @api_router.put("/store/seller/orders/{order_id}/tracking")
 async def update_seller_order_tracking(
     order_id: str,
