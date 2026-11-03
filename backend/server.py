@@ -912,14 +912,18 @@ async def update_seller_pickup_location(
                 "Confirm Delhivery API access before enabling it."
             ),
     )
-    # Live mode: prevent duplicate registrations.
-    if application.get("delhivery_pickup_status") == "registered":
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "This seller already has a registered pickup location. "
-                "Do not register it again."
-            ),
+   if application.get("delhivery_pickup_status") in [
+    "registered",
+    "verification_pending",
+    "registration_in_progress",
+]:
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            "A warehouse registration already exists or is in progress. "
+            "Verify its status in Delhivery before trying again."
+        ),
+    )
         )
     if not DELHIVERY_API_TOKEN:
         raise HTTPException(
