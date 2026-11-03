@@ -673,6 +673,46 @@ const confirmMarkReady = async () => {
         </TouchableOpacity>
       </ScrollView>
 
+<Modal
+  visible={confirmReadyOrder !== null}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setConfirmReadyOrder(null)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.labelModal}>
+      <Text style={styles.modalTitle}>
+        Confirm Ready for Pickup
+      </Text>
+
+      <Text style={{ marginTop: 12, color: '#667085', lineHeight: 22 }}>
+        Have you packed this order and prepared it for courier collection?
+      </Text>
+
+      <TouchableOpacity
+        style={styles.readyButton}
+        onPress={confirmMarkReady}
+        disabled={readyOrderId !== ''}
+      >
+        {readyOrderId !== '' ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.buttonText}>Yes, Ready</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={() => setConfirmReadyOrder(null)}
+        disabled={readyOrderId !== ''}
+      >
+        <Text style={styles.refreshText}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
+
       <Modal
         visible={selectedLabelOrder !== null}
         transparent
