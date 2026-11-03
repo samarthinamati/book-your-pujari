@@ -253,11 +253,11 @@ export default function SellerOrdersScreen() {
           onPress: async () => {
             try {
               setReadyOrderId(order.id);
-
-              await apiClient.post(
-                `/store/seller/orders/${order.id}/ready-for-pickup`,
-                {}
-              );
+              
+ await apiClient.post(
+  '/store/seller/orders/' + order.id + '/ready-for-pickup',
+  {}
+);
 
               Alert.alert(
                 'Order Ready',
