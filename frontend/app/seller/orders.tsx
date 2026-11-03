@@ -279,145 +279,82 @@ export default function SellerOrdersScreen() {
     );
   };
 
-  const printShippingLabel = async (order: SellerOrder) => {
-    try {
-      const escapeHtml = (value: any) =>
-        String(value || '').replace(/[&<>"']/g, '');
+ ```tsx
+const printShippingLabel = async (order: SellerOrder) => {
+  try {
+    const escapeHtml = (value: any) =>
+      String(value || '').replace(/[&<>"']/g, (char) => {
+        const entities: Record<string, string> = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        };
+        return entities[char] || char;
+      });
 
-      const itemsHtml = (order.items || [])
-        .map(
-          (item) => `
-            <tr>
-              <td>${escapeHtml(item.name)}</td>
-              <td>${Number(item.quantity || 0)}</td>
-            </tr>
-          `
-        )
-        .join('');
-
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              padding: 18px;
-              color: #172B4D;
-            }
-            .label {
-              border: 2px solid #222;
-              padding: 20px;
-              max-width: 500px;
-              margin: auto;
-            }
-            .brand {
-              font-size: 25px;
-              font-weight: bold;
-              text-align: center;
-            }
-            .heading {
-              text-align: center;
-              font-size: 17px;
-              margin: 12px 0;
-              font-weight: bold;
-            }
-            .section {
-              border-top: 1px solid #777;
-              padding: 12px 0;
-            }
-            .order {
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .address {
-              font-size: 17px;
-              line-height: 1.6;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-            }
-            th, td {
-              border: 1px solid #999;
-              padding: 8px;
-              text-align: left;
-            }
-            .tracking {
-              font-weight: bold;
-              overflow-wrap: anywhere;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 15px;
-              font-weight: bold;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="brand">PUJARIGO</div>
-            <div class="heading">SHIP TO</div>
-
-            <div class="section">
-              <div class="order">
-                Order #${escapeHtml(String(order.id).slice(-8))}
-              </div>
-            </div>
-
-            <div class="section address">
-              <strong>${escapeHtml(order.customer_name || 'Customer')}</strong><br/>
-              ${escapeHtml(order.delivery_address)}<br/>
-              ${escapeHtml(order.city)} -
-              ${escapeHtml(order.pincode)}<br/>
-              Phone: ${escapeHtml(order.customer_phone)}
-            </div>
-
-            <div class="section">
-              <strong>Items in this parcel</strong>
-              <table>
-                <tr>
-                  <th>Product</th>
-                  <th>Qty</th>
-                </tr>
-                ${itemsHtml}
-              </table>
-            </div>
-
-            <div class="section">
-              Courier: ${escapeHtml(order.courier || 'Not assigned')}<br/>
-              <span class="tracking">
-                AWB / Tracking: ${escapeHtml(order.tracking_number || 'Not assigned')}
-              </span>
-            </div>
-
-            <div class="footer">
-              Thank you for shopping with PujariGo
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
-      } else {
-        await Print.printToFileAsync({ html });
-
-        Alert.alert(
-          'Shipping Label Ready',
-          'Your individual order shipping label PDF has been created.'
+    const itemsHtml = (order.items || [])
+      .map((item) => {
+        return (
+          '<tr>' +
+          '<td>' + escapeHtml(item.name) + '</td>' +
+          '<td>' + Number(item.quantity || 0) + '</td>' +
+          '</tr>'
         );
-      }
-    } catch (error: any) {
-      Alert.alert(
-        'Print Error',
-        error?.message || 'Unable to print shipping label.'
-      );
-    }
-  };
+      })
+      .join('');
 
+    const html =
+      '<!DOCTYPE html>' +
+      '<html><head>' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
+      '<style>' +
+      'body{font-family:Arial,sans-serif;padding:18px;color:#172B4D;}' +
+      '.label{border:2px solid #222;padding:20px;max-width:500px;margin:auto;}' +
+      '.brand{font-size:25px;font-weight:bold;text-align:center;}' +
+      '.heading{text-align:center;font-size:17px;margin:12px 0;font-weight:bold;}' +
+      '.section{border-top:1px solid #777;padding:12px 0;}' +
+      '.order{font-size:16px;font-weight:bold;}' +
+      '.address{font-size:17px;line-height:1.6;}' +
+      'table{width:100%;border-collapse:collapse;}' +
+      'th,td{border:1px solid #999;padding:8px;text-align:left;}' +
+      '.tracking{font-weight:bold;overflow-wrap:anywhere;}' +
+      '.footer{text-align:center;margin-top:15px;font-weight:bold;}' +
+      '</style></head><body>' +
+      '<div class="label">' +
+      '<div class="brand">PUJARIGO</div>' +
+      '<div class="heading">SHIP TO</div>' +
+      '<div class="section"><div class="order">Order #' +
+      escapeHtml(String(order.id).slice(-8)) +
+      '</div></div>' +
+      '<div class="section address">' +
+      '<strong>' + escapeHtml(order.customer_name || 'Customer') + '</strong><br/>' +
+      escapeHtml(order.delivery_address) + '<br/>' +
+      escapeHtml(order.city) + ' - ' + escapeHtml(order.pincode) + '<br/>' +
+      'Phone: ' + escapeHtml(order.customer_phone) +
+      '</div>' +
+      '<div class="section"><strong>Items in this parcel</strong>' +
+      '<table><tr><th>Product</th><th>Qty</th></tr>' +
+      itemsHtml +
+      '</table></div>' +
+      '<div class="section">Courier: ' +
+      escapeHtml(order.courier || 'Not assigned') +
+      '<br/><span class="tracking">AWB / Tracking: ' +
+      escapeHtml(order.tracking_number || 'Not assigned') +
+      '</span></div>' +
+      '<div class="footer">Thank you for shopping with PujariGo</div>' +
+      '</div></body></html>';
+
+    await Print.printAsync({ html });
+  } catch (error: any) {
+    Alert.alert(
+      'Print Error',
+      error?.message || 'Unable to print shipping label.'
+    );
+  }
+};
+```
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
