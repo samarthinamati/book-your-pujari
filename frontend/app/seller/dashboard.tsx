@@ -160,6 +160,17 @@ export default function SellerDashboard() {
         </TouchableOpacity>
 
         <TouchableOpacity
+  style={styles.menuCard}
+  onPress={() => router.push('/seller/pickup-settings')}
+>
+  <Ionicons name="calendar-outline" size={28} color="#2874F0" />
+  <Text style={styles.menuTitle}>Pickup Settings</Text>
+  <Text style={styles.menuSubtitle}>
+    Select your weekly pickup days
+  </Text>
+</TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.actionCard}
           onPress={() => router.push('/seller/orders')}
         >
