@@ -79,6 +79,12 @@ export default function SellerOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [savingParcelId, setSavingParcelId] = useState('');
   const [readyOrderId, setReadyOrderId] = useState('');
+  
+const [confirmReadyOrder, setConfirmReadyOrder] =
+  useState<SellerOrder | null>(null);
+
+const [actionMessage, setActionMessage] = useState('');
+
 
   const loadOrders = useCallback(async () => {
     try {
