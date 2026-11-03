@@ -3197,6 +3197,11 @@ class StoreOrderTrackingUpdate(BaseModel):
     tracking_number: Optional[str] = ""
     tracking_url: Optional[str] = ""
 
+class SellerParcelDetailsUpdate(BaseModel):
+    weight_grams: int = Field(..., ge=1, le=50000)
+    length_cm: float = Field(..., gt=0, le=200)
+    width_cm: float = Field(..., gt=0, le=200)
+    height_cm: float = Field(..., gt=0, le=200)    
 
 ALLOWED_STORE_ORDER_STATUSES = {
     "Order Placed",
