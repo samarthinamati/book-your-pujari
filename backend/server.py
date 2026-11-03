@@ -112,8 +112,7 @@ class SellerApplication(BaseModel):
     email: str = Field(default="", max_length=254)
     shop_address: str = Field(..., min_length=5, max_length=1000)
     city: str = Field(..., min_length=2, max_length=100)
-    pincode: str = Field(..., min_length=6, max_length=10)
-
+    pincode: str = Field(..., pattern=r"^[0-9]{6}$")
 
 class SaintProfile(BaseModel):
     name: str
