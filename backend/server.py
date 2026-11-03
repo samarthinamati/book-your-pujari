@@ -40,22 +40,44 @@ MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = client.book_your_pujari
 
+
 # ==================== DELHIVERY CONFIGURATION ====================
 
-DELHIVERY_API_TOKEN = os.getenv("DELHIVERY_API_TOKEN", "")
+DELHIVERY_API_TOKEN = os.getenv("DELHIVERY_API_TOKEN", "").strip()
 
-DELHIVERY_WAREHOUSE_URL = (
-    "https://track.delhivery.com/api/backend/clientwarehouse/create/"
+DELHIVERY_TEST_MODE = (
+    os.getenv("DELHIVERY_TEST_MODE", "true").strip().lower() == "true"
 )
-# Reuse the existing Delhivery pickup location.
-# Never register dummy or admin test addresses.
-DELHIVERY_EXISTING_PICKUP_NAME = "PUJARIGO B2C"
+
 DELHIVERY_LIVE_SHIPMENTS_ENABLED = (
     os.getenv("DELHIVERY_LIVE_SHIPMENTS_ENABLED", "false")
     .strip()
-    .lower()
-    == "true"
+    .lower() == "true"
 )
+
+DELHIVERY_BASE_URL = os.getenv(
+    "DELHIVERY_BASE_URL",
+    "https://staging-express.delhivery.com"
+).strip().rstrip("/")
+
+# All Delhivery endpoints use the selected base URL.
+DELHIVERY_WAREHOUSE_URL = (
+    f"{DELHIVERY_BASE_URL}/api/backend/clientwarehouse/create/"
+)
+
+DELHIVERY_SHIPMENT_URL = (
+    f"{DELHIVERY_BASE_URL}/api/cmu/create.json"
+)
+
+DELHIVERY_TRACKING_URL = (
+    f"{DELHIVERY_BASE_URL}/api/v1/packages/json/"
+)
+
+DELHIVERY_PICKUP_REQUEST_URL = (
+    f"{DELHIVERY_BASE_URL}/fm/request/new/"
+)
+
+DELHIVERY_EXISTING_PICKUP_NAME = "PUJARIGO B2C"
 
 # Razorpay Setup
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_key")
