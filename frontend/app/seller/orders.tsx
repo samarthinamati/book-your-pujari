@@ -1,3 +1,5 @@
+
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +11,6 @@ import {
   Alert,
   RefreshControl,
   TextInput,
-  Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -197,7 +198,7 @@ export default function SellerOrdersScreen() {
       setSavingParcelId(order.id);
 
       await apiClient.put(
-  '/store/seller/orders/' + order.id + '/parcel',
+        '/store/seller/orders/' + order.id + '/parcel',
         {
           weight_grams: weight,
           length_cm: length,
@@ -251,11 +252,11 @@ export default function SellerOrdersScreen() {
           onPress: async () => {
             try {
               setReadyOrderId(order.id);
-              
- await apiClient.post(
-  '/store/seller/orders/' + order.id + '/ready-for-pickup',
-  {}
-);
+
+              await apiClient.post(
+                '/store/seller/orders/' + order.id + '/ready-for-pickup',
+                {}
+              );
 
               Alert.alert(
                 'Order Ready',
@@ -277,80 +278,82 @@ export default function SellerOrdersScreen() {
     );
   };
 
-const printShippingLabel = async (order: SellerOrder) => {
-  try {
-    const escapeHtml = (value: any) =>
-      String(value || '').replace(/[&<>"']/g, (char) => {
-        const entities: Record<string, string> = {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;',
-        };
-        return entities[char] || char;
-      });
+  const printShippingLabel = async (order: SellerOrder) => {
+    try {
+      const escapeHtml = (value: any) =>
+        String(value || '').replace(/[&<>"']/g, (char) => {
+          const entities: Record<string, string> = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          };
 
-    const itemsHtml = (order.items || [])
-      .map((item) => {
-        return (
-          '<tr>' +
-          '<td>' + escapeHtml(item.name) + '</td>' +
-          '<td>' + Number(item.quantity || 0) + '</td>' +
-          '</tr>'
-        );
-      })
-      .join('');
+          return entities[char] || char;
+        });
 
-    const html =
-      '<!DOCTYPE html>' +
-      '<html><head>' +
-      '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
-      '<style>' +
-      'body{font-family:Arial,sans-serif;padding:18px;color:#172B4D;}' +
-      '.label{border:2px solid #222;padding:20px;max-width:500px;margin:auto;}' +
-      '.brand{font-size:25px;font-weight:bold;text-align:center;}' +
-      '.heading{text-align:center;font-size:17px;margin:12px 0;font-weight:bold;}' +
-      '.section{border-top:1px solid #777;padding:12px 0;}' +
-      '.order{font-size:16px;font-weight:bold;}' +
-      '.address{font-size:17px;line-height:1.6;}' +
-      'table{width:100%;border-collapse:collapse;}' +
-      'th,td{border:1px solid #999;padding:8px;text-align:left;}' +
-      '.tracking{font-weight:bold;overflow-wrap:anywhere;}' +
-      '.footer{text-align:center;margin-top:15px;font-weight:bold;}' +
-      '</style></head><body>' +
-      '<div class="label">' +
-      '<div class="brand">PUJARIGO</div>' +
-      '<div class="heading">SHIP TO</div>' +
-      '<div class="section"><div class="order">Order #' +
-      escapeHtml(String(order.id).slice(-8)) +
-      '</div></div>' +
-      '<div class="section address">' +
-      '<strong>' + escapeHtml(order.customer_name || 'Customer') + '</strong><br/>' +
-      escapeHtml(order.delivery_address) + '<br/>' +
-      escapeHtml(order.city) + ' - ' + escapeHtml(order.pincode) + '<br/>' +
-      'Phone: ' + escapeHtml(order.customer_phone) +
-      '</div>' +
-      '<div class="section"><strong>Items in this parcel</strong>' +
-      '<table><tr><th>Product</th><th>Qty</th></tr>' +
-      itemsHtml +
-      '</table></div>' +
-      '<div class="section">Courier: ' +
-      escapeHtml(order.courier || 'Not assigned') +
-      '<br/><span class="tracking">AWB / Tracking: ' +
-      escapeHtml(order.tracking_number || 'Not assigned') +
-      '</span></div>' +
-      '<div class="footer">Thank you for shopping with PujariGo</div>' +
-      '</div></body></html>';
+      const itemsHtml = (order.items || [])
+        .map((item) => {
+          return (
+            '<tr>' +
+            '<td>' + escapeHtml(item.name) + '</td>' +
+            '<td>' + Number(item.quantity || 0) + '</td>' +
+            '</tr>'
+          );
+        })
+        .join('');
 
-    await Print.printAsync({ html });
-  } catch (error: any) {
-    Alert.alert(
-      'Print Error',
-      error?.message || 'Unable to print shipping label.'
-    );
-  }
-};
+      const html =
+        '<!DOCTYPE html>' +
+        '<html><head>' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>' +
+        '<style>' +
+        'body{font-family:Arial,sans-serif;padding:18px;color:#172B4D;}' +
+        '.label{border:2px solid #222;padding:20px;max-width:500px;margin:auto;}' +
+        '.brand{font-size:25px;font-weight:bold;text-align:center;}' +
+        '.heading{text-align:center;font-size:17px;margin:12px 0;font-weight:bold;}' +
+        '.section{border-top:1px solid #777;padding:12px 0;}' +
+        '.order{font-size:16px;font-weight:bold;}' +
+        '.address{font-size:17px;line-height:1.6;}' +
+        'table{width:100%;border-collapse:collapse;}' +
+        'th,td{border:1px solid #999;padding:8px;text-align:left;}' +
+        '.tracking{font-weight:bold;overflow-wrap:anywhere;}' +
+        '.footer{text-align:center;margin-top:15px;font-weight:bold;}' +
+        '</style></head><body>' +
+        '<div class="label">' +
+        '<div class="brand">PUJARIGO</div>' +
+        '<div class="heading">SHIP TO</div>' +
+        '<div class="section"><div class="order">Order #' +
+        escapeHtml(String(order.id).slice(-8)) +
+        '</div></div>' +
+        '<div class="section address">' +
+        '<strong>' + escapeHtml(order.customer_name || 'Customer') + '</strong><br/>' +
+        escapeHtml(order.delivery_address) + '<br/>' +
+        escapeHtml(order.city) + ' - ' + escapeHtml(order.pincode) + '<br/>' +
+        'Phone: ' + escapeHtml(order.customer_phone) +
+        '</div>' +
+        '<div class="section"><strong>Items in this parcel</strong>' +
+        '<table><tr><th>Product</th><th>Qty</th></tr>' +
+        itemsHtml +
+        '</table></div>' +
+        '<div class="section">Courier: ' +
+        escapeHtml(order.courier || 'Not assigned') +
+        '<br/><span class="tracking">AWB / Tracking: ' +
+        escapeHtml(order.tracking_number || 'Not assigned') +
+        '</span></div>' +
+        '<div class="footer">Thank you for shopping with PujariGo</div>' +
+        '</div></body></html>';
+
+      await Print.printAsync({ html });
+    } catch (error: any) {
+      Alert.alert(
+        'Print Error',
+        error?.message || 'Unable to print shipping label.'
+      );
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -419,9 +422,7 @@ const printShippingLabel = async (order: SellerOrder) => {
             const parcel = order.seller_parcel || {};
             const input = parcelInputs[order.id] || emptyParcel;
             const isReady = parcel.ready_for_pickup === true;
-            const shipmentStarted = Boolean(
-              order.tracking_number
-            );
+            const shipmentStarted = Boolean(order.tracking_number);
 
             return (
               <View
@@ -510,9 +511,7 @@ const printShippingLabel = async (order: SellerOrder) => {
                     Enter the final packed parcel measurements.
                   </Text>
 
-                  <Text style={styles.inputLabel}>
-                    Weight (grams)
-                  </Text>
+                  <Text style={styles.inputLabel}>Weight (grams)</Text>
                   <TextInput
                     style={styles.parcelInput}
                     value={input.weight_grams}
@@ -524,9 +523,7 @@ const printShippingLabel = async (order: SellerOrder) => {
                     editable={!shipmentStarted && !isReady}
                   />
 
-                  <Text style={styles.inputLabel}>
-                    Length (cm)
-                  </Text>
+                  <Text style={styles.inputLabel}>Length (cm)</Text>
                   <TextInput
                     style={styles.parcelInput}
                     value={input.length_cm}
@@ -538,9 +535,7 @@ const printShippingLabel = async (order: SellerOrder) => {
                     editable={!shipmentStarted && !isReady}
                   />
 
-                  <Text style={styles.inputLabel}>
-                    Width (cm)
-                  </Text>
+                  <Text style={styles.inputLabel}>Width (cm)</Text>
                   <TextInput
                     style={styles.parcelInput}
                     value={input.width_cm}
@@ -552,9 +547,7 @@ const printShippingLabel = async (order: SellerOrder) => {
                     editable={!shipmentStarted && !isReady}
                   />
 
-                  <Text style={styles.inputLabel}>
-                    Height (cm)
-                  </Text>
+                  <Text style={styles.inputLabel}>Height (cm)</Text>
                   <TextInput
                     style={styles.parcelInput}
                     value={input.height_cm}
@@ -657,9 +650,7 @@ const printShippingLabel = async (order: SellerOrder) => {
                     size={20}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.printLabelText}>
-                    View Label
-                  </Text>
+                  <Text style={styles.printLabelText}>View Label</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.noticeText}>
@@ -807,6 +798,12 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingBottom: 40,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 12,
+    color: '#667085',
+    fontSize: 14,
   },
   backButton: {
     flexDirection: 'row',
@@ -1058,6 +1055,127 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 14,
   },
-
-
-  
+  printLabelButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2874F0',
+    padding: 13,
+    borderRadius: 9,
+    marginTop: 14,
+  },
+  printLabelText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 5,
+  },
+  refreshText: {
+    color: '#2874F0',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    padding: 15,
+  },
+  labelModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#172B4D',
+  },
+  shippingLabel: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#222222',
+    padding: 16,
+  },
+  labelBrand: {
+    fontSize: 25,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    textAlign: 'center',
+  },
+  labelHeading: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    textAlign: 'center',
+    marginVertical: 12,
+  },
+  labelDivider: {
+    height: 1,
+    backgroundColor: '#777777',
+    marginVertical: 12,
+  },
+  labelOrder: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginBottom: 10,
+  },
+  labelCustomer: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginBottom: 5,
+  },
+  labelAddress: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#344054',
+  },
+  labelSection: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginBottom: 10,
+  },
+  labelItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+  },
+  labelItemName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#344054',
+  },
+  labelItemQty: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#344054',
+    marginLeft: 10,
+  },
+  labelFooter: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#172B4D',
+    marginTop: 18,
+  },
+});
