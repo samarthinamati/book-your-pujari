@@ -3350,6 +3350,93 @@ async def update_seller_order_parcel(
         "message": "Parcel details saved successfully",
         "parcel": parcel_details,
     }
+@api_router.post("/store/seller/orders/{order_id}/ready-for-pickup")
+async def mark_seller_order_ready_for_pickup(
+    order_id: str,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=403,
+            detail="Your seller account is not approved",
+        )
+
+    try:
+        order_object_id = ObjectId(order_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid order ID",
+        )
+
+    order = await db.store_orders.find_one({
+        "_id": order_object_id,
+        "items.seller_id": user["id"],
+    })
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found for this seller",
+        )
+
+    if order.get("tracking_number") or order.get("delhivery_status") in {
+        "creating",
+        "created",
+        "unknown",
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="Shipment creation has already started",
+        )
+
+    parcel = order.get("seller_parcel") or {}
+
+    required_fields = [
+        "weight_grams",
+        "length_cm",
+        "width_cm",
+        "height_cm",
+    ]
+
+    if any(parcel.get(field) is None for field in required_fields):
+        raise HTTPException(
+            status_code=400,
+            detail="Please save parcel weight and dimensions first",
+        )
+
+    payment_method = str(
+        order.get("payment_method", "")
+    ).strip().lower()
+
+    if payment_method != "cod" and order.get("payment_status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="Online payment must be verified first",
+        )
+
+    await db.store_orders.update_one(
+        {"_id": order_object_id},
+        {
+            "$set": {
+                "seller_parcel.ready_for_pickup": True,
+                "seller_parcel.ready_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        },
+    )
+
+    return {
+        "message": "Order marked as ready for pickup",
+        "ready_for_pickup": True,
+    }
 
 @api_router.put("/store/seller/orders/{order_id}/tracking")
 async def update_seller_order_tracking(
