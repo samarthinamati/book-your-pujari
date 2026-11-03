@@ -1,5 +1,3 @@
-```tsx
-import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -353,7 +351,6 @@ const printShippingLabel = async (order: SellerOrder) => {
     );
   }
 };
-```
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
