@@ -398,7 +398,7 @@ async def get_delhivery_shipping_fee(
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.get(
-                "https://track.delhivery.com/api/kinko/v1/invoice/charges/.json",
+                f"{DELHIVERY_BASE_URL}/api/kinko/v1/invoice/charges/.json",
                 params=params,
                 headers=headers,
             )
