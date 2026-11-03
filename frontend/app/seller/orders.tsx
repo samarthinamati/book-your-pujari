@@ -388,6 +388,15 @@ const confirmMarkReady = async () => {
         <Text style={styles.subtitle}>
           Manage your shop orders and prepare parcels for collection.
         </Text>
+        
+{actionMessage ? (
+  <View style={styles.savedParcel}>
+    <Text style={styles.savedParcelText}>
+      {actionMessage}
+    </Text>
+  </View>
+) : null}
+
 
         <View style={styles.summaryCard}>
           <Ionicons name="receipt-outline" size={28} color="#2874F0" />
