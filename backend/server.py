@@ -670,6 +670,11 @@ async def review_seller_application(
             status_code=404,
             detail="Seller application not found"
         )
+   if application.get("status") != "approved":
+         raise HTTPException(
+             status_code=400,
+             detail="Please approve the seller application before registering its pickup location.",
+    )
 
     if application.get("status") != "pending":
         raise HTTPException(
