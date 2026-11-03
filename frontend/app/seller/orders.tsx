@@ -279,7 +279,6 @@ export default function SellerOrdersScreen() {
     );
   };
 
- ```tsx
 const printShippingLabel = async (order: SellerOrder) => {
   try {
     const escapeHtml = (value: any) =>
