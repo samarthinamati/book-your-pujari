@@ -186,6 +186,22 @@ export default function SellerDashboard() {
           <Ionicons name="chevron-forward" size={22} color="#777" />
         </TouchableOpacity>
 
+                <TouchableOpacity
+          style={styles.actionCard}
+          onPress={() => router.push('/seller/pickup-settings')}
+        >
+          <View style={styles.actionIcon}>
+            <Ionicons name="calendar-outline" size={26} color="#2874F0" />
+          </View>
+          <View style={styles.actionText}>
+            <Text style={styles.actionTitle}>Pickup Settings</Text>
+            <Text style={styles.actionDescription}>
+              Choose the days when your shop is available for parcel collection.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color="#777" />
+        </TouchableOpacity>
+
         <View style={styles.notice}>
           <Ionicons name="information-circle-outline" size={22} color="#8A5A00" />
           <Text style={styles.noticeText}>
