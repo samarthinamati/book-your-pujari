@@ -704,6 +704,94 @@ async def review_seller_application(
         "message": f"Seller application {new_status}",
         "status": new_status,
     }
+    # ==================== SELLER PICKUP DAY SETTINGS ====================
+
+SELLER_PICKUP_DAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
+
+@api_router.get("/store/seller/pickup-settings")
+async def get_seller_pickup_settings(
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Approved seller application not found",
+        )
+
+    return {
+        "pickup_days": application.get("pickup_days", []),
+        "available_days": SELLER_PICKUP_DAYS,
+    }
+
+
+@api_router.put("/store/seller/pickup-settings")
+async def update_seller_pickup_settings(
+    payload: SellerPickupDaysUpdate,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["seller"])
+
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Approved seller application not found",
+        )
+
+    selected_days = []
+
+    for day in payload.pickup_days:
+        normalized_day = day.strip().capitalize()
+
+        if normalized_day not in SELLER_PICKUP_DAYS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid pickup day: {day}",
+            )
+
+        if normalized_day not in selected_days:
+            selected_days.append(normalized_day)
+
+    if not selected_days:
+        raise HTTPException(
+            status_code=400,
+            detail="Please select at least one pickup day",
+        )
+
+    await db.seller_applications.update_one(
+        {"_id": application["_id"]},
+        {
+            "$set": {
+                "pickup_days": selected_days,
+                "pickup_days_updated_at": datetime.utcnow().isoformat(),
+            }
+        },
+    )
+
+    return {
+        "message": "Pickup days saved successfully",
+        "pickup_days": selected_days,
+    }
 
 
 class SellerPickupLocationUpdate(BaseModel):
