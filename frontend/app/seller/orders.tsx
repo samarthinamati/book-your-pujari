@@ -223,60 +223,52 @@ export default function SellerOrdersScreen() {
     }
   };
 
-  const markReadyForPickup = async (order: SellerOrder) => {
-    const parcel = order.seller_parcel;
+ 
+const markReadyForPickup = (order: SellerOrder) => {
+  const parcel = order.seller_parcel;
 
-    if (
-      !parcel?.weight_grams ||
-      !parcel?.length_cm ||
-      !parcel?.width_cm ||
-      !parcel?.height_cm
-    ) {
-      Alert.alert(
-        'Parcel details required',
-        'Please save the parcel weight and dimensions first.'
-      );
-      return;
-    }
+  if (
+    !parcel?.weight_grams ||
+    !parcel?.length_cm ||
+    !parcel?.width_cm ||
+    !parcel?.height_cm
+  ) {
+    setActionMessage('Please save parcel details first.');
+    return;
+  }
 
-    Alert.alert(
-      'Confirm Ready for Pickup',
-      'Have you packed this order and prepared it for courier collection?',
-      [
-        {
-          text: 'Not yet',
-          style: 'cancel',
-        },
-        {
-          text: 'Yes, Ready',
-          onPress: async () => {
-            try {
-              setReadyOrderId(order.id);
+  setActionMessage('');
+  setConfirmReadyOrder(order);
+};
 
-              await apiClient.post(
-                '/store/seller/orders/' + order.id + '/ready-for-pickup',
-                {}
-              );
+const confirmMarkReady = async () => {
+  if (!confirmReadyOrder) return;
 
-              Alert.alert(
-                'Order Ready',
-                'Your order has been marked as ready for pickup.'
-              );
+  const order = confirmReadyOrder;
 
-              await loadOrders();
-            } catch (error: any) {
-              Alert.alert(
-                'Unable to update order',
-                error?.message || 'Please try again.'
-              );
-            } finally {
-              setReadyOrderId('');
-            }
-          },
-        },
-      ]
+  try {
+    setReadyOrderId(order.id);
+    setActionMessage('');
+
+    await apiClient.post(
+      '/store/seller/orders/' + order.id + '/ready-for-pickup',
+      {}
     );
-  };
+
+    setConfirmReadyOrder(null);
+    setActionMessage('Order successfully marked as Ready for Pickup!');
+
+    await loadOrders();
+  } catch (error: any) {
+    setActionMessage(
+      error?.response?.data?.detail ||
+      error?.message ||
+      'Unable to update order. Please try again.'
+    );
+  } finally {
+    setReadyOrderId('');
+  }
+};
 
   const printShippingLabel = async (order: SellerOrder) => {
     try {
