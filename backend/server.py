@@ -1055,7 +1055,7 @@ async def update_seller_pickup_location(
         {
             "$set": {
                 "delhivery_pickup_name": pickup_name,
-                "delhivery_pickup_status": "registered",
+                "delhivery_pickup_status": "verification_pending",
                 "delhivery_pickup_verified": False,
                 "delhivery_pickup_id": str(
                     result_data.get("id", "")
@@ -1070,8 +1070,8 @@ async def update_seller_pickup_location(
 
     return {
         "message": (
-            "Delhivery accepted the warehouse registration request. "
-            "Verify the warehouse in Delhivery before creating shipments."
+            "Delhivery accepted the registration request. "
+            "Verify the warehouse in Delhivery before using it for shipments."
         ),
         "delhivery_pickup_name": pickup_name,
         "delhivery_pickup_status": "registered",
