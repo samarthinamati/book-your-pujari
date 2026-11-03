@@ -825,6 +825,11 @@ async def update_seller_pickup_location(
             status_code=404,
             detail="Seller application not found",
         )
+    if application.get("status") != "approved":
+    raise HTTPException(
+        status_code=400,
+        detail="Please approve the seller application before registering its pickup location.",
+    )
 
     pickup_name = payload.delhivery_pickup_name.strip()
 
