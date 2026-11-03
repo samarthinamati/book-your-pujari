@@ -178,6 +178,9 @@ class AdminApprovalRequest(BaseModel):
 
 class SellerApprovalRequest(BaseModel):
     approved: bool
+
+class SellerPickupDaysUpdate(BaseModel):
+    pickup_days: List[str]
 # ==================== AUTHENTICATION ====================
 
 JWT_SECRET = os.environ.get(
