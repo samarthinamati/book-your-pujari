@@ -3798,10 +3798,7 @@ async def mark_seller_order_ready_for_pickup(
     try:
         order_object_id = ObjectId(order_id)
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid order ID",
-        )
+        raise HTTPException(status_code=400, detail="Invalid order ID")
 
     order = await db.store_orders.find_one({
         "_id": order_object_id,
@@ -3814,17 +3811,13 @@ async def mark_seller_order_ready_for_pickup(
             detail="Order not found for this seller",
         )
 
-    if order.get("tracking_number") or order.get("delhivery_status") in {
-        "creating",
-        "created",
-        "unknown",
-    }:
-        raise HTTPException(
-            status_code=409,
-            detail="Shipment creation has already started",
-        )
+    parcel = (order.get("seller_parcels") or {}).get(user["id"], {})
 
-    parcel = order.get("seller_parcel") or {}
+    if not parcel:
+        raise HTTPException(
+            status_code=400,
+            detail="Please save your parcel details first",
+        )
 
     required_fields = [
         "weight_grams",
@@ -3839,6 +3832,14 @@ async def mark_seller_order_ready_for_pickup(
             detail="Please save parcel weight and dimensions first",
         )
 
+    if parcel.get("tracking_number") or parcel.get("delhivery_status") in {
+        "creating", "created", "unknown"
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="Shipment creation has already started for your parcel",
+        )
+
     payment_method = str(
         order.get("payment_method", "")
     ).strip().lower()
@@ -3850,23 +3851,29 @@ async def mark_seller_order_ready_for_pickup(
         )
 
     await db.store_orders.update_one(
-        {"_id": order_object_id},
+        {
+            "_id": order_object_id,
+            f"seller_parcels.{user['id']}.ready_for_pickup": {"$ne": True},
+        },
         {
             "$set": {
-                "seller_parcel.ready_for_pickup": True,
-                "seller_parcel.ready_at": datetime.utcnow().isoformat(),
+                f"seller_parcels.{user['id']}.ready_for_pickup": True,
+                f"seller_parcels.{user['id']}.ready_at": datetime.utcnow().isoformat(),
                 "updated_at": datetime.utcnow().isoformat(),
             }
         },
     )
 
-    automation_result = await _create_delhivery_shipment_for_order(order_id)
+    automation_result = await _create_delhivery_shipment_for_order(
+        order_id,
+        seller_id=user["id"],
+    )
+
     return {
-        "message": "Order marked as ready for pickup. Delhivery automation was started.",
+        "message": "Your parcel was marked ready for pickup.",
         "ready_for_pickup": True,
         "delhivery_automation": automation_result,
     }
-
 @api_router.put("/store/seller/orders/{order_id}/tracking")
 async def update_seller_order_tracking(
     order_id: str,
