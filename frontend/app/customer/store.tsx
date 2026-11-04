@@ -1279,6 +1279,34 @@ setShowCart(false);
                 <Text style={{ fontSize: 15, color: '#444', marginTop: 10, lineHeight: 20 }}>
                   {selectedProduct?.description?.trim() || 'No description has been added for this product yet.'}
                 </Text>
+      {/* Buy Now Button */}
+<TouchableOpacity
+  style={{
+    backgroundColor: '#2874F0',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 14,
+  }}
+  disabled={
+    !selectedProduct ||
+    selectedProduct.stock === 0 ||
+    selectedProduct.is_available === false
+  }
+  onPress={() => {
+    if (!selectedProduct) return;
+
+    setBuyNowProduct(selectedProduct);
+    setBuyNowShippingEstimate(null);
+    setBuyNowEstimateError('');
+    setSelectedProduct(null);
+    setShowCart(true);
+  }}
+>
+  <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>
+    BUY NOW
+  </Text>
+</TouchableOpacity>
 
                 {/* Customer Reviews Section */}
                 <View style={{ marginTop: 20, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 16 }}>
