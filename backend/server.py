@@ -881,6 +881,83 @@ async def update_seller_pickup_settings(
 class SellerPickupLocationUpdate(BaseModel):
     delhivery_pickup_name: str = Field(..., min_length=2, max_length=120)
 
+class SellerPickupVerificationRequest(BaseModel):
+    confirmed_in_delhivery: bool = False
+
+
+@api_router.put(
+    "/store/admin/seller-applications/{application_id}/verify-pickup"
+)
+async def verify_seller_pickup_location(
+    application_id: str,
+    payload: SellerPickupVerificationRequest,
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["admin"])
+
+    if payload.confirmed_in_delhivery is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm the warehouse in Delhivery before verification.",
+        )
+
+    try:
+        application_object_id = ObjectId(application_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid seller application ID",
+        )
+
+    application = await db.seller_applications.find_one({
+        "_id": application_object_id,
+        "status": "approved",
+    })
+
+    if not application:
+        raise HTTPException(
+            status_code=404,
+            detail="Approved seller application not found",
+        )
+
+    if application.get("delhivery_pickup_status") != "verification_pending":
+        raise HTTPException(
+            status_code=400,
+            detail="This pickup location is not awaiting verification.",
+        )
+
+    required_fields = [
+        "delhivery_pickup_name",
+        "shop_address",
+        "city",
+        "pincode",
+    ]
+
+    if any(not str(application.get(field, "")).strip()
+           for field in required_fields):
+        raise HTTPException(
+            status_code=400,
+            detail="Seller pickup address details are incomplete.",
+        )
+
+    await db.seller_applications.update_one(
+        {"_id": application_object_id},
+        {
+            "$set": {
+                "delhivery_pickup_status": "registered",
+                "delhivery_pickup_verified": True,
+                "delhivery_pickup_verified_at": datetime.utcnow().isoformat(),
+                "delhivery_pickup_verified_by": user["id"],
+            }
+        },
+    )
+
+    return {
+        "message": "Seller pickup location marked as verified.",
+        "delhivery_pickup_status": "registered",
+        "delhivery_pickup_verified": True,
+    }
+
 
 
 @api_router.put("/store/admin/seller-applications/{application_id}/pickup-location")
