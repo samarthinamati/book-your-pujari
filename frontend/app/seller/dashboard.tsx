@@ -175,6 +175,17 @@ export default function SellerDashboard() {
           <Ionicons name="chevron-forward" size={22} color="#777" />
         </TouchableOpacity>
 
+        <TouchableOpacity
+  style={styles.actionCard}
+  onPress={() => router.push('/seller/returns')}
+>
+  <Ionicons name="return-down-back-outline" size={25} color="#2874F0" />
+  <Text style={styles.actionTitle}>Return Requests</Text>
+  <Text style={styles.actionSubtitle}>
+    Review customer return requests
+  </Text>
+</TouchableOpacity>
+
                 <TouchableOpacity
           style={styles.actionCard}
           onPress={() => router.push('/seller/pickup-settings')}
