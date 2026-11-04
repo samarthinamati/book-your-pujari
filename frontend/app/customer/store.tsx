@@ -611,6 +611,22 @@ const sendChatMessage = async () => {
       setLoadingOrders(false);
     }
   };
+  const loadReturnRequests = async () => {
+  setLoadingReturns(true);
+
+  try {
+    const res = await apiClient.get('/store/customer/returns');
+    setReturnRequests(Array.isArray(res) ? res : []);
+  } catch (error: any) {
+    setReturnRequests([]);
+    Alert.alert(
+      'Error',
+      error?.message || 'Could not load return requests.'
+    );
+  } finally {
+    setLoadingReturns(false);
+  }
+};
   const submitReturnRequest = async () => {
   if (!selectedReturnOrder || !selectedReturnItem) return;
 
