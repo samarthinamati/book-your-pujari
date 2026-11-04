@@ -3453,6 +3453,8 @@ async def review_store_return_request(
         customer_address = str(order.get("delivery_address") or "").strip()
         customer_city = str(order.get("city") or "").strip()
         customer_pin = str(order.get("pincode") or "").strip()
+        customer_pin = "".join(ch for ch in customer_pin if ch.isdigit())
+        seller_pin = "".join(ch for ch in seller_pin if ch.isdigit())
 
         seller_address = str(
             seller_application.get("shop_address") or ""
