@@ -3697,7 +3697,6 @@ async def get_seller_store_orders(
         seller_orders.append(seller_order)
 
     return seller_orders
-
 @api_router.put("/store/seller/orders/{order_id}/parcel")
 async def update_seller_order_parcel(
     order_id: str,
@@ -3720,10 +3719,7 @@ async def update_seller_order_parcel(
     try:
         order_object_id = ObjectId(order_id)
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid order ID",
-        )
+        raise HTTPException(status_code=400, detail="Invalid order ID")
 
     order = await db.store_orders.find_one({
         "_id": order_object_id,
@@ -3736,11 +3732,11 @@ async def update_seller_order_parcel(
             detail="Order not found for this seller",
         )
 
-    if order.get("tracking_number") or order.get("delhivery_status") in {
-        "creating",
-        "created",
-        "unknown",
-    }:
+    existing_parcel = (order.get("seller_parcels") or {}).get(user["id"], {})
+
+    if existing_parcel.get("delhivery_status") in {
+        "creating", "created", "unknown"
+    } or existing_parcel.get("tracking_number"):
         raise HTTPException(
             status_code=409,
             detail="Parcel details cannot be changed after shipment creation has started",
@@ -3769,14 +3765,14 @@ async def update_seller_order_parcel(
         {"_id": order_object_id},
         {
             "$set": {
-                "seller_parcel": parcel_details,
+                f"seller_parcels.{user['id']}": parcel_details,
                 "updated_at": datetime.utcnow().isoformat(),
             }
         },
     )
 
     return {
-        "message": "Parcel details saved successfully",
+        "message": "Seller parcel details saved successfully",
         "parcel": parcel_details,
     }
 @api_router.post("/store/seller/orders/{order_id}/ready-for-pickup")
