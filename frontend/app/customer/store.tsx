@@ -1359,13 +1359,27 @@ setShowCart(false);
             <TouchableOpacity onPress={() => setShowCart(false)}><Text style={{ color: BLUE, fontWeight: 'bold', fontSize: 16 }}>‹ Back to Store</Text></TouchableOpacity>
             <Text style={styles.modalTitle}>{t('cart')}</Text>
             <ScrollView style={{ flex: 1 }}>
-              {cartItems.map(({ product, quantity }) => (
-                <View key={product.id} style={styles.cartRow}>
-                  <Text style={{ flex: 1, fontWeight: '600' }}>{product.name} (x{quantity})</Text>
-                  <Text style={{ fontWeight: 'bold' }}>₹{product.price * quantity}</Text>
-                </View>
-              ))}
-
+              {buyNowProduct ? (
+  <View key={buyNowProduct.id} style={styles.cartRow}>
+    <Text style={{ flex: 1, fontWeight: '600' }}>
+      {buyNowProduct.name} (x1)
+    </Text>
+    <Text style={{ fontWeight: 'bold' }}>
+      ₹{Number(buyNowProduct.price).toFixed(2)}
+    </Text>
+  </View>
+) : (
+  cartItems.map(({ product, quantity }) => (
+    <View key={product.id} style={styles.cartRow}>
+      <Text style={{ flex: 1, fontWeight: '600' }}>
+        {product.name} (x{quantity})
+      </Text>
+      <Text style={{ fontWeight: 'bold' }}>
+        ₹{product.price * quantity}
+      </Text>
+    </View>
+  ))
+)}
               {/* 🎁 Gift Store & Delivery Options */}
               <TouchableOpacity style={styles.giftToggle} onPress={() => setIsGift(!isGift)}>
                 <Text style={{ fontWeight: 'bold', color: '#B45309' }}>{isGift ? '☑' : '☐'} {t('giftOption')}</Text>
