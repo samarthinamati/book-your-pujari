@@ -3476,7 +3476,7 @@ async def review_store_return_request(
             "customer_phone": customer_phone,
             "customer_address": customer_address,
             "customer_city": customer_city,
-            "customer_pincode": seller_pin,
+            "customer_pincode": customer_pin,
             "seller_name": seller_name,
             "seller_address": seller_address,
             "seller_city": seller_city,
