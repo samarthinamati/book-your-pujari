@@ -4028,6 +4028,7 @@ async def verify_store_payment(
     return {
         "message": "Store payment verified successfully",
         "payment_status": "paid",
+        "delhivery_automation": delhivery_automation,
         "store_order_id": payload.store_order_id
     }
 
@@ -4051,8 +4052,6 @@ async def verify_store_payment(
                 "automation_status": "needs_attention",
                 "message": "Payment succeeded. Shipping needs admin review."
             }
-
-"delhivery_automation": delhivery_automation,
 
 # ==================== CUSTOMER STORE FEATURES ====================
 
