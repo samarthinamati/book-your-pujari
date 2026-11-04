@@ -1408,27 +1408,56 @@ setShowCart(false);
                 <Text style={styles.paymentOptionText}>💵 Cash on Delivery (COD)</Text>
               </TouchableOpacity>
 
-              {/* Comprehensive Calculation Summary Breakdown */}
-              <View style={styles.summaryBox}>
-                <View style={styles.summaryRow}>
-                  <Text>Product Subtotal:</Text>
-                  <Text>₹{subtotal.toFixed(2)}</Text>
-                </View>
-                {discountAmount > 0 && (
-                  <View style={styles.summaryRow}>
-                    <Text style={{ color: '#166534' }}>Coupon Discount:</Text>
-                    <Text style={{ color: '#166534' }}>-₹{discountAmount.toFixed(2)}</Text>
-                  </View>
-                )}
-                <View style={styles.summaryRow}>
-                  <Text>Delivery Charge:</Text>
-                  <Text>₹{shippingFee.toFixed(2)} {subtotal > 500 ? '(Free over ₹500)' : ''}</Text>
-                </View>
-                <View style={[styles.summaryRow, { borderTopWidth: 1, borderColor: '#CBD5E1', marginTop: 6, paddingTop: 6 }]}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Final Amount:</Text>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#166534' }}>₹{total.toFixed(2)}</Text>
-                </View>
-              </View>
+              {/* Checkout Calculation Summary */}
+<View style={styles.summaryBox}>
+  <View style={styles.summaryRow}>
+    <Text>Product Subtotal:</Text>
+    <Text>₹{checkoutSubtotal.toFixed(2)}</Text>
+  </View>
+
+  {checkoutDiscount > 0 && (
+    <View style={styles.summaryRow}>
+      <Text>Coupon Discount:</Text>
+      <Text>-₹{checkoutDiscount.toFixed(2)}</Text>
+    </View>
+  )}
+
+  <View style={styles.summaryRow}>
+    <Text>Delivery Charge:</Text>
+    <Text>
+      {buyNowProduct
+        ? buyNowEstimateLoading
+          ? 'Calculating...'
+          : buyNowShippingEstimate === null
+            ? 'Not available'
+            : `₹${checkoutShippingFee.toFixed(2)}`
+        : `₹${checkoutShippingFee.toFixed(2)}`}
+    </Text>
+  </View>
+
+  <View style={styles.summaryRow}>
+    <Text>Platform Fee:</Text>
+    <Text>₹{checkoutPlatformFee.toFixed(2)}</Text>
+  </View>
+
+  <View style={[styles.summaryRow, {
+    borderTopWidth: 1,
+    borderColor: '#CBD5E1',
+    marginTop: 6,
+    paddingTop: 6,
+  }]}>
+    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Final Amount:</Text>
+    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#166534' }}>
+      ₹{checkoutTotal.toFixed(2)}
+    </Text>
+  </View>
+
+  {buyNowEstimateError ? (
+    <Text style={{ color: '#DC2626', marginTop: 8 }}>
+      {buyNowEstimateError}
+    </Text>
+  ) : null}
+</View>
 
               <TouchableOpacity
   style={[
