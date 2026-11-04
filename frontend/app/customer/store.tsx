@@ -404,6 +404,71 @@ const [shippingEstimateError, setShippingEstimateError] = useState('');
   };
 }, [cart, pincode, giftPin, isGift, paymentMethod]);
 
+  // Separate delivery estimate for Buy Now
+useEffect(() => {
+  let active = true;
+
+  const estimateBuyNowShipping = async () => {
+    if (!buyNowProduct) {
+      setBuyNowShippingEstimate(null);
+      setBuyNowEstimateError('');
+      setBuyNowEstimateLoading(false);
+      return;
+    }
+
+    const deliveryPin = pincode.trim();
+
+    if (!/^\d{6}$/.test(deliveryPin)) {
+      setBuyNowShippingEstimate(null);
+      setBuyNowEstimateError('Enter a valid 6-digit delivery PIN code.');
+      return;
+    }
+
+    setBuyNowEstimateLoading(true);
+    setBuyNowEstimateError('');
+
+    try {
+      const response = await apiClient.post('/store/shipping/estimate', {
+        items: [
+          {
+            product_id: buyNowProduct.id,
+            quantity: 1,
+          },
+        ],
+        delivery_pincode: deliveryPin,
+        payment_method: paymentMethod,
+      });
+
+      if (!active) return;
+
+      const fee = Number(response?.shipping_fee);
+
+      if (!Number.isFinite(fee) || fee < 0) {
+        throw new Error('Delhivery returned an invalid delivery charge.');
+      }
+
+      setBuyNowShippingEstimate(fee);
+    } catch (error: any) {
+      if (!active) return;
+
+      setBuyNowShippingEstimate(null);
+      setBuyNowEstimateError(
+        error?.response?.data?.detail ||
+        error?.message ||
+        'Could not calculate delivery charge.'
+      );
+    } finally {
+      if (active) setBuyNowEstimateLoading(false);
+    }
+  };
+
+  estimateBuyNowShipping();
+
+  return () => {
+    active = false;
+  };
+}, [buyNowProduct, pincode, paymentMethod]);
+
   // 1. ❤️ Favourites Toggle
   const toggleFavourite = async (productId: string) => {
     try {
