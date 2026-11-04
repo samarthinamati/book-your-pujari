@@ -3506,7 +3506,6 @@ async def review_store_return_request(
 
         customer_pin = "".join(ch for ch in customer_pin if ch.isdigit())
         seller_pin = "".join(ch for ch in seller_pin if ch.isdigit())
-
         if len(customer_pin) != 6 or len(seller_pin) != 6:
             raise HTTPException(
                 status_code=400,
