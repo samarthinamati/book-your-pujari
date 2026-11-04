@@ -89,7 +89,15 @@ const [actionMessage, setActionMessage] = useState('');
   const loadOrders = useCallback(async () => {
     try {
       const response = await apiClient.get('/store/seller/orders');
-      const loadedOrders = Array.isArray(response) ? response : [];
+      const loadedOrders = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.orders)
+        ? response.orders
+        : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.orders)
+        ? response.data.orders
+        : [];
 
       setOrders(loadedOrders);
 
