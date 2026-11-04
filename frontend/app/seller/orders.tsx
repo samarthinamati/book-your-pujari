@@ -669,11 +669,11 @@ const confirmMarkReady = async () => {
                 </TouchableOpacity>
 
                 <Text style={styles.noticeText}>
-                  Marking an order ready does not book a courier pickup.
-                  Actual collection depends on courier booking and availability.
-                  Do not change the status of a mixed-seller order until
-                  separate seller shipments are supported.
-                </Text>
+                 Courier shipment creation and pickup scheduling depend on
+                 your Delhivery live-shipping settings. Test mode does not
+                 book a real courier pickup. Check the shipment status and
+                 tracking details before dispatch.
+                 </Text>
               </View>
             );
           })
