@@ -3514,7 +3514,7 @@ async def review_store_return_request(
         customer_state = await _get_state_from_pincode(customer_pin)
         seller_state = await _get_state_from_pincode(seller_pin)
 
-             reverse_pickup_details = {
+        reverse_pickup_details = {
             "customer_pickup": {
                 "name": customer_name,
                 "phone": customer_phone[-10:],
