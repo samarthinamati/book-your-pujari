@@ -746,7 +746,7 @@ const confirmMarkReady = async () => {
           <View style={styles.labelModal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Shipping Label Preview
+                Parcel Address Slip Preview
               </Text>
 
               <TouchableOpacity
