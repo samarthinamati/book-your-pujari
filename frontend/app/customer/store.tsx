@@ -666,7 +666,10 @@ const sendChatMessage = async () => {
     setReturnReason('');
     setReturnQuantity('1');
 
-    await loadOrders();
+await Promise.all([
+  loadOrders(),
+  loadReturnRequests(),
+]);
   } catch (e: any) {
     Alert.alert(
       'Return Request Failed',
