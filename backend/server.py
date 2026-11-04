@@ -5012,13 +5012,10 @@ async def create_delhivery_production_shipment(
     return await _create_delhivery_shipment_for_order(order_id)
 
 
-async def _create_delhivery_shipment_for_order(order_id: str):
-    """Create one seller-specific shipment, then schedule its warehouse pickup.
-
-    This helper is called by both the admin endpoint and the seller's
-    Ready for Pickup action. External calls remain disabled in test mode.
-    """
-
+async def _create_delhivery_shipment_for_order(
+    order_id: str,
+    seller_id: str = None,
+):
     try:
         order_object_id = ObjectId(order_id)
     except Exception:
@@ -5028,111 +5025,142 @@ async def _create_delhivery_shipment_for_order(order_id: str):
     if not order:
         raise HTTPException(status_code=404, detail="Store order not found.")
 
+    items = order.get("items") or []
+    if not items:
+        raise HTTPException(status_code=400, detail="The order contains no items.")
+
+    if any(not item.get("seller_id") for item in items):
+        raise HTTPException(
+            status_code=400,
+            detail="Shipment blocked: a product has no seller assigned.",
+        )
+
+    all_seller_ids = sorted({
+        str(item["seller_id"]).strip()
+        for item in items
+    })
+
+    # Admin call: process every seller parcel that is ready.
+    if seller_id is None:
+        results = []
+
+        for current_seller_id in all_seller_ids:
+            parcel = (
+                order.get("seller_parcels") or {}
+            ).get(current_seller_id, {})
+
+            if parcel.get("ready_for_pickup"):
+                result = await _create_delhivery_shipment_for_order(
+                    order_id,
+                    seller_id=current_seller_id,
+                )
+                results.append({
+                    "seller_id": current_seller_id,
+                    "result": result,
+                })
+
+        return {
+            "message": "Seller shipment processing completed.",
+            "order_id": order_id,
+            "seller_shipments": results,
+        }
+
+    seller_id = str(seller_id).strip()
+
+    if seller_id not in all_seller_ids:
+        raise HTTPException(
+            status_code=404,
+            detail="This seller has no products in this order.",
+        )
+
+    seller_items = [
+        item for item in items
+        if str(item.get("seller_id", "")).strip() == seller_id
+    ]
+
+    parcel = (
+        order.get("seller_parcels") or {}
+    ).get(seller_id, {})
+
+    if not parcel.get("ready_for_pickup"):
+        raise HTTPException(
+            status_code=409,
+            detail="This seller must mark their parcel ready first.",
+        )
+
+    if parcel.get("tracking_number") or parcel.get("delhivery_status") in {
+        "creating", "created", "unknown"
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="This seller's shipment already exists or needs manual review.",
+        )
+
     test_mode = DELHIVERY_TEST_MODE
+
     if test_mode or not DELHIVERY_LIVE_SHIPMENTS_ENABLED:
-        automation_status = "test_mode_waiting" if test_mode else "live_shipments_disabled"
+        automation_status = (
+            "test_mode_waiting"
+            if test_mode
+            else "live_shipments_disabled"
+        )
+
         await db.store_orders.update_one(
             {"_id": order_object_id},
             {"$set": {
+                f"seller_parcels.{seller_id}.delhivery_status": automation_status,
                 "delhivery_automation_status": automation_status,
                 "delhivery_automation_updated_at": datetime.utcnow().isoformat(),
             }},
         )
+
         return {
-            "message": (
-                "Order is ready. Automatic Delhivery shipment and pickup "
-                "are waiting for staging checks and activation."
-            ),
             "shipment_created": False,
             "pickup_scheduled": False,
             "delhivery_contacted": False,
             "automation_status": automation_status,
+            "seller_id": seller_id,
             "test_mode": test_mode,
         }
 
     if not DELHIVERY_API_TOKEN:
-        raise HTTPException(status_code=503, detail="DELHIVERY_API_TOKEN is not configured.")
-
-    if not (order.get("seller_parcel") or {}).get("ready_for_pickup"):
         raise HTTPException(
-            status_code=409,
-            detail="Seller must mark the parcel ready for pickup first.",
+            status_code=503,
+            detail="DELHIVERY_API_TOKEN is not configured.",
         )
 
-    if order.get("tracking_number") or order.get("delhivery_status") == "created":
-        raise HTTPException(status_code=409, detail="This order already has a Delhivery waybill.")
+    payment_method = str(
+        order.get("payment_method", "")
+    ).strip().lower()
 
-    payment_method = str(order.get("payment_method", "")).strip().lower()
     if payment_method != "cod" and order.get("payment_status") != "paid":
-        raise HTTPException(status_code=400, detail="Verify online payment before shipping.")
-
-    items = order.get("items") or []
-    # locations have been verified and registered.
-    seller_ids = {
-        str(item.get("seller_id") or "").strip()
-        for item in items
-        if item.get("seller_id")
-    }
-
-    if seller_ids:
-        seller_applications = await db.seller_applications.find({
-            "user_id": {"$in": list(seller_ids)}
-        }).to_list(500)
-
-        applications_by_user = {
-            str(app.get("user_id")): app
-            for app in seller_applications
-        }
-
-        for seller_id in seller_ids:
-            application = applications_by_user.get(seller_id)
-
-            if (
-                not application
-                or application.get("delhivery_pickup_status") != "registered"
-                or application.get("delhivery_pickup_verified") is not True
-                or not application.get("delhivery_pickup_name")
-                or not application.get("shop_address")
-                or not application.get("city")
-                or not application.get("pincode")
-            ):
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Shipment blocked: at least one seller's "
-                        "Delhivery pickup location is not verified. "
-                        "Register and verify each seller's real pickup "
-                        "location before creating a live shipment."
-                    ),
-                )
-    
-    if not items:
-        raise HTTPException(status_code=400, detail="The order contains no items.")
-
-    # SAFETY: Block mixed-seller orders until separate shipments
-    # are implemented for each seller.
-    if any(not item.get("seller_id") for item in items):
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Shipment blocked: one or more products have no seller assigned."
-            ),
+            detail="Verify online payment before shipping.",
         )
 
-    shipment_seller_ids = {
-        str(item.get("seller_id")).strip()
-        for item in items
-    }
+    application = await db.seller_applications.find_one({
+        "user_id": seller_id,
+        "status": "approved",
+        "delhivery_pickup_status": "registered",
+        "delhivery_pickup_verified": True,
+    })
 
-    if len(shipment_seller_ids) != 1:
+    if (
+        not application
+        or not application.get("delhivery_pickup_name")
+        or not application.get("shop_address")
+        or not application.get("city")
+        or not application.get("pincode")
+    ):
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Shipment blocked: this order contains products from multiple "
-                "sellers. Separate seller shipments must be implemented first."
-            ),
+            detail="This seller's real Delhivery pickup location is not verified.",
         )
 
+    seller_pickup_name = str(
+        application["delhivery_pickup_name"]
+    ).strip()
 
     required = {
         "customer_name": order.get("customer_name"),
@@ -5141,113 +5169,118 @@ async def _create_delhivery_shipment_for_order(order_id: str):
         "city": order.get("city"),
         "pincode": order.get("pincode"),
     }
-    missing = [k for k, v in required.items() if not str(v or "").strip()]
+
+    missing = [
+        key for key, value in required.items()
+        if not str(value or "").strip()
+    ]
+
     if missing:
         raise HTTPException(
             status_code=400,
-            detail={"message": "Delivery details are incomplete.", "missing_fields": missing},
+            detail={
+                "message": "Delivery details are incomplete.",
+                "missing_fields": missing,
+            },
         )
 
-    phone = "".join(ch for ch in str(order["customer_phone"]) if ch.isdigit())
-    if len(phone) < 10:
-        raise HTTPException(status_code=400, detail="Customer phone number is invalid.")
-    pin = "".join(ch for ch in str(order["pincode"]) if ch.isdigit())
-    if len(pin) != 6:
-        raise HTTPException(status_code=400, detail="Customer pincode must contain 6 digits.")
+    phone = "".join(
+        ch for ch in str(order["customer_phone"])
+        if ch.isdigit()
+    )[-10:]
 
-    total = round(float(order.get("total_amount", 0) or 0), 2)
-    if total <= 0:
-        raise HTTPException(status_code=400, detail="Order total must be greater than zero.")
+    pin = "".join(
+        ch for ch in str(order["pincode"])
+        if ch.isdigit()
+    )
+
+    if len(phone) != 10 or len(pin) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Customer phone or pincode is invalid.",
+        )
+
+    seller_total = round(
+        sum(float(item.get("line_total", 0) or 0) for item in seller_items),
+        2,
+    )
+
+    if seller_total <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Seller shipment total must be greater than zero.",
+        )
+
+    quantity = sum(
+        max(1, int(item.get("quantity", 1) or 1))
+        for item in seller_items
+    )
 
     products_desc = ", ".join(
-        f"{str(item.get('name', 'Puja Item'))[:80]} x {max(1, int(item.get('quantity', 1)))}"
-        for item in items
+        f"{str(item.get('name', 'Puja Item'))[:80]} x "
+        f"{max(1, int(item.get('quantity', 1) or 1))}"
+        for item in seller_items
     )[:500]
-    quantity = sum(
-        max(1, int(item.get("quantity", 1)))
-        for item in items
-    )
-    payment_mode = "COD" if payment_method == "cod" else "Pre-paid"
 
-    saved_parcel = order.get("seller_parcel") or {}
-    total_weight_grams = int(saved_parcel.get("weight_grams") or 0)
-    if total_weight_grams <= 0:
-        total_weight_grams = sum(
-            int(item.get("weight_grams", 500) or 500)
-            * max(1, int(item.get("quantity", 1)))
-            for item in items
-        )
+    weight_grams = int(parcel.get("weight_grams") or 0)
 
-    if total_weight_grams <= 0 or total_weight_grams > 100000:
+    if weight_grams <= 0 or weight_grams > 100000:
         raise HTTPException(
             status_code=400,
-            detail="Shipment blocked: total package weight is invalid.",
+            detail="Seller parcel weight must be between 1 gram and 100 kg.",
         )
 
-    total_weight_kg = total_weight_grams / 1000
-
-
-    shipment_seller_id = next(iter(shipment_seller_ids))
-    seller_application = await db.seller_applications.find_one({
-        "user_id": shipment_seller_id,
-        "status": "approved",
-        "delhivery_pickup_status": "registered",
-        "delhivery_pickup_verified": True,
-    })
-
-    if not seller_application:
+    if any(
+        float(parcel.get(field) or 0) <= 0
+        for field in ("length_cm", "width_cm", "height_cm")
+    ):
         raise HTTPException(
             status_code=400,
-            detail="Shipment blocked: the seller's verified pickup location could not be found.",
+            detail="Seller parcel dimensions must be greater than zero.",
         )
 
-    seller_pickup_name = str(
-        seller_application.get("delhivery_pickup_name") or ""
-    ).strip()
-
-    if not seller_pickup_name:
-        raise HTTPException(
-            status_code=400,
-            detail="Shipment blocked: the seller has no registered pickup location name.",
-        )
-
-    # Claim only after all local validation has passed. Ambiguous API outcomes
-    # remain locked for manual review to prevent duplicate waybills.
+    # Claim this seller's shipment only; other sellers remain independent.
     claim = await db.store_orders.update_one(
         {
             "_id": order_object_id,
-            "tracking_number": {"$in": [None, ""]},
-            "delhivery_status": {"$nin": ["creating", "created", "unknown"]},
+            f"seller_parcels.{seller_id}.ready_for_pickup": True,
+            f"seller_parcels.{seller_id}.delhivery_status": {
+                "$nin": ["creating", "created", "unknown"]
+            },
+            f"seller_parcels.{seller_id}.tracking_number": {
+                "$in": [None, ""]
+            },
         },
         {"$set": {
-            "delhivery_status": "creating",
-            "delhivery_attempted_at": datetime.utcnow().isoformat(),
-            "delhivery_automation_status": "shipment_creating",
+            f"seller_parcels.{seller_id}.delhivery_status": "creating",
+            f"seller_parcels.{seller_id}.delhivery_attempted_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat(),
         }},
     )
+
     if claim.modified_count != 1:
         raise HTTPException(
             status_code=409,
-            detail="Shipment creation is already in progress or needs manual review. Do not retry until checked.",
+            detail="This seller's shipment is already processing or needs manual review.",
         )
 
     shipment = {
         "name": str(order["customer_name"]).strip(),
-        "order": str(order["_id"]),
-        "phone": phone[-10:],
+        "order": f"{order_id}-{seller_id}",
+        "phone": phone,
         "add": str(order["delivery_address"]).strip(),
         "city": str(order["city"]).strip(),
         "pin": pin,
         "country": "India",
-        "payment_mode": payment_mode,
+        "payment_mode": "COD" if payment_method == "cod" else "Pre-paid",
         "products_desc": products_desc or "Puja Samagri",
         "quantity": str(quantity),
-        "total_amount": str(total),
-        "cod_amount": str(total if payment_mode == "COD" else 0),
-        "weight": str(total_weight_kg),
+        "total_amount": str(seller_total),
+        "cod_amount": str(seller_total if payment_method == "cod" else 0),
+        "weight": str(weight_grams / 1000),
         "shipping_mode": "Surface",
     }
+
     request_payload = {
         "format": "json",
         "data": __import__("json").dumps({
@@ -5263,20 +5296,28 @@ async def _create_delhivery_shipment_for_order(order_id: str):
                 headers=_delhivery_headers(),
                 data=request_payload,
             )
+
     except (httpx.TimeoutException, httpx.RequestError) as exc:
         await db.store_orders.update_one(
-            {"_id": order_object_id, "delhivery_status": "creating"},
+            {"_id": order_object_id},
             {"$set": {
-                "delhivery_status": "unknown",
-                "delhivery_error": "Request result uncertain; check Delhivery before retrying.",
+                f"seller_parcels.{seller_id}.delhivery_status": "unknown",
+                f"seller_parcels.{seller_id}.delhivery_error": (
+                    "Shipment result uncertain. Check Delhivery before retrying."
+                ),
                 "updated_at": datetime.utcnow().isoformat(),
             }},
         )
-        logger.warning("Delhivery request result uncertain for order %s: %s", order_id, type(exc).__name__)
+
+        logger.warning(
+            "Delhivery result uncertain for order %s seller %s: %s",
+            order_id, seller_id, type(exc).__name__,
+        )
+
         raise HTTPException(
             status_code=502,
-            detail="Delhivery response was not confirmed. Shipment status is unknown; check Delhivery before retrying.",
-        ) from exc
+            detail="Shipment result is uncertain. Check Delhivery before retrying.",
+        )
 
     try:
         data = response.json()
@@ -5284,9 +5325,20 @@ async def _create_delhivery_shipment_for_order(order_id: str):
         data = {}
 
     packages = data.get("packages", []) if isinstance(data, dict) else []
-    package = packages[0] if packages and isinstance(packages[0], dict) else {}
-    waybill = str(package.get("waybill") or package.get("wb") or "").strip()
-    package_status = str(package.get("status") or "").strip().lower()
+    package = (
+        packages[0]
+        if packages and isinstance(packages[0], dict)
+        else {}
+    )
+
+    waybill = str(
+        package.get("waybill") or package.get("wb") or ""
+    ).strip()
+
+    package_status = str(
+        package.get("status") or ""
+    ).strip().lower()
+
     success = (
         response.is_success
         and bool(waybill)
@@ -5295,59 +5347,92 @@ async def _create_delhivery_shipment_for_order(order_id: str):
     )
 
     if not success:
-        # Do not blindly retry: some carrier responses may be ambiguous.
         await db.store_orders.update_one(
-            {"_id": order_object_id, "delhivery_status": "creating"},
+            {"_id": order_object_id},
             {"$set": {
-                "delhivery_status": "unknown",
-                "delhivery_http_status": response.status_code,
-                "delhivery_error": "Delhivery did not return a clearly confirmed waybill. Check the Delhivery dashboard before retrying.",
+                f"seller_parcels.{seller_id}.delhivery_status": "unknown",
+                f"seller_parcels.{seller_id}.delhivery_http_status": response.status_code,
+                f"seller_parcels.{seller_id}.delhivery_error": (
+                    "Waybill not clearly confirmed. Check Delhivery before retrying."
+                ),
                 "updated_at": datetime.utcnow().isoformat(),
             }},
         )
-        logger.warning(
-            "Delhivery shipment not confirmed for order %s (HTTP %s)",
-            order_id, response.status_code,
-        )
+
         raise HTTPException(
             status_code=502,
-            detail="Delhivery did not confirm a waybill. Check the Delhivery dashboard before retrying to avoid duplicate shipments.",
+            detail="Delhivery did not clearly confirm the waybill. Check before retrying.",
         )
 
-    tracking_url = f"https://www.delhivery.com/track/package/{waybill}"
+    tracking_url = (
+        f"https://www.delhivery.com/track/package/{waybill}"
+    )
+
     await db.store_orders.update_one(
-        {"_id": order_object_id, "delhivery_status": "creating"},
+        {"_id": order_object_id},
         {"$set": {
-            "courier": "Delhivery",
-            "tracking_number": waybill,
-            "tracking_url": tracking_url,
-            "delhivery_status": "created",
-            "delhivery_created_at": datetime.utcnow().isoformat(),
-            "delhivery_upload_wbn": str(data.get("upload_wbn") or ""),
-            "order_status": "Shipped",
-            "delhivery_automation_status": "shipment_created",
+            f"seller_parcels.{seller_id}.courier": "Delhivery",
+            f"seller_parcels.{seller_id}.tracking_number": waybill,
+            f"seller_parcels.{seller_id}.tracking_url": tracking_url,
+            f"seller_parcels.{seller_id}.delhivery_status": "created",
+            f"seller_parcels.{seller_id}.delhivery_created_at": datetime.utcnow().isoformat(),
+            f"seller_parcels.{seller_id}.delhivery_upload_wbn": str(
+                data.get("upload_wbn") or ""
+            ),
             "updated_at": datetime.utcnow().isoformat(),
         }},
     )
+
     pickup_result = await _schedule_delhivery_pickup_for_order(
-        order_id, seller_application, seller_pickup_name
+        order_id,
+        application,
+        seller_pickup_name,
     )
+
+    await db.store_orders.update_one(
+        {"_id": order_object_id},
+        {"$set": {
+            f"seller_parcels.{seller_id}.pickup_result": pickup_result,
+            f"seller_parcels.{seller_id}.pickup_request_status": pickup_result.get("status"),
+            f"seller_parcels.{seller_id}.pickup_request_id": pickup_result.get("pickup_request_id"),
+            f"seller_parcels.{seller_id}.pickup_date": (
+                pickup_result.get("pickup_date")
+                or (await db.store_orders.find_one({"_id": order_object_id}) or {}).get("delhivery_pickup_date")
+            ),
+            "updated_at": datetime.utcnow().isoformat(),
+        }},
+    )
+
+    # Keep legacy order-level tracking only for single-seller orders.
+    if len(all_seller_ids) == 1:
+        await db.store_orders.update_one(
+            {"_id": order_object_id},
+            {"$set": {
+                "courier": "Delhivery",
+                "tracking_number": waybill,
+                "tracking_url": tracking_url,
+                "delhivery_status": "created",
+                "order_status": "Shipped",
+            }},
+        )
+
     return {
-        "message": "Delhivery shipment created and waybill saved.",
+        "message": "Seller shipment created.",
         "shipment_created": True,
         "delhivery_contacted": True,
+        "seller_id": seller_id,
         "pickup_location": seller_pickup_name,
         "pickup_scheduled": pickup_result.get("status") in {
-            "scheduled", "automatic_pickup_enabled", "already_scheduled"
+            "scheduled",
+            "automatic_pickup_enabled",
+            "already_scheduled",
         },
         "pickup_result": pickup_result,
         "order_id": order_id,
         "waybill": waybill,
-        "courier": "Delhivery",
         "tracking_url": tracking_url,
         "order_status": "Shipped",
     }
-
 
 # ==================== NOTIFICATIONS SYSTEM ====================
 
