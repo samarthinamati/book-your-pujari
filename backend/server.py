@@ -3428,28 +3428,29 @@ async def review_store_return_request(
                 detail="Approved seller address could not be found",
             )
 
-        customer_name = str(
-    (
-        order.get("gift_recipient_name")
-        if order.get("is_gift")
-        else order.get("customer_name")
-    )
-    or order.get("customer_name")
-    or ""
-).strip()
+                customer_name = str(
+            (
+                order.get("gift_recipient_name")
+                if order.get("is_gift")
+                else order.get("customer_name")
+            )
+            or order.get("customer_name")
+            or ""
+        ).strip()
 
-customer_phone = "".join(
-    ch for ch in str(
-        (
-            order.get("gift_recipient_phone")
-            if order.get("is_gift")
-            else order.get("customer_phone")
+        customer_phone = "".join(
+            ch for ch in str(
+                (
+                    order.get("gift_recipient_phone")
+                    if order.get("is_gift")
+                    else order.get("customer_phone")
+                )
+                or order.get("customer_phone")
+                or ""
+            )
+            if ch.isdigit()
         )
-        or order.get("customer_phone")
-        or ""
-    )
-    if ch.isdigit()
-)
+
         customer_address = str(order.get("delivery_address") or "").strip()
         customer_city = str(order.get("city") or "").strip()
         customer_pin = str(order.get("pincode") or "").strip()
@@ -3520,7 +3521,6 @@ customer_phone = "".join(
         # Resolve both states from their six-digit Indian PIN codes.
         customer_state = await _get_state_from_pincode(customer_pin)
         seller_state = await _get_state_from_pincode(seller_pin)
-
         reverse_pickup_details = {
             "customer_pickup": {
                 "name": customer_name,
