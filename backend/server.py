@@ -4744,6 +4744,63 @@ async def _schedule_delhivery_pickup_for_order(
     return result
 
 
+async def _get_state_from_pincode(pincode: str) -> str:
+    """Look up an Indian state using a six-digit PIN code."""
+    pin = "".join(ch for ch in str(pincode or "") if ch.isdigit())
+
+    if len(pin) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail="A valid six-digit pincode is required."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            response = await http.get(
+                f"https://api.postalpincode.in/pincode/{pin}"
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if not isinstance(data, list) or not data:
+            raise ValueError("Invalid pincode lookup response")
+
+        result = data[0]
+
+        if result.get("Status") != "Success":
+            raise HTTPException(
+                status_code=400,
+                detail=f"No state found for pincode {pin}."
+            )
+
+        offices = result.get("PostOffice") or []
+        states = {
+            str(office.get("State") or "").strip()
+            for office in offices
+            if office.get("State")
+        }
+
+        if len(states) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Pincode lookup did not return one clear state."
+            )
+
+        return states.pop()
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning(
+            "Pincode state lookup failed for %s: %s",
+            pin, type(exc).__name__
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Could not verify the state from the pincode. Please try again."
+        )
+
+
 @api_router.post("/store/admin/orders/{order_id}/delhivery-create")
 async def create_delhivery_production_shipment(
     order_id: str,
