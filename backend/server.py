@@ -4007,21 +4007,22 @@ async def verify_store_payment(
         }
     )
 
-        if result.modified_count > 0 and store_order.get("coupon_code"):
+    if result.modified_count > 0 and store_order.get("coupon_code"):
         await db.store_coupons.update_one(
             {"code": store_order["coupon_code"], "is_active": True},
             {"$inc": {"used_count": 1}},
         )
 
     if result.modified_count == 0:
-        # Another verification request may have completed first.
         for reserved_id, reserved_quantity in reserved:
             await db.store_products.update_one(
                 {"_id": reserved_id},
                 {"$inc": {"stock": reserved_quantity}},
             )
 
-        latest_order = await db.store_orders.find_one({"_id": store_order_object_id})
+        latest_order = await db.store_orders.find_one(
+            {"_id": store_order_object_id}
+        )
 
         if latest_order and latest_order.get("payment_status") == "paid":
             return {
@@ -4061,7 +4062,6 @@ async def verify_store_payment(
         "delhivery_automation": delhivery_automation,
         "store_order_id": payload.store_order_id
     }
-
     # ==================== CUSTOMER STORE FEATURES ====================
 
 class StoreCouponCreate(BaseModel):
