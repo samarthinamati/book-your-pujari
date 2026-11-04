@@ -745,7 +745,10 @@ if (checkoutItems.length === 0) return;
     setPlacingOrder(true);
     try {
       const orderPayload: any = {
-        items: cartItems.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
+        items: checkoutItems.map((i) => ({
+        product_id: i.product.id,
+        quantity: i.quantity,
+    })),
         payment_method: paymentMethod,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
