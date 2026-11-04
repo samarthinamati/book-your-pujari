@@ -1380,26 +1380,32 @@ setShowCart(false);
     </View>
   ))
 )}
-              {/* 🎁 Gift Store & Delivery Options */}
-              <TouchableOpacity style={styles.giftToggle} onPress={() => setIsGift(!isGift)}>
-                <Text style={{ fontWeight: 'bold', color: '#B45309' }}>{isGift ? '☑' : '☐'} {t('giftOption')}</Text>
-              </TouchableOpacity>
-
-              {isGift && (
-                <View style={styles.giftBox}>
-                  <TextInput style={styles.input} placeholder="Recipient Name" value={giftRecipientName} onChangeText={setGiftRecipientName} />
-                  <TextInput style={styles.input} placeholder="Recipient Phone" value={giftRecipientPhone} onChangeText={setGiftRecipientPhone} keyboardType="phone-pad" />
-                  <TextInput style={styles.input} placeholder="Gift Delivery Address" value={giftAddress} onChangeText={setGiftAddress} />
-                  <TextInput style={styles.input} placeholder="City" value={giftCity} onChangeText={setGiftCity} />
-                  <TextInput style={styles.input} placeholder="6-digit PIN Code" value={giftPin} onChangeText={setGiftPin} maxLength={6} keyboardType="number-pad" />
-                  <TextInput style={styles.input} placeholder="Gift Message on Card" value={giftMessage} onChangeText={setGiftMessage} />
-                </View>
-              )}
-   </>
-    )}    
-            
-      {!buyNowProduct && (
+    {!buyNowProduct && (
   <>
+    {/* 🎁 Gift Store & Delivery Options */}
+    <TouchableOpacity
+      style={styles.giftToggle}
+      onPress={() => setIsGift(!isGift)}
+    >
+      <Text style={{ fontWeight: 'bold', color: '#B45309' }}>
+        {isGift ? '☑' : '☐'} {t('giftOption')}
+      </Text>
+    </TouchableOpacity>
+
+    {isGift && (
+      <View style={styles.giftBox}>
+        <TextInput style={styles.input} placeholder="Recipient Name" value={giftRecipientName} onChangeText={setGiftRecipientName} />
+        <TextInput style={styles.input} placeholder="Recipient Phone" value={giftRecipientPhone} onChangeText={setGiftRecipientPhone} keyboardType="phone-pad" />
+        <TextInput style={styles.input} placeholder="Gift Delivery Address" value={giftAddress} onChangeText={setGiftAddress} />
+        <TextInput style={styles.input} placeholder="City" value={giftCity} onChangeText={setGiftCity} />
+        <TextInput style={styles.input} placeholder="6-digit PIN Code" value={giftPin} onChangeText={setGiftPin} maxLength={6} keyboardType="number-pad" />
+        <TextInput style={styles.input} placeholder="Gift Message on Card" value={giftMessage} onChangeText={setGiftMessage} />
+      </View>
+    )}
+  </>
+)}
+
+{/* 🏷️ Coupons and Discounts */}
               {/* 🏷️ Coupons and Discounts */}
               <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                 <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode}onChangeText={(value) => {
