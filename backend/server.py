@@ -3210,29 +3210,24 @@ async def create_store_return_request(
             detail="Delivery date is unavailable for this order",
         )
 
-    try:
-    if isinstance(delivered_at, str):
-        delivered_date = datetime.fromisoformat(
-            delivered_at.replace("Z", "+00:00")
-        )
-    else:
-        delivered_date = delivered_at
+        try:
+        if isinstance(delivered_at, str):
+            delivered_date = datetime.fromisoformat(
+                delivered_at.replace("Z", "+00:00")
+            )
+        else:
+            delivered_date = delivered_at
 
-    if delivered_date.tzinfo is not None:
-        delivered_date = delivered_date.astimezone(
-            timezone.utc
-        ).replace(tzinfo=None)
+        if delivered_date.tzinfo is not None:
+            delivered_date = delivered_date.astimezone(
+                timezone.utc
+            ).replace(tzinfo=None)
 
-except Exception:
-    raise HTTPException(
-        status_code=400,
-        detail="Invalid delivery date",
-    )
+    except Exception:
         raise HTTPException(
             status_code=400,
             detail="Invalid delivery date",
         )
-
     if datetime.utcnow() > delivered_date + timedelta(days=7):
         raise HTTPException(
             status_code=400,
