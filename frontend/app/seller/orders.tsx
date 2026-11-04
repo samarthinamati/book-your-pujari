@@ -833,7 +833,7 @@ const confirmMarkReady = async () => {
                     color="#FFFFFF"
                   />
                   <Text style={styles.printLabelText}>
-                    Print Shipping Label
+                    Print Parcel Address Slip
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
