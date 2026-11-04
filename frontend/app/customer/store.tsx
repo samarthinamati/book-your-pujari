@@ -792,6 +792,10 @@ const checkoutTotal =
   checkoutShippingFee +
   checkoutPlatformFee;
 
+const checkoutShippingReady = buyNowProduct
+  ? buyNowShippingEstimate !== null && !buyNowEstimateLoading
+  : shippingEstimate !== null && !shippingEstimateLoading;
+
 const itemCount = cartItems.reduce(
   (sum, item) => sum + item.quantity,
   0
