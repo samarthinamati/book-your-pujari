@@ -1463,16 +1463,22 @@ setShowCart(false);
   ) : null}
 </View>
 
-              <TouchableOpacity
+             <TouchableOpacity
   style={[
     styles.checkoutBtn,
-    (placingOrder || shippingEstimate === null || shippingEstimateLoading) && { opacity: 0.5 },
+    (placingOrder || !checkoutShippingReady) && { opacity: 0.5 },
   ]}
-  disabled={placingOrder || shippingEstimate === null || shippingEstimateLoading}
+  disabled={placingOrder || !checkoutShippingReady}
   onPress={placeOrder}
 >
-                {placingOrder ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Confirm & Pay ₹{total.toFixed(2)}</Text>}
-              </TouchableOpacity>
+  {placingOrder ? (
+    <ActivityIndicator color="#FFF" />
+  ) : (
+    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+      {paymentMethod === 'cod' ? 'Place COD Order' : 'Confirm & Pay'} ₹{checkoutTotal.toFixed(2)}
+    </Text>
+  )}
+</TouchableOpacity>
             </ScrollView>
           </SafeAreaView>
         </Modal>
