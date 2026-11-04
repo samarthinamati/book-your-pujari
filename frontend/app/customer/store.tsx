@@ -787,12 +787,19 @@ if (checkoutItems.length === 0) return;
       const storeOrderId = getOrderId(orderRes);
 
       if (paymentMethod === 'cod') {
-        setCart({});
-        setShowCart(false);
-        Alert.alert('Order Placed', `Order ID: ${storeOrderId}\nPay ₹${total.toFixed(2)} on delivery.`);
-        return;
-      }
+  if (!buyNowProduct) {
+    setCart({});
+  }
 
+  setBuyNowProduct(null);
+  setShowCart(false);
+
+  Alert.alert(
+    'Order Placed',
+    `Order ID: ${storeOrderId}\nPay ₹${checkoutTotal.toFixed(2)} on delivery.`
+  );
+  return;
+}
       const payOrder = await apiClient.post('/store/payment/create-order', { store_order_id: storeOrderId });
       const payRes = await openRazorpayCheckout({
         key: payOrder.key_id,
