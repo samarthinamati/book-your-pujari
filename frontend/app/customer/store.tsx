@@ -732,7 +732,11 @@ const updateQuantity = (product: Product, change: number) => {
   };
 
   const placeOrder = async () => {
-    if (cartItems.length === 0) return;
+    const checkoutItems = buyNowProduct
+  ? [{ product: buyNowProduct, quantity: 1 }]
+  : cartItems;
+
+if (checkoutItems.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim() || !address.trim() || !city.trim() || !pincode.trim()) {
       Alert.alert('Missing Details', 'Please fill in all delivery details.');
       return;
