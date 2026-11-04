@@ -3323,8 +3323,14 @@ async def get_store_return_requests(
     result = []
 
     for request in requests:
-        request["id"] = str(request.pop("_id"))
-        result.append(request)
+request["id"] = str(request.pop("_id"))
+
+request.setdefault("reverse_status", "not_started")
+request.setdefault("reverse_waybill", "")
+request.setdefault("reverse_tracking_url", "")
+request.setdefault("reverse_pickup_details", None)
+
+result.append(request)
 
     return result
 
