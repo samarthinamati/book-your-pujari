@@ -795,8 +795,11 @@ if (checkoutItems.length === 0) return;
         razorpay_signature: payRes.razorpay_signature,
       });
 
-      setCart({});
-      setShowCart(false);
+     if (!buyNowProduct) {
+  setCart({});
+}
+setBuyNowProduct(null);
+setShowCart(false);
       Alert.alert('Payment Successful!', `Order #${storeOrderId} placed successfully.`);
     } catch (e: any) {
       Alert.alert('Order Error', e?.message || 'Could not complete order.');
