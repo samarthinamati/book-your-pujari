@@ -292,6 +292,8 @@ export default function CustomerStoreScreen() {
 
   // Orders & Checkout
   const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [returnRequests, setReturnRequests] = useState<StoreReturn[]>([]);
+  const [loadingReturns, setLoadingReturns] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
   // Return Request States
 const [showReturnModal, setShowReturnModal] = useState(false);
