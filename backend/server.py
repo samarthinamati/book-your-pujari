@@ -3316,16 +3316,15 @@ async def get_customer_store_returns(
 
     result = []
 
-   for request in requests:
-    request["id"] = str(request.pop("_id"))
-    request.setdefault("reverse_status", "not_started")
-    request.setdefault("reverse_waybill", "")
-    request.setdefault("reverse_tracking_url", "")
-    request.setdefault("reverse_pickup_details", None)
-    result.append(request)
+    for request in requests:
+        request["id"] = str(request.pop("_id"))
+        request.setdefault("reverse_status", "not_started")
+        request.setdefault("reverse_waybill", "")
+        request.setdefault("reverse_tracking_url", "")
+        request.setdefault("reverse_pickup_details", None)
+        result.append(request)
 
     return result
-
 @api_router.get("/store/returns/requests")
 async def get_store_return_requests(
     user: dict = Depends(get_current_user),
