@@ -1240,7 +1240,14 @@ const updateQuantity = (product: Product, change: number) => {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.checkoutBtn} disabled={placingOrder} onPress={placeOrder}>
+              <TouchableOpacity
+  style={[
+    styles.checkoutBtn,
+    (placingOrder || shippingEstimate === null || shippingEstimateLoading) && { opacity: 0.5 },
+  ]}
+  disabled={placingOrder || shippingEstimate === null || shippingEstimateLoading}
+  onPress={placeOrder}
+>
                 {placingOrder ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Confirm & Pay ₹{total.toFixed(2)}</Text>}
               </TouchableOpacity>
             </ScrollView>
