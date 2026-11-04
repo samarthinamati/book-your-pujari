@@ -3428,11 +3428,28 @@ async def review_store_return_request(
                 detail="Approved seller address could not be found",
             )
 
-        customer_name = str(order.get("customer_name") or "").strip()
-        customer_phone = "".join(
-            ch for ch in str(order.get("customer_phone") or "")
-            if ch.isdigit()
+        customer_name = str(
+    (
+        order.get("gift_recipient_name")
+        if order.get("is_gift")
+        else order.get("customer_name")
+    )
+    or order.get("customer_name")
+    or ""
+).strip()
+
+customer_phone = "".join(
+    ch for ch in str(
+        (
+            order.get("gift_recipient_phone")
+            if order.get("is_gift")
+            else order.get("customer_phone")
         )
+        or order.get("customer_phone")
+        or ""
+    )
+    if ch.isdigit()
+)
         customer_address = str(order.get("delivery_address") or "").strip()
         customer_city = str(order.get("city") or "").strip()
         customer_pin = str(order.get("pincode") or "").strip()
