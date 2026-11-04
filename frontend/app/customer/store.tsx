@@ -269,6 +269,9 @@ export default function CustomerStoreScreen() {
   const [showWishlist, setShowWishlist] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [buyNowProduct, setBuyNowProduct] = useState<Product | null>(null);
+const [buyNowShippingEstimate, setBuyNowShippingEstimate] = useState<number | null>(null);
+const [buyNowLoading, setBuyNowLoading] = useState(false);
 
   // Gift & Coupon States
   const [isGift, setIsGift] = useState(false);
