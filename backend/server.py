@@ -4031,6 +4031,27 @@ async def verify_store_payment(
         "store_order_id": payload.store_order_id
     }
 
+    delhivery_automation = None
+
+    if (
+        result.modified_count > 0
+        and (store_order.get("seller_parcel") or {}).get("ready_for_pickup") is True
+    ):
+        try:
+            delhivery_automation = await _create_delhivery_shipment_for_order(
+                payload.store_order_id
+            )
+        except Exception as exc:
+            logger.exception(
+                "Payment succeeded but Delhivery automation needs review"
+            )
+            delhivery_automation = {
+                "shipment_created": False,
+                "pickup_scheduled": False,
+                "automation_status": "needs_attention",
+                "message": "Payment succeeded. Shipping needs admin review."
+            }
+
 # ==================== CUSTOMER STORE FEATURES ====================
 
 class StoreCouponCreate(BaseModel):
