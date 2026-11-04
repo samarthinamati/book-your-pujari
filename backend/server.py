@@ -3195,14 +3195,14 @@ async def create_store_return_request(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Returns are allowed only after delivery
+     # Returns are allowed only after delivery
     if order.get("order_status") != "Delivered":
         raise HTTPException(
             status_code=400,
             detail="You can request a return only after delivery",
         )
 
-        delivered_at = order.get("delivered_at")
+    delivered_at = order.get("delivered_at")
 
     if not delivered_at:
         raise HTTPException(
