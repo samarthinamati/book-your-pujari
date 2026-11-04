@@ -710,6 +710,23 @@ const total =
   shippingFee +
   platformFee;
 
+  const checkoutSubtotal = buyNowProduct
+  ? Number(buyNowProduct.price)
+  : subtotal;
+
+const checkoutShippingFee = buyNowProduct
+  ? (buyNowShippingEstimate ?? 0)
+  : shippingFee;
+
+const checkoutDiscount = buyNowProduct ? 0 : discountAmount;
+
+const checkoutPlatformFee = Math.round(checkoutSubtotal * 0.02);
+
+const checkoutTotal =
+  Math.max(0, checkoutSubtotal - checkoutDiscount) +
+  checkoutShippingFee +
+  checkoutPlatformFee;
+
 const itemCount = cartItems.reduce(
   (sum, item) => sum + item.quantity,
   0
