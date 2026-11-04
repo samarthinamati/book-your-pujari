@@ -294,6 +294,9 @@ const [submittingReturn, setSubmittingReturn] = useState(false);
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
+  const [shippingEstimate, setShippingEstimate] = useState<number | null>(null);
+const [shippingEstimateLoading, setShippingEstimateLoading] = useState(false);
+const [shippingEstimateError, setShippingEstimateError] = useState('');
 
   // Product Reviews & Ratings States
   const [newRating, setNewRating] = useState(5);
