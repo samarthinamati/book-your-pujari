@@ -3428,7 +3428,7 @@ async def review_store_return_request(
                 detail="Approved seller address could not be found",
             )
 
-                customer_name = str(
+     customer_name = str(
             (
                 order.get("gift_recipient_name")
                 if order.get("is_gift")
