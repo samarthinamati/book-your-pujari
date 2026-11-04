@@ -327,6 +327,63 @@ const [shippingEstimateError, setShippingEstimateError] = useState('');
     loadStoreData();
   }, [loadStoreData]);
 
+  useEffect(() => {
+  let active = true;
+
+  const deliveryPin = (isGift ? giftPin : pincode).trim();
+
+  if (Object.keys(cart).length === 0 || !/^\d{6}$/.test(deliveryPin)) {
+    setShippingEstimate(null);
+    setShippingEstimateError('');
+    setShippingEstimateLoading(false);
+    return;
+  }
+
+  const estimateShipping = async () => {
+    setShippingEstimate(null);
+    setShippingEstimateError('');
+    setShippingEstimateLoading(true);
+
+    try {
+      const response = await apiClient.post('/store/shipping/estimate', {
+        items: Object.values(cart).map(({ product, quantity }) => ({
+          product_id: product.id,
+          quantity,
+        })),
+        delivery_pincode: deliveryPin,
+        payment_method: paymentMethod,
+      });
+
+      if (!active) return;
+
+      const fee = Number(response?.shipping_fee);
+
+      if (!Number.isFinite(fee) || fee < 0) {
+        throw new Error('Delhivery returned an invalid delivery charge.');
+      }
+
+      setShippingEstimate(fee);
+    } catch (error: any) {
+      if (!active) return;
+
+      setShippingEstimate(null);
+      setShippingEstimateError(
+        error?.response?.data?.detail ||
+        error?.message ||
+        'Could not calculate delivery charge. Please try again.'
+      );
+    } finally {
+      if (active) setShippingEstimateLoading(false);
+    }
+  };
+
+  estimateShipping();
+
+  return () => {
+    active = false;
+  };
+}, [cart, pincode, giftPin, isGift, paymentMethod]);
+
   // 1. ❤️ Favourites Toggle
   const toggleFavourite = async (productId: string) => {
     try {
