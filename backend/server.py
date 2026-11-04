@@ -352,40 +352,91 @@ async def require_role(user: dict, roles: List[str]):
         )
 @api_router.post("/store/shipping/estimate")
 async def estimate_store_shipping(
-    payload: DelhiveryShippingEstimateRequest,
+    payload: StoreCartShippingEstimateRequest,
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["customer", "admin"])
 
-    if payload.payment_mode not in {"Pre-paid", "COD"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Payment mode must be Pre-paid or COD"
-        )
+    delivery_pincode = payload.delivery_pincode.strip()
+    if not delivery_pincode.isdigit() or len(delivery_pincode) != 6:
+        raise HTTPException(status_code=400, detail="Enter a valid six-digit delivery PIN code")
 
-    if payload.shipping_mode not in {"E", "S"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Shipping mode must be E (Express) or S (Surface)"
-        )
+    payment_method = payload.payment_method.strip().lower()
+    if payment_method not in {"online", "cod"}:
+        raise HTTPException(status_code=400, detail="Invalid payment method")
+
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    seller_id = None
+    pickup_pincode = ""
+    total_weight_grams = 0
+
+    for item in payload.items:
+        try:
+            product_oid = ObjectId(item.product_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+
+        product = await db.store_products.find_one({
+            "_id": product_oid,
+            "is_available": True,
+        })
+
+        if not product:
+            raise HTTPException(status_code=400, detail="A cart product is unavailable")
+
+        if int(product.get("stock", 0)) < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough stock for {product.get('name', 'product')}",
+            )
+
+        current_seller_id = str(product.get("seller_id", ""))
+        if not current_seller_id:
+            raise HTTPException(status_code=400, detail="Product has no assigned seller")
+
+        seller = await db.seller_applications.find_one({
+            "user_id": current_seller_id,
+            "status": "approved",
+        })
+
+        if not seller:
+            raise HTTPException(status_code=400, detail="Product seller is not approved")
+
+        current_pickup_pincode = str(seller.get("pincode", "")).strip()
+        if not current_pickup_pincode.isdigit() or len(current_pickup_pincode) != 6:
+            raise HTTPException(status_code=400, detail="Seller pickup PIN code is invalid")
+
+        if seller_id is None:
+            seller_id = current_seller_id
+            pickup_pincode = current_pickup_pincode
+        elif seller_id != current_seller_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Please place separate orders for products from different sellers.",
+            )
+
+        item_weight = max(int(product.get("weight_grams", 500)), 1)
+        total_weight_grams += item_weight * item.quantity
 
     shipping_fee = await get_delhivery_shipping_fee(
-        pickup_pincode=payload.pickup_pincode,
-        delivery_pincode=payload.delivery_pincode,
-        weight_grams=payload.weight_grams,
-        payment_mode=payload.payment_mode,
-        shipping_mode=payload.shipping_mode,
+        pickup_pincode=pickup_pincode,
+        delivery_pincode=delivery_pincode,
+        weight_grams=total_weight_grams,
+        payment_mode="COD" if payment_method == "cod" else "Pre-paid",
+        shipping_mode="S",
     )
 
     return {
         "provider": "Delhivery",
         "currency": "INR",
-        "shipping_mode": payload.shipping_mode,
-        "payment_mode": payload.payment_mode,
+        "shipping_mode": "S",
+        "payment_mode": "COD" if payment_method == "cod" else "Pre-paid",
         "shipping_fee": shipping_fee,
+        "weight_grams": total_weight_grams,
         "note": "Estimated charges only. Final courier charges may differ.",
     }
-
 
 @api_router.post("/store/admin/delhivery/connection-test")
 async def test_delhivery_api_connection(
