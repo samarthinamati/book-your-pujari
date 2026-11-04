@@ -73,6 +73,19 @@ type StoreOrder = {
   items?: any[];
 };
 
+type StoreReturn = {
+  id: string;
+  product_name?: string;
+  quantity?: number;
+  reason?: string;
+  status?: string;
+  reverse_status?: string;
+  reverse_waybill?: string;
+  reverse_tracking_url?: string;
+  review_note?: string;
+  created_at?: string;
+};
+
 const BLUE = '#65BDF2';
 const DARK_BLUE = '#42A5E8';
 const GOLD = '#EAF7FF';
