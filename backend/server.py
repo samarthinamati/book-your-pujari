@@ -45,11 +45,12 @@ client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = client.book_your_pujari
 
 
+
 # ==================== DELHIVERY CONFIGURATION ====================
 
 DELHIVERY_API_TOKEN = os.getenv("DELHIVERY_API_TOKEN", "").strip()
 
-# Read-only tracking automation. It never creates shipments or pickup requests.
+# Automatic read-only tracking
 DELHIVERY_AUTO_TRACKING_ENABLED = (
     os.getenv("DELHIVERY_AUTO_TRACKING_ENABLED", "false").strip().lower() == "true"
 )
@@ -60,43 +61,48 @@ DELHIVERY_AUTO_TRACKING_BATCH_SIZE = max(
     1, min(100, int(os.getenv("DELHIVERY_AUTO_TRACKING_BATCH_SIZE", "50")))
 )
 
+# Keep shipment creation disabled
 DELHIVERY_TEST_MODE = (
     os.getenv("DELHIVERY_TEST_MODE", "true").strip().lower() == "true"
 )
-
 DELHIVERY_LIVE_SHIPMENTS_ENABLED = (
     os.getenv("DELHIVERY_LIVE_SHIPMENTS_ENABLED", "false")
     .strip()
     .lower() == "true"
 )
 
+# Existing shipment environment (leave unchanged)
 DELHIVERY_BASE_URL = os.getenv(
     "DELHIVERY_BASE_URL",
     "https://staging-express.delhivery.com"
 ).strip().rstrip("/")
 
-# All Delhivery endpoints use the selected base URL.
+# Separate production tracking environment
+DELHIVERY_TRACKING_BASE_URL = os.getenv(
+    "DELHIVERY_TRACKING_BASE_URL",
+    "https://track.delhivery.com"
+).strip().rstrip("/")
+
 DELHIVERY_WAREHOUSE_URL = (
     f"{DELHIVERY_BASE_URL}/api/backend/clientwarehouse/create/"
 )
-
 DELHIVERY_SHIPMENT_URL = (
     f"{DELHIVERY_BASE_URL}/api/cmu/create.json"
 )
-
 DELHIVERY_TRACKING_URL = (
-    f"{DELHIVERY_BASE_URL}/api/v1/packages/json/"
+    f"{DELHIVERY_TRACKING_BASE_URL}/api/v1/packages/json/"
 )
-
 DELHIVERY_PICKUP_REQUEST_URL = (
     f"{DELHIVERY_BASE_URL}/fm/request/new/"
 )
 
-# Delhivery pickup slot (24-hour HH:MM:SS, India local time).
-# Confirm the allowed pickup window with your Delhivery account contact.
-DELHIVERY_PICKUP_TIME = os.getenv("DELHIVERY_PICKUP_TIME", "12:00:00").strip()
+DELHIVERY_PICKUP_TIME = os.getenv(
+    "DELHIVERY_PICKUP_TIME", "12:00:00"
+).strip()
 
 DELHIVERY_EXISTING_PICKUP_NAME = "PUJARIGO B2C"
+
+# ==================== END DELHIVERY CONFIGURATION ====================
 
 # Razorpay Setup
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_key")
