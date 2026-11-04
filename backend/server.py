@@ -4052,6 +4052,8 @@ async def verify_store_payment(
                 "message": "Payment succeeded. Shipping needs admin review."
             }
 
+"delhivery_automation": delhivery_automation,
+
 # ==================== CUSTOMER STORE FEATURES ====================
 
 class StoreCouponCreate(BaseModel):
