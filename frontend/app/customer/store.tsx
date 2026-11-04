@@ -1395,8 +1395,8 @@ setShowCart(false);
                   <TextInput style={styles.input} placeholder="Gift Message on Card" value={giftMessage} onChangeText={setGiftMessage} />
                 </View>
               )}
-             </>
-            )}    
+   </>
+    )}    
             
       {!buyNowProduct && (
   <>
