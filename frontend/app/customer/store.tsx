@@ -1395,6 +1395,9 @@ setShowCart(false);
                   <TextInput style={styles.input} placeholder="Gift Message on Card" value={giftMessage} onChangeText={setGiftMessage} />
                 </View>
               )}
+             </>
+            )}    
+            
 
               {/* 🏷️ Coupons and Discounts */}
               <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
