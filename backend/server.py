@@ -3328,6 +3328,7 @@ async def get_store_return_requests(
 
     return result
 
+
 @api_router.put("/store/returns/{return_id}/review")
 async def review_store_return_request(
     return_id: str,
@@ -3360,7 +3361,6 @@ async def review_store_return_request(
             detail="Return request not found",
         )
 
-    # Sellers can review only their own products.
     if (
         user.get("role") == "seller"
         and request.get("seller_id") != user["id"]
@@ -3377,26 +3377,185 @@ async def review_store_return_request(
         )
 
     now = datetime.utcnow().isoformat()
+    updates = {
+        "status": payload.status,
+        "review_note": (payload.review_note or "").strip(),
+        "reviewed_at": now,
+        "reviewed_by": user["id"],
+    }
 
-    await db.store_return_requests.update_one(
+    if payload.status == "Approved":
+        try:
+            order_object_id = ObjectId(str(request.get("order_id") or ""))
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="Original order ID is invalid",
+            )
+
+        order = await db.store_orders.find_one({
+            "_id": order_object_id
+        })
+
+        if not order:
+            raise HTTPException(
+                status_code=404,
+                detail="Original store order not found",
+            )
+
+        seller_id = str(request.get("seller_id") or "").strip()
+
+        seller_items = [
+            item for item in order.get("items", [])
+            if str(item.get("seller_id") or "").strip() == seller_id
+            and str(item.get("product_id") or "") == str(request.get("product_id") or "")
+        ]
+
+        if not seller_items:
+            raise HTTPException(
+                status_code=400,
+                detail="The returned product could not be matched to this seller's order",
+            )
+
+        seller_application = await db.seller_applications.find_one({
+            "user_id": seller_id,
+            "status": "approved",
+        })
+
+        if not seller_application:
+            raise HTTPException(
+                status_code=400,
+                detail="Approved seller address could not be found",
+            )
+
+        customer_name = str(order.get("customer_name") or "").strip()
+        customer_phone = "".join(
+            ch for ch in str(order.get("customer_phone") or "")
+            if ch.isdigit()
+        )
+        customer_address = str(order.get("delivery_address") or "").strip()
+        customer_city = str(order.get("city") or "").strip()
+        customer_pin = str(order.get("pincode") or "").strip()
+
+        seller_address = str(
+            seller_application.get("shop_address") or ""
+        ).strip()
+        seller_city = str(seller_application.get("city") or "").strip()
+        seller_pin = str(
+            seller_application.get("pincode") or ""
+        ).strip()
+        seller_name = str(
+            seller_application.get("shop_name")
+            or seller_application.get("owner_name")
+            or ""
+        ).strip()
+
+        seller_pickup_name = str(
+            seller_application.get("delhivery_pickup_name") or ""
+        ).strip()
+
+        required_details = {
+            "customer_name": customer_name,
+            "customer_phone": customer_phone,
+            "customer_address": customer_address,
+            "customer_city": customer_city,
+            "customer_pincode": customer_pin,
+            "seller_name": seller_name,
+            "seller_address": seller_address,
+            "seller_city": seller_city,
+            "seller_pincode": seller_pin,
+            "seller_delhivery_pickup_name": seller_pickup_name,
+        }
+
+        missing = [
+            field for field, value in required_details.items()
+            if not value
+        ]
+
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Reverse pickup details are incomplete.",
+                    "missing_fields": missing,
+                },
+            )
+
+        if len(customer_phone) < 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer phone number is invalid",
+            )
+
+        customer_pin = "".join(
+            ch for ch in customer_pin if ch.isdigit()
+        )
+        seller_pin = "".join(
+            ch for ch in seller_pin if ch.isdigit()
+        )
+
+        if len(customer_pin) != 6 or len(seller_pin) != 6:
+            raise HTTPException(
+                status_code=400,
+                detail="Both customer and seller pincodes must contain six digits",
+            )
+
+        # Resolve both states from their six-digit Indian PIN codes.
+        customer_state = await _get_state_from_pincode(customer_pin)
+        seller_state = await _get_state_from_pincode(seller_pin)
+
+        reverse_pickup_details = {
+            "customer_pickup": {
+                "name": customer_name,
+                "phone": customer_phone[-10:],
+                "address": customer_address,
+                "city": customer_city,
+                "pincode": customer_pin,
+                "state": customer_state,
+                "country": "India",
+            },
+            "seller_return_address": {
+                "name": seller_name,
+                "phone": str(seller_application.get("phone") or ""),
+                "address": seller_address,
+                "city": seller_city,
+                "pincode": seller_pin,
+                "state": seller_state,
+                "country": "India",
+                "pickup_location_name": seller_pickup_name,
+            },
+            "product_name": str(request.get("product_name") or ""),
+            "quantity": int(request.get("quantity") or 1),
+            "prepared_at": now,
+        }
+
+        updates["reverse_pickup_details"] = reverse_pickup_details
+        updates["reverse_status"] = "prepared_waiting_for_live_approval"
+
+    result = await db.store_return_requests.update_one(
         {
             "_id": return_object_id,
             "status": "Pending",
         },
         {
-            "$set": {
-                "status": payload.status,
-                "review_note": (payload.review_note or "").strip(),
-                "reviewed_at": now,
-                "reviewed_by": user["id"],
-            }
+            "$set": updates
         },
     )
+
+    if result.modified_count != 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Return request was already reviewed. Refresh and check its status.",
+        )
 
     return {
         "message": f"Return request {payload.status.lower()} successfully",
         "status": payload.status,
+        "reverse_pickup_prepared": payload.status == "Approved",
+        "delhivery_contacted": False,
+        "shipment_created": False,
     }
+
 
 
 
