@@ -3332,26 +3332,24 @@ async def get_store_return_requests(
 ):
     await require_role(user, ["seller", "admin"])
 
-    if user.get("role") == "admin":
-        query = {}
+    if user["role"] == "admin":
+        requests = await db.store_return_requests.find(
+            {}
+        ).sort("created_at", -1).to_list(200)
     else:
-        query = {"seller_id": user["id"]}
-
-    requests = await db.store_return_requests.find(
-        query
-    ).sort("created_at", -1).to_list(200)
+        requests = await db.store_return_requests.find(
+            {"seller_id": user["id"]}
+        ).sort("created_at", -1).to_list(200)
 
     result = []
 
     for request in requests:
-request["id"] = str(request.pop("_id"))
-
-request.setdefault("reverse_status", "not_started")
-request.setdefault("reverse_waybill", "")
-request.setdefault("reverse_tracking_url", "")
-request.setdefault("reverse_pickup_details", None)
-
-result.append(request)
+        request["id"] = str(request.pop("_id"))
+        request.setdefault("reverse_status", "not_started")
+        request.setdefault("reverse_waybill", "")
+        request.setdefault("reverse_tracking_url", "")
+        request.setdefault("reverse_pickup_details", None)
+        result.append(request)
 
     return result
 
