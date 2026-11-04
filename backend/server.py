@@ -130,6 +130,16 @@ class DelhiveryShippingEstimateRequest(BaseModel):
     payment_mode: str = Field(default="Pre-paid")
     shipping_mode: str = Field(default="E")
 
+class StoreCartShippingEstimateItem(BaseModel):
+    product_id: str
+    quantity: int = Field(..., ge=1, le=50)
+
+
+class StoreCartShippingEstimateRequest(BaseModel):
+    items: List[StoreCartShippingEstimateItem]
+    delivery_pincode: str = Field(..., min_length=6, max_length=6)
+    payment_method: str = Field(default="online")
+
 
 # ==================== DELHIVERY SHIPPING RATE ESTIMATE ====================
 
