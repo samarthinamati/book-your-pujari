@@ -1021,6 +1021,46 @@ const updateQuantity = (product: Product, change: number) => {
         style={styles.closeBtn}
         onPress={() => setShowOrders(false)}
       >
+          {/* My Return Requests */}
+      <View style={{ marginTop: 15 }}>
+        <Text style={styles.sectionHeading}>My Return Requests</Text>
+
+        {loadingReturns ? (
+          <ActivityIndicator size="small" color={DARK_BLUE} />
+        ) : returnRequests.length === 0 ? (
+          <Text style={{ color: '#64748B', padding: 10 }}>
+            No return requests yet.
+          </Text>
+        ) : (
+          returnRequests.map((item) => (
+            <View key={item.id} style={styles.orderCard}>
+              <Text style={{ fontWeight: 'bold' }}>
+                {item.product_name || 'Product'} × {item.quantity || 1}
+              </Text>
+              <Text>Request status: {item.status || 'Pending'}</Text>
+              <Text>Pickup status: {item.reverse_status || 'Not started'}</Text>
+
+              {item.reverse_waybill ? (
+                <Text>Tracking number: {item.reverse_waybill}</Text>
+              ) : null}
+
+              {item.reverse_tracking_url ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(item.reverse_tracking_url!)}
+                >
+                  <Text style={{ color: DARK_BLUE, fontWeight: 'bold' }}>
+                    Track Return
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {item.review_note ? (
+                <Text>Review note: {item.review_note}</Text>
+              ) : null}
+            </View>
+          ))
+        )}
+      </View>
         <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
       </TouchableOpacity>
     </View>
