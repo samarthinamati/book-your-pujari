@@ -656,14 +656,29 @@ const sendChatMessage = async () => {
   }, [products, search, selectedCategory]);
 
   const cartItems = Object.values(cart);
-  const subtotal = cartItems.reduce((sum, item) => sum + Number(item.product.price) * item.quantity, 0);
-  const shippingFee = subtotal > 500 ? 0 : 50;
-  const platformFee = Math.round(subtotal * 0.02);
-  const total = Math.max(0, subtotal - discountAmount) + shippingFee + platformFee;
-  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+ const cartItems = Object.values(cart);
 
-  const updateQuantity = (product: Product, change: number) => {
-    if (appliedCoupon) {
+const subtotal = cartItems.reduce(
+  (sum, item) => sum + Number(item.product.price) * item.quantity,
+  0
+);
+
+const shippingFee = shippingEstimate ?? 0;
+
+const platformFee = Math.round(subtotal * 0.02);
+
+const total =
+  Math.max(0, subtotal - discountAmount) +
+  shippingFee +
+  platformFee;
+
+const itemCount = cartItems.reduce(
+  (sum, item) => sum + item.quantity,
+  0
+);
+
+const updateQuantity = (product: Product, change: number) => {
+  if (appliedCoupon) {
   setAppliedCoupon(null);
   setDiscountAmount(0);
   setCouponCode('');
