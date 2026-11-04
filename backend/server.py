@@ -2994,7 +2994,13 @@ async def create_store_order(
     gift_wrapping_fee = 5.00 if payload.gift_wrapping else 0.00
 
     cod_fee = 10.00 if payment_method == "cod" else 0.00
-    shipping_fee = 0.0 if product_subtotal > 500 else 50.0
+   shipping_fee = await get_delhivery_shipping_fee(
+    pickup_pincode=seller_pickup_pincode,
+    delivery_pincode=delivery_pincode,
+    weight_grams=total_weight_grams,
+    payment_mode="COD" if payment_method == "cod" else "Pre-paid",
+    shipping_mode="S",
+)
     total_amount = round(
         discounted_subtotal
         + platform_fee
