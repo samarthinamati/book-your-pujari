@@ -665,7 +665,7 @@ const confirmMarkReady = async () => {
                     size={20}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.printLabelText}>View Label</Text>
+                  <Text style={styles.printLabelText}>View Parcel Address Slip</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.noticeText}>
