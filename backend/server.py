@@ -3202,7 +3202,7 @@ async def create_store_return_request(
             detail="You can request a return only after delivery",
         )
 
-    delivered_at = order.get("delivered_at")
+        delivered_at = order.get("delivered_at")
 
     if not delivered_at:
         raise HTTPException(
@@ -3210,7 +3210,7 @@ async def create_store_return_request(
             detail="Delivery date is unavailable for this order",
         )
 
-        try:
+    try:
         if isinstance(delivered_at, str):
             delivered_date = datetime.fromisoformat(
                 delivered_at.replace("Z", "+00:00")
@@ -3228,6 +3228,7 @@ async def create_store_return_request(
             status_code=400,
             detail="Invalid delivery date",
         )
+
     if datetime.utcnow() > delivered_date + timedelta(days=7):
         raise HTTPException(
             status_code=400,
