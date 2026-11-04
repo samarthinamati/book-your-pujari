@@ -4025,14 +4025,7 @@ async def verify_store_payment(
             return {"message": "Payment already verified", "payment_status": "paid"}
         raise HTTPException(status_code=409, detail="Could not update payment status")
 
-    return {
-        "message": "Store payment verified successfully",
-        "payment_status": "paid",
-        "delhivery_automation": delhivery_automation,
-        "store_order_id": payload.store_order_id
-    }
-
-    delhivery_automation = None
+       delhivery_automation = None
 
     if (
         result.modified_count > 0
@@ -4042,7 +4035,7 @@ async def verify_store_payment(
             delhivery_automation = await _create_delhivery_shipment_for_order(
                 payload.store_order_id
             )
-        except Exception as exc:
+        except Exception:
             logger.exception(
                 "Payment succeeded but Delhivery automation needs review"
             )
@@ -4053,6 +4046,12 @@ async def verify_store_payment(
                 "message": "Payment succeeded. Shipping needs admin review."
             }
 
+    return {
+        "message": "Store payment verified successfully",
+        "payment_status": "paid",
+        "delhivery_automation": delhivery_automation,
+        "store_order_id": payload.store_order_id
+    }
 # ==================== CUSTOMER STORE FEATURES ====================
 
 class StoreCouponCreate(BaseModel):
