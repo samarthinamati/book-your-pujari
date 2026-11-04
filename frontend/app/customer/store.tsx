@@ -829,7 +829,14 @@ const updateQuantity = (product: Product, change: number) => {
             <Text style={{ fontSize: 20 }}>💬</Text>
             <Text style={styles.quickText}>{t('chat')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => { setShowOrders(true); loadOrders(); }}>
+         <TouchableOpacity
+  style={styles.quickBtn}
+  onPress={() => {
+    setShowOrders(true);
+    loadOrders();
+    loadReturnRequests();
+  }}
+>
             <Text style={{ fontSize: 20 }}>📦</Text>
             <Text style={styles.quickText}>{t('myOrders')}</Text>
           </TouchableOpacity>
