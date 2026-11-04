@@ -4012,8 +4012,7 @@ async def verify_store_payment(
             {"code": store_order["coupon_code"], "is_active": True},
             {"$inc": {"used_count": 1}},
         )
-
-    if result.modified_count == 0:
+            if result.modified_count == 0:
         # Another verification request may have completed first.
         for reserved_id, reserved_quantity in reserved:
             await db.store_products.update_one(
@@ -4025,7 +4024,7 @@ async def verify_store_payment(
             return {"message": "Payment already verified", "payment_status": "paid"}
         raise HTTPException(status_code=409, detail="Could not update payment status")
 
-       delhivery_automation = None
+    delhivery_automation = None
 
     if (
         result.modified_count > 0
@@ -4052,7 +4051,8 @@ async def verify_store_payment(
         "delhivery_automation": delhivery_automation,
         "store_order_id": payload.store_order_id
     }
-# ==================== CUSTOMER STORE FEATURES ====================
+
+    # ==================== CUSTOMER STORE FEATURES ====================
 
 class StoreCouponCreate(BaseModel):
     code: str = Field(..., min_length=3, max_length=40)
