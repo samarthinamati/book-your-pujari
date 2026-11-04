@@ -3304,6 +3304,26 @@ async def create_store_return_request(
         "return_request_id": str(result.inserted_id),
         "status": "Pending",
     }
+@api_router.get("/store/customer/returns")
+async def get_customer_store_returns(
+    user: dict = Depends(get_current_user),
+):
+    await require_role(user, ["customer"])
+
+    requests = await db.store_return_requests.find({
+        "customer_id": user["id"]
+    }).sort("created_at", -1).to_list(200)
+
+    result = []
+
+    for request in requests:
+        request["id"] = str(request.pop("_id"))
+        request.setdefault("reverse_status", "not_started")
+        request.setdefault("reverse_waybill", "")
+        request.setdefault("reverse_tracking_url", "")
+        result.append(request)
+
+    return result
 
 @api_router.get("/store/returns/requests")
 async def get_store_return_requests(
