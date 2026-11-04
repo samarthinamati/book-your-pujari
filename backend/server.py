@@ -3211,15 +3211,23 @@ async def create_store_return_request(
         )
 
     try:
+    if isinstance(delivered_at, str):
         delivered_date = datetime.fromisoformat(
             delivered_at.replace("Z", "+00:00")
         )
+    else:
+        delivered_date = delivered_at
 
-        # Existing timestamps are stored in UTC.
-        if delivered_date.tzinfo is not None:
-            delivered_date = delivered_date.replace(tzinfo=None)
+    if delivered_date.tzinfo is not None:
+        delivered_date = delivered_date.astimezone(
+            timezone.utc
+        ).replace(tzinfo=None)
 
-    except Exception:
+except Exception:
+    raise HTTPException(
+        status_code=400,
+        detail="Invalid delivery date",
+    )
         raise HTTPException(
             status_code=400,
             detail="Invalid delivery date",
