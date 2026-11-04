@@ -3680,7 +3680,9 @@ async def get_seller_store_orders(
 
         
         seller_order = serialize_store_order(order)
-        seller_order["seller_parcel"] = order.get("seller_parcel", {})
+        seller_order["seller_parcel"] = (
+            order.get("seller_parcels") or {}
+        ).get(user["id"], {})
         seller_order["items"] = seller_items
         seller_order["seller_total"] = round(
             sum(float(item.get("line_total", 0)) for item in seller_items),
