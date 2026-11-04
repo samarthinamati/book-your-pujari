@@ -3427,8 +3427,7 @@ async def review_store_return_request(
                 status_code=400,
                 detail="Approved seller address could not be found",
             )
-
-     customer_name = str(
+        customer_name = str(
             (
                 order.get("gift_recipient_name")
                 if order.get("is_gift")
@@ -3459,9 +3458,7 @@ async def review_store_return_request(
             seller_application.get("shop_address") or ""
         ).strip()
         seller_city = str(seller_application.get("city") or "").strip()
-        seller_pin = str(
-            seller_application.get("pincode") or ""
-        ).strip()
+        seller_pin = str(seller_application.get("pincode") or "").strip()
         seller_name = str(
             seller_application.get("shop_name")
             or seller_application.get("owner_name")
@@ -3477,7 +3474,7 @@ async def review_store_return_request(
             "customer_phone": customer_phone,
             "customer_address": customer_address,
             "customer_city": customer_city,
-            "customer_pincode": customer_pin,
+            "customer_pincode": seller_pin,
             "seller_name": seller_name,
             "seller_address": seller_address,
             "seller_city": seller_city,
@@ -3505,12 +3502,8 @@ async def review_store_return_request(
                 detail="Customer phone number is invalid",
             )
 
-        customer_pin = "".join(
-            ch for ch in customer_pin if ch.isdigit()
-        )
-        seller_pin = "".join(
-            ch for ch in seller_pin if ch.isdigit()
-        )
+        customer_pin = "".join(ch for ch in customer_pin if ch.isdigit())
+        seller_pin = "".join(ch for ch in seller_pin if ch.isdigit())
 
         if len(customer_pin) != 6 or len(seller_pin) != 6:
             raise HTTPException(
@@ -3518,10 +3511,10 @@ async def review_store_return_request(
                 detail="Both customer and seller pincodes must contain six digits",
             )
 
-        # Resolve both states from their six-digit Indian PIN codes.
         customer_state = await _get_state_from_pincode(customer_pin)
         seller_state = await _get_state_from_pincode(seller_pin)
-        reverse_pickup_details = {
+
+             reverse_pickup_details = {
             "customer_pickup": {
                 "name": customer_name,
                 "phone": customer_phone[-10:],
