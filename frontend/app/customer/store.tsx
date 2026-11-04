@@ -655,7 +655,6 @@ const sendChatMessage = async () => {
     });
   }, [products, search, selectedCategory]);
 
-  const cartItems = Object.values(cart);
  const cartItems = Object.values(cart);
 
 const subtotal = cartItems.reduce(
