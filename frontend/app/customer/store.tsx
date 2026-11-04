@@ -1398,7 +1398,8 @@ setShowCart(false);
              </>
             )}    
             
-
+       {!buyNowProduct && (
+  <>
               {/* 🏷️ Coupons and Discounts */}
               <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                 <TextInput style={[styles.input, { flex: 1, marginTop: 0 }]} placeholder="Enter Coupon Code" value={couponCode}onChangeText={(value) => {
