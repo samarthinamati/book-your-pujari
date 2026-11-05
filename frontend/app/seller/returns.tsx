@@ -298,7 +298,7 @@ export default function SellerReturnsScreen() {
                   <View style={styles.reverseCard}>
                     <Text style={styles.reverseTitle}>
                       <Ionicons name="cube-outline" size={18} color="#2874F0" />
-                      {' '}Reverse Pickup
+{' '}Reverse Pickup
                     </Text>
 
                     <Text style={styles.reverseText}>
@@ -563,3 +563,4 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+That's all of returns.tsx.
