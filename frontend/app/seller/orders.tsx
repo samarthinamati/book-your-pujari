@@ -1,4 +1,6 @@
 
+
+import { ShipmentPanel } from '@/src/store/components/ShipmentPanel';
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -397,7 +399,7 @@ const confirmMarkReady = async () => {
           <Text style={styles.backText}>Seller Dashboard</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>My Orders</Text>
+<Text style={styles.title}>My Orders</Text>
 
         <Text style={styles.subtitle}>
           Manage your shop orders and prepare parcels for collection.
@@ -447,7 +449,7 @@ const confirmMarkReady = async () => {
                 <View style={styles.orderHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.orderTitle}>
-                      Order #{String(order.id || '').slice(-8) || 'Unknown'}
+                      Order #{String(order.id || '').slice(-6).toUpperCase() || 'Unknown'}
                     </Text>
                     <Text style={styles.orderDate}>
                       {formatDate(order.created_at)}
@@ -462,8 +464,9 @@ const confirmMarkReady = async () => {
                 </View>
 
                 <View style={styles.divider} />
+                <ShipmentPanel orderId={String(order.id)} shipments={(order as any).shipments} sellerId={(order as any).items?.[0]?.seller_id} onChanged={loadOrders} />
 
-                <Text style={styles.sectionLabel}>Your items</Text>
+                <Text style={[styles.sectionLabel, { marginTop: 12 }]}>Your items</Text>
 
                 {(order.items || []).map((item, itemIndex) => (
                   <View
@@ -496,7 +499,7 @@ const confirmMarkReady = async () => {
 
                 {order.payment_status ? (
                   <Text style={styles.detailText}>
-                    Payment: {order.payment_status}
+                    Payment: {(order as any).payment_method === 'cod' && order.payment_status !== 'paid' ? 'Cash on delivery' : order.payment_status}
                   </Text>
                 ) : null}
 
@@ -796,7 +799,7 @@ const confirmMarkReady = async () => {
 
                   {(selectedLabelOrder.items || []).map((item, index) => (
                     <View
-                      key={`${item.name}-${index}`}
+key={`${item.name}-${index}`}
                       style={styles.labelItem}
                     >
                       <Text style={styles.labelItemName}>
