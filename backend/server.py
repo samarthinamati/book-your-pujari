@@ -1,10 +1,10 @@
+
 import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Optional, List
 from bson import ObjectId
@@ -16,7 +16,11 @@ import motor.motor_asyncio
 import razorpay
 import jwt
 import bcrypt
+from pathlib import Path
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+load_dotenv(Path(__file__).parent / ".env")
 
 # Initialize Logging
 logging.basicConfig(
@@ -295,7 +299,7 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        payload = jwt.decode(
+payload = jwt.decode(
             token,
             JWT_SECRET,
             algorithms=[JWT_ALGORITHM]
@@ -382,8 +386,7 @@ async def estimate_store_shipping(
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    seller_id = None
-    pickup_pincode = ""
+    seller_groups: dict = {}
     total_weight_grams = 0
 
     for item in payload.items:
@@ -411,35 +414,44 @@ async def estimate_store_shipping(
             raise HTTPException(status_code=400, detail="Seller pickup PIN code is invalid")
 
         # Require a confirmed seller warehouse before quoting a live shipment.
-        if seller.get("delhivery_pickup_status") != "registered" or seller.get("delhivery_pickup_verified") is not True:
+        if not store_shipping_is_demo() and (seller.get("delhivery_pickup_status") != "registered" or seller.get("delhivery_pickup_verified") is not True):
             raise HTTPException(status_code=409, detail="Seller's Delhivery pickup location is not yet registered and verified")
 
-        if seller_id is None:
-            seller_id = current_seller_id
-            pickup_pincode = current_pickup_pincode
-        elif seller_id != current_seller_id:
-            raise HTTPException(status_code=400, detail="Please place separate orders for products from different sellers.")
-
+        group = seller_groups.setdefault(current_seller_id, {"pickup_pincode": current_pickup_pincode, "weight_grams": 0})
         item_weight = max(int(product.get("weight_grams", 500)), 1)
+        group["weight_grams"] += item_weight * item.quantity
         total_weight_grams += item_weight * item.quantity
 
-    shipping_fee = await get_delhivery_shipping_fee(
-        pickup_pincode=pickup_pincode,
-        delivery_pincode=delivery_pincode,
-        weight_grams=total_weight_grams,
-        payment_mode="COD" if payment_method == "cod" else "Pre-paid",
-        shipping_mode="S",
+    quote = await quote_store_shipping(
+        seller_groups,
+        delivery_pincode,
+        "COD" if payment_method == "cod" else "Pre-paid",
     )
+    shipping_fee = quote["shipping_fee"]
+
+    if store_shipping_is_demo():
+        return {
+            "provider": "demo",
+            "is_demo": True,
+            "currency": "INR",
+            "delivery_pincode": delivery_pincode,
+            "weight_grams": total_weight_grams,
+            "shipping_fee": shipping_fee,
+            "parcels": quote["parcels"],
+            "note": "Demo flat shipping charge per seller parcel. Live courier rates are not active yet.",
+        }
 
     return {
         "provider": "Delhivery",
+        "is_demo": False,
         "currency": "INR",
         "shipping_mode": "S",
         "payment_mode": "COD" if payment_method == "cod" else "Pre-paid",
-        "pickup_pincode": pickup_pincode,
         "delivery_pincode": delivery_pincode,
         "weight_grams": total_weight_grams,
         "shipping_fee": shipping_fee,
+        "return_shipping_estimate": quote["return_shipping_estimate"],
+        "parcels": quote["parcels"],
         "note": "Estimated charges only. Final courier charges may differ.",
     }
 
@@ -485,6 +497,7 @@ async def get_delhivery_shipping_fee(
     weight_grams: int,
     payment_mode: str,
     shipping_mode: str = "S",
+    shipment_status: str = "Delivered",
 ) -> float:
     """Return Delhivery's estimated shipping charge in INR."""
     if not DELHIVERY_API_TOKEN:
@@ -516,7 +529,7 @@ async def get_delhivery_shipping_fee(
         "cgm": int(weight_grams),
         "o_pin": pickup_pincode,
         "d_pin": delivery_pincode,
-        "ss": "Delivered",
+        "ss": shipment_status,
         "pt": payment_mode,
     }
     headers = {
@@ -558,6 +571,65 @@ async def get_delhivery_shipping_fee(
     if not math.isfinite(shipping_fee) or shipping_fee < 0:
         raise HTTPException(status_code=502, detail="Invalid shipping fee returned by Delhivery")
     return round(shipping_fee, 2)
+
+
+# Demo shipping stays on until STORE_SHIPPING_MODE=delhivery is set after account verification.
+STORE_SHIPPING_MODE = os.getenv("STORE_SHIPPING_MODE", "demo").strip().lower()
+STORE_DEMO_SHIPPING_FEE = round(float(os.getenv("STORE_DEMO_SHIPPING_FEE", "60")), 2)
+STORE_PLATFORM_FEE_PERCENT = 2
+DEFAULT_STORE_COMMISSION_PERCENT = 10.0
+
+
+def store_shipping_is_demo() -> bool:
+    return STORE_SHIPPING_MODE != "delhivery"
+
+
+async def get_store_shipping_fee(pickup_pincode: str, delivery_pincode: str, weight_grams: int, payment_mode: str) -> float:
+    if store_shipping_is_demo():
+        return STORE_DEMO_SHIPPING_FEE
+    return await get_delhivery_shipping_fee(
+        pickup_pincode=pickup_pincode,
+        delivery_pincode=delivery_pincode,
+        weight_grams=weight_grams,
+        payment_mode=payment_mode,
+        shipping_mode="S",
+    )
+
+
+async def quote_store_shipping(seller_groups: dict, delivery_pincode: str, payment_mode: str) -> dict:
+    """Quote one parcel per seller; return estimates come from Delhivery only in live-rate mode."""
+    parcels = []
+return_total = 0.0
+    for seller_id, group in seller_groups.items():
+        fee = await get_store_shipping_fee(group["pickup_pincode"], delivery_pincode, group["weight_grams"], payment_mode)
+        parcel = {"seller_id": seller_id, "weight_grams": group["weight_grams"], "shipping_fee": fee, "return_shipping_estimate": None}
+        if not store_shipping_is_demo():
+            try:
+                parcel["return_shipping_estimate"] = await get_delhivery_shipping_fee(
+                    pickup_pincode=delivery_pincode,
+                    delivery_pincode=group["pickup_pincode"],
+                    weight_grams=group["weight_grams"],
+                    payment_mode="Pre-paid",
+                    shipping_mode="S",
+                    shipment_status="DTO",
+                )
+                return_total += parcel["return_shipping_estimate"]
+            except HTTPException:
+                parcel["return_shipping_estimate"] = None
+        parcels.append(parcel)
+    has_return = any(p["return_shipping_estimate"] is not None for p in parcels)
+    return {
+        "shipping_fee": round(sum(p["shipping_fee"] for p in parcels), 2),
+        "return_shipping_estimate": round(return_total, 2) if has_return else None,
+        "parcels": parcels,
+    }
+
+
+async def get_store_commission_percent() -> float:
+    settings = await db.store_settings.find_one({"key": "commission"})
+    if not settings:
+        return DEFAULT_STORE_COMMISSION_PERCENT
+    return float(settings.get("commission_percent", DEFAULT_STORE_COMMISSION_PERCENT))
 
 
 
@@ -827,7 +899,7 @@ async def review_seller_application(
         raise HTTPException(
             status_code=404,
             detail="Seller application not found"
-        )
+ )
    
 
     if application.get("status") != "pending":
@@ -1127,7 +1199,7 @@ async def update_seller_pickup_location(
     ]:
         raise HTTPException(
             status_code=409,
-            detail=(
+ detail=(
                 "A warehouse registration already exists or is in progress. "
                 "Verify its status in Delhivery before trying again."
             ),
@@ -1427,7 +1499,7 @@ async def get_my_saint_profile(
         raise HTTPException(
             status_code=404,
             detail="Profile not found"
-        )
+ )
 
     profile["id"] = str(profile.pop("_id"))
 
@@ -1727,7 +1799,7 @@ async def create_payment_order(
         )
 
     if razorpay_client is None:
-        raise HTTPException(
+raise HTTPException(
             status_code=500,
             detail="Payment service is not configured"
         )
@@ -2027,7 +2099,6 @@ async def admin_analytics(
         "revenue": revenue,
     }
 
-
 @api_router.get("/admin/saints/pending")
 async def admin_pending_saints(
     user: dict = Depends(get_current_user)
@@ -2288,7 +2359,6 @@ async def shutdown_event():
 # ==================== PUJARIGO SAMAGRI STORE ====================
 
 from pydantic import ConfigDict
-from bson import ObjectId
 
 
 class StoreProductCreate(BaseModel):
@@ -2297,12 +2367,14 @@ class StoreProductCreate(BaseModel):
     category: str = Field(default="Puja Samagri", max_length=80)
     price: float = Field(..., gt=0, le=100000)
     image_url: str = Field(default="", max_length=2000)
+    images: List[str] = Field(default=[], max_length=8)
     stock: int = Field(default=0, ge=0, le=100000)
     weight_grams: int = Field(..., gt=0, le=100000)
     is_available: bool = True
     is_gift: bool = False
     is_returnable: bool = False
     tags: List[str] = []
+    seller_id: Optional[str] = Field(default=None, max_length=64)
 
 
 
@@ -2317,14 +2389,16 @@ def serialize_store_product(product: dict) -> dict:
         "tags": product.get("tags", []),
         "price": product.get("price", 0),
         "image_url": product.get("image_url", ""),
-        "is_returnable": product.get("is_returnable", False),
+        "images": list(dict.fromkeys(u for u in [product.get("image_url", ""), *product.get("images", [])] if u)),
+        "name_kn": product.get("name_kn", ""),
+        "description_kn": product.get("description_kn", ""),
         "stock": product.get("stock", 0),
        "weight_grams": product.get("weight_grams", 0),
         "is_available": product.get("is_available", True),
         "seller_id": product.get("seller_id", ""),
         "shop_name": product.get("shop_name", ""),
         "pickup_address": product.get("pickup_address", ""),
-        "pickup_city": product.get("pickup_city", ""),
+"pickup_city": product.get("pickup_city", ""),
         "pickup_pincode": product.get("pickup_pincode", ""),
         "created_at": product.get("created_at", ""),
     }
@@ -2334,10 +2408,65 @@ def serialize_store_product(product: dict) -> dict:
 async def list_store_products():
     products = await db.store_products.find({
         "is_available": True,
-        "stock": {"$gt": 0}
+        "stock": {"$gt": 0},
+        "seller_id": {"$nin": [None, ""]},
     }).sort("created_at", -1).to_list(200)
 
     return [serialize_store_product(p) for p in products]
+
+
+@api_router.get("/store/config")
+async def get_store_config():
+    return {
+        "shipping_is_demo": store_shipping_is_demo(),
+        "demo_shipping_fee": STORE_DEMO_SHIPPING_FEE,
+        "platform_fee_percent": STORE_PLATFORM_FEE_PERCENT,
+        "online_payments_enabled": bool(razorpay_client) and RAZORPAY_KEY_ID != "dummy_key",
+        "return_window_days": 7,
+    }
+
+
+@api_router.get("/store/products/{product_id}")
+async def get_store_product(product_id: str):
+    try:
+        product_oid = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid product ID")
+    product = await db.store_products.find_one({"_id": product_oid, "is_available": True, "seller_id": {"$nin": [None, ""]}})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    data = serialize_store_product(product)
+    reviews = await db.store_product_reviews.find({"product_id": product_id}).to_list(500)
+    ratings = [float(r.get("rating", 0)) for r in reviews if r.get("rating")]
+    data["average_rating"] = round(sum(ratings) / len(ratings), 1) if ratings else 0
+    data["review_count"] = len(ratings)
+    return data
+
+
+class StoreCommissionUpdate(BaseModel):
+    commission_percent: float = Field(..., ge=0, le=50)
+
+
+@api_router.get("/store/admin/settings")
+async def get_store_admin_settings(user: dict = Depends(get_current_user)):
+    await require_role(user, ["admin"])
+    return {
+        "commission_percent": await get_store_commission_percent(),
+        "shipping_is_demo": store_shipping_is_demo(),
+        "demo_shipping_fee": STORE_DEMO_SHIPPING_FEE,
+        "live_shipments_enabled": DELHIVERY_LIVE_SHIPMENTS_ENABLED,
+    }
+
+
+@api_router.put("/store/admin/settings")
+async def update_store_admin_settings(payload: StoreCommissionUpdate, user: dict = Depends(get_current_user)):
+    await require_role(user, ["admin"])
+    await db.store_settings.update_one(
+        {"key": "commission"},
+        {"$set": {"commission_percent": payload.commission_percent, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"commission_percent": payload.commission_percent}
 
 
 @api_router.post("/store/admin/products")
@@ -2347,7 +2476,17 @@ async def create_store_product(
 ):
     await require_role(user, ["admin"])
 
+    seller_id = (payload.seller_id or "").strip()
+    application = await db.seller_applications.find_one({"user_id": seller_id, "status": "approved"}) if seller_id else None
+    if not application:
+        raise HTTPException(status_code=400, detail="Choose an approved seller for this product so it can be shipped.")
+
     product = payload.dict()
+    product["seller_id"] = seller_id
+    product["shop_name"] = application.get("shop_name", "")
+    product["pickup_address"] = application.get("shop_address", "")
+    product["pickup_city"] = application.get("city", "")
+    product["pickup_pincode"] = application.get("pincode", "")
     product["created_at"] = datetime.utcnow().isoformat()
     product["updated_at"] = datetime.utcnow().isoformat()
 
@@ -2365,6 +2504,7 @@ class StoreProductUpdate(BaseModel):
     tags: Optional[List[str]] = None
     price: Optional[float] = Field(default=None, gt=0, le=100000)
     image_url: Optional[str] = Field(default=None, max_length=2000)
+    images: Optional[List[str]] = Field(default=None, max_length=8)
     stock: Optional[int] = Field(default=None, ge=0, le=100000)
     weight_grams: Optional[int] = Field(default=None, gt=0, le=100000)
     is_available: Optional[bool] = None
@@ -2827,6 +2967,8 @@ def serialize_store_order(order: dict) -> dict:
         "gift_wrapping": order.get("gift_wrapping", False),
         "platform_fee": order.get("platform_fee", 0),
         "shipping_fee": order.get("shipping_fee", 0),
+        "shipping_is_demo": order.get("shipping_is_demo", False),
+        "gift_wrapping_fee": order.get("gift_wrapping_fee", 0),
         "cod_fee": order.get("cod_fee", 0),
         "total_amount": order.get("total_amount", 0),
         "payment_method": order.get("payment_method", "online"),
@@ -2841,6 +2983,12 @@ def serialize_store_order(order: dict) -> dict:
         "paid_at": order.get("paid_at", ""),
         "razorpay_order_id": order.get("razorpay_order_id", ""),
         "razorpay_payment_id": order.get("razorpay_payment_id", ""),
+        "commission_percent": order.get("commission_percent", DEFAULT_STORE_COMMISSION_PERCENT),
+        "commission_amount": order.get("commission_amount", 0),
+        "seller_payout_amount": order.get("seller_payout_amount", 0),
+        "shipments": serialize_order_shipments(order),
+        "refund_status": order.get("refund_status"),
+        "refund_due_amount": order.get("refund_due_amount", 0),
     }
 
 
@@ -2850,8 +2998,7 @@ async def create_store_order(
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["customer"])
-
-    if not payload.items:
+if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     payment_method = (payload.payment_method or "online").strip().lower()
@@ -2870,10 +3017,9 @@ async def create_store_order(
         raise HTTPException(status_code=400, detail="Gift delivery city is required")
 
     order_items = []
-    order_seller_id = None
+    seller_groups: dict = {}
     product_subtotal = 0.0
     total_weight_grams = 0
-    seller_pickup_pincode = ""
 
     # Validate all products and calculate subtotal/weight before reserving stock.
     for item in payload.items:
@@ -2918,20 +3064,14 @@ async def create_store_order(
                 detail="The seller must have a valid six-digit pickup PIN code.",
             )
 
-        if order_seller_id is None:
-            order_seller_id = seller_id
-            seller_pickup_pincode = seller_pincode
-        elif order_seller_id != seller_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Please place separate orders for products from different sellers.",
-            )
+        seller_groups.setdefault(seller_id, {"pickup_pincode": seller_pincode, "weight_grams": 0})
 
         unit_price = float(product["price"])
         line_total = round(unit_price * item.quantity, 2)
         product_subtotal += line_total
         item_weight = max(int(product.get("weight_grams", 500)), 1)
         total_weight_grams += item_weight * item.quantity
+        seller_groups[seller_id]["weight_grams"] += item_weight * item.quantity
 
         order_items.append({
             "product_id": str(product["_id"]),
@@ -3007,17 +3147,15 @@ async def create_store_order(
     gift_wrapping_fee = 5.00 if payload.gift_wrapping else 0.00
 
     cod_fee = 10.00 if payment_method == "cod" else 0.00
-    if not seller_pickup_pincode:
-        raise HTTPException(status_code=400, detail="Seller pickup PIN code is missing")
-
-    # Recalculate the courier charge on the server; never trust the app's estimate.
-    shipping_fee = await get_delhivery_shipping_fee(
-        pickup_pincode=seller_pickup_pincode,
-        delivery_pincode=delivery_pincode,
-        weight_grams=total_weight_grams,
-        payment_mode="COD" if payment_method == "cod" else "Pre-paid",
-        shipping_mode="S",
+    # Recalculate courier charges per seller parcel on the server; never trust the app's estimate.
+    shipping_quote = await quote_store_shipping(
+        seller_groups,
+        delivery_pincode,
+        "COD" if payment_method == "cod" else "Pre-paid",
     )
+    shipping_fee = shipping_quote["shipping_fee"]
+    commission_percent = await get_store_commission_percent()
+    commission_amount = round(discounted_subtotal * commission_percent / 100, 2)
     total_amount = round(
         discounted_subtotal
         + platform_fee
@@ -3093,6 +3231,11 @@ async def create_store_order(
         "gift_wrapping": payload.gift_wrapping,
         "platform_fee": platform_fee,
         "shipping_fee": shipping_fee,
+        "shipping_is_demo": store_shipping_is_demo(),
+        "commission_percent": commission_percent,
+        "commission_amount": commission_amount,
+        "seller_payout_amount": round(discounted_subtotal - commission_amount, 2),
+        "seller_payout_status": "pending",
         "gift_wrapping_fee": gift_wrapping_fee,
         "cod_fee": cod_fee,
         "total_amount": total_amount,
@@ -3126,6 +3269,12 @@ async def create_store_order(
             {"_id": coupon["_id"], "is_active": True},
             {"$inc": {"used_count": 1}},
         )
+    if payment_method == "cod":
+        try:
+            await auto_prepare_and_ship_order(str(result.inserted_id))
+        except Exception:
+            logger.exception("COD order placed but shipment automation needs review")
+        order = await db.store_orders.find_one({"_id": result.inserted_id}) or order
     return serialize_store_order(order)
 
 
@@ -3172,6 +3321,18 @@ async def get_my_store_orders(
         result.append(serialized_order)
 
     return result
+
+class StoreReturnRequest(BaseModel):
+    order_id: str
+    product_id: str
+    quantity: int = Field(..., ge=1, le=50)
+    reason: str = Field(..., min_length=5, max_length=500)
+
+
+class StoreReturnReview(BaseModel):
+    status: str
+    review_note: Optional[str] = Field(default="", max_length=500)
+
 
 @api_router.post("/store/returns/request")
 async def create_store_return_request(
@@ -3436,7 +3597,7 @@ async def review_store_return_request(
         seller_items = [
             item for item in order.get("items", [])
             if str(item.get("seller_id") or "").strip() == seller_id
-            and str(item.get("product_id") or "") == str(request.get("product_id") or "")
+and str(item.get("product_id") or "") == str(request.get("product_id") or "")
         ]
 
         if not seller_items:
@@ -3610,16 +3771,7 @@ class StorePaymentVerify(BaseModel):
 
 
 # ==================== ADMIN STORE ORDER TRACKING ====================
-class StoreReturnRequest(BaseModel):
-    order_id: str
-    product_id: str
-    quantity: int = Field(..., ge=1, le=50)
-    reason: str = Field(..., min_length=5, max_length=500)
 
-class StoreReturnReview(BaseModel):
-    status: str
-    review_note: Optional[str] = Field(default="", max_length=500)
-    
 class StoreOrderTrackingUpdate(BaseModel):
     order_status: str
     courier: Optional[str] = "DTDC"
@@ -3639,6 +3791,7 @@ ALLOWED_STORE_ORDER_STATUSES = {
     "Out for Delivery",
     "Delivered",
     "Cancelled",
+    "Returned to Origin",
 }
 
 
@@ -3688,6 +3841,13 @@ async def get_seller_store_orders(
             sum(float(item.get("line_total", 0)) for item in seller_items),
             2,
         )
+        # Sellers only see their own parcel and their own money figures.
+        seller_order["shipments"] = [sh for sh in seller_order.get("shipments", []) if sh.get("seller_id") == user["id"]]
+        seller_commission = round(seller_order["seller_total"] * float(seller_order.get("commission_percent") or 0) / 100, 2)
+        seller_order["commission_amount"] = seller_commission
+        seller_order["seller_payout_amount"] = round(seller_order["seller_total"] - seller_commission, 2)
+        for whole_order_field in ("product_subtotal", "discount_amount", "platform_fee", "shipping_fee", "gift_wrapping_fee", "cod_fee", "total_amount"):
+            seller_order.pop(whole_order_field, None)
 
         # Customer delivery details for the seller.
         seller_order["customer_name"] = order.get("customer_name", "")
@@ -3998,6 +4158,11 @@ async def update_store_order_tracking(
             status_code=404,
             detail="Store order not found"
         )
+    if payload.order_status == "Cancelled" and (existing_order or {}).get("order_status") != "Cancelled":
+        raise HTTPException(
+            status_code=400,
+            detail="Use 'Cancel shipment' on each seller parcel so stock and refunds are handled correctly.",
+        )
 
     updates = {
         "order_status": payload.order_status,
@@ -4032,7 +4197,7 @@ async def get_my_store_order(
         raise HTTPException(
             status_code=400,
             detail="Invalid order ID"
-        )
+ )
 
     order = await db.store_orders.find_one({
         "_id": object_id,
@@ -4239,12 +4404,9 @@ async def verify_store_payment(
 
     delhivery_automation = None
 
-    if (
-        result.modified_count > 0
-        and (store_order.get("seller_parcel") or {}).get("ready_for_pickup") is True
-    ):
+    if result.modified_count > 0:
         try:
-            delhivery_automation = await _create_delhivery_shipment_for_order(
+            delhivery_automation = await auto_prepare_and_ship_order(
                 payload.store_order_id
             )
         except Exception:
@@ -4635,8 +4797,7 @@ async def test_delhivery_shipment(
         )
 
     items = order.get("items", [])
-
-    if not items:
+if not items:
         raise HTTPException(
             status_code=400,
             detail="The order contains no items.",
@@ -5235,7 +5396,7 @@ async def _create_delhivery_shipment_for_order(
         for field in ("length_cm", "width_cm", "height_cm")
     ):
         raise HTTPException(
-            status_code=400,
+status_code=400,
             detail="Seller parcel dimensions must be greater than zero.",
         )
 
@@ -5376,6 +5537,9 @@ async def _create_delhivery_shipment_for_order(
             f"seller_parcels.{seller_id}.tracking_url": tracking_url,
             f"seller_parcels.{seller_id}.delhivery_status": "created",
             f"seller_parcels.{seller_id}.delhivery_created_at": datetime.utcnow().isoformat(),
+            f"seller_parcels.{seller_id}.shipment_status": "Pickup Scheduled",
+            f"seller_parcels.{seller_id}.delhivery_error": "",
+            "has_delhivery_awb": True,
             f"seller_parcels.{seller_id}.delhivery_upload_wbn": str(
                 data.get("upload_wbn") or ""
             ),
@@ -5541,12 +5705,60 @@ async def list_product_reviews(product_id: str):
 
 # ==================== DELHIVERY TRACKING AUTOMATION ====================
 
-async def _fetch_and_save_delhivery_tracking(order: dict) -> dict:
-    """Fetch one waybill's current status and safely persist it."""
-    order_id = str(order.get("_id") or "")
-    waybill = str(order.get("tracking_number") or "").strip()
+def _map_delhivery_status(status_type: str, status_text: str) -> str:
+    text = (status_text or "").lower()
+    st = (status_type or "").upper()
+    if st == "CN" or "cancel" in text:
+        return "Cancelled"
+    if "rto" in text or st == "RT":
+        return "Returned to Origin" if st == "DL" else "RTO In Transit"
+    if st == "DL" or text == "delivered":
+        return "Delivered"
+    if "out for delivery" in text:
+        return "Out for Delivery"
+    if st == "PP" or "manifested" in text or "not picked" in text:
+        return "Pickup Scheduled"
+    if st in {"PU", "IT", "UD", "OT"}:
+        return "In Transit"
+    return status_text or "Pickup Scheduled"
 
-    if not waybill or str(order.get("courier") or "").strip().lower() != "delhivery":
+
+def _order_waybills(order: dict) -> dict:
+    """Map AWB -> seller_id ('' for legacy order-level waybills)."""
+    waybills = {}
+    for seller_id, parcel in (order.get("seller_parcels") or {}).items():
+        awb = str((parcel or {}).get("tracking_number") or "").strip()
+        if awb and (parcel or {}).get("delhivery_status") != "cancelled":
+            waybills[awb] = seller_id
+    legacy = str(order.get("tracking_number") or "").strip()
+    if legacy and legacy not in waybills and str(order.get("courier") or "").lower() == "delhivery":
+        waybills[legacy] = ""
+    return waybills
+
+
+def _aggregate_order_status(order: dict, parcel_statuses: List[str]) -> str:
+    current = str(order.get("order_status") or "Order Placed")
+    active = [s for s in parcel_statuses if s != "Cancelled"]
+    if not parcel_statuses:
+        return current
+    if not active:
+        return "Cancelled"
+    if all(s == "Delivered" for s in active):
+        return "Delivered"
+    if all(s == "Returned to Origin" for s in active):
+        return "Returned to Origin"
+    if any(s == "Out for Delivery" for s in active):
+        return "Out for Delivery"
+    if any(s in {"In Transit", "RTO In Transit", "Delivered", "Returned to Origin"} for s in active):
+        return "Shipped"
+    return current
+
+
+async def _fetch_and_save_delhivery_tracking(order: dict) -> dict:
+    """Fetch real carrier status for every seller parcel AWB in the order and persist it."""
+    order_id = str(order.get("_id") or "")
+    waybills = _order_waybills(order)
+    if not waybills:
         return {"updated": False, "reason": "Delhivery waybill is missing"}
     if not DELHIVERY_API_TOKEN:
         return {"updated": False, "reason": "Delhivery API token is not configured"}
@@ -5555,80 +5767,67 @@ async def _fetch_and_save_delhivery_tracking(order: dict) -> dict:
         async with httpx.AsyncClient(timeout=25.0) as http:
             response = await http.get(
                 DELHIVERY_TRACKING_URL,
-                headers={
-                    "Authorization": f"Token {DELHIVERY_API_TOKEN}",
-                    "Accept": "application/json",
-                },
-                params={"waybill": waybill},
+                headers={"Authorization": f"Token {DELHIVERY_API_TOKEN}", "Accept": "application/json"},
+                params={"waybill": ",".join(waybills.keys())},
             )
         response.raise_for_status()
         tracking_data = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning(
-            "Delhivery tracking request failed for order %s (%s)",
-            order_id, type(exc).__name__,
-        )
+        logger.warning("Delhivery tracking request failed for order %s (%s)", order_id, type(exc).__name__)
         return {"updated": False, "reason": "Carrier tracking request failed"}
 
-    shipment_data = (
-        tracking_data.get("ShipmentData", [])
-        if isinstance(tracking_data, dict) else []
-    )
-    shipment = {}
-    if (
-        isinstance(shipment_data, list)
-        and shipment_data
-        and isinstance(shipment_data[0], dict)
-    ):
-        shipment = shipment_data[0].get("Shipment", {}) or {}
+    shipment_data = tracking_data.get("ShipmentData", []) if isinstance(tracking_data, dict) else []
+    now = datetime.utcnow().isoformat()
+    updates = {"delhivery_last_checked_at": now, "updated_at": now}
+    parcel_statuses = []
+    results = []
 
-    if not isinstance(shipment, dict) or not shipment:
+    for entry in shipment_data if isinstance(shipment_data, list) else []:
+        shipment = (entry or {}).get("Shipment", {}) if isinstance(entry, dict) else {}
+        awb = str(shipment.get("AWB") or "").strip()
+        if not awb and len(waybills) == 1:
+            awb = next(iter(waybills))
+        if awb not in waybills:
+            continue
+        status_info = shipment.get("Status", {}) or {}
+        status_text = str(status_info.get("Status") or "").strip()
+        status_type = str(status_info.get("StatusType") or "").strip().upper()
+        mapped = _map_delhivery_status(status_type, status_text)
+        scans = []
+        scan_details = (shipment.get("Scans") or [])
+        for scan in scan_details[-15:] if isinstance(scan_details, list) else []:
+            detail = (scan or {}).get("ScanDetail", {}) if isinstance(scan, dict) else {}
+            scans.append({
+                "status": str(detail.get("Scan") or "")[:120],
+                "location": str(detail.get("ScannedLocation") or "")[:120],
+                "time": str(detail.get("ScanDateTime") or "")[:40],
+                "instructions": str(detail.get("Instructions") or "")[:200],
+            })
+        seller_id = waybills[awb]
+        prefix = f"seller_parcels.{seller_id}." if seller_id else "delhivery_"
+        updates[f"{prefix}last_status"] = status_text
+        updates[f"{prefix}last_status_type"] = status_type
+        updates[f"{prefix}shipment_status"] = mapped
+        updates[f"{prefix}last_status_at"] = str(status_info.get("StatusDateTime") or now)
+        updates[f"{prefix}scans"] = scans
+        if mapped == "Cancelled" and seller_id:
+            updates[f"{prefix}delhivery_status"] = "cancelled"
+        parcel_statuses.append(mapped)
+        results.append({"waybill": awb, "seller_id": seller_id, "status": mapped, "carrier_status": status_text})
+
+    if not results:
         return {"updated": False, "reason": "No shipment details returned"}
 
-    status_info = shipment.get("Status", {}) or {}
-    status_text = str(status_info.get("Status") or "").strip()
-    status_type = str(status_info.get("StatusType") or "").strip().upper()
-    old_status = str(order.get("order_status") or "Shipped")
-    mapped_status = old_status
-
-    # Do not regress a delivered order if the carrier later returns an older scan.
-    if old_status != "Delivered":
-        if status_type == "DL" or status_text.lower() == "delivered":
-            mapped_status = "Delivered"
-        elif status_type == "UD" and "out for delivery" in status_text.lower():
-            mapped_status = "Out for Delivery"
-        elif status_type in {"PU", "PP", "IT", "OT"}:
-            mapped_status = "Shipped"
-
-    now = datetime.utcnow().isoformat()
-    updates = {
-        "delhivery_last_status": status_text,
-        "delhivery_last_status_type": status_type,
-        "order_status": mapped_status,
-        "delhivery_last_checked_at": now,
-        "updated_at": now,
-    }
+    mapped_status = _aggregate_order_status(order, parcel_statuses)
+    if str(order.get("order_status")) != "Delivered" or mapped_status == "Delivered":
+        updates["order_status"] = mapped_status
     if mapped_status == "Delivered" and not order.get("delivered_at"):
         updates["delivered_at"] = now
+    if len(results) == 1 and not results[0]["seller_id"]:
+        updates["delhivery_last_status"] = results[0]["carrier_status"]
 
-    # Save only bounded, useful tracking details; avoid storing the full carrier payload.
-    scan_container = shipment.get("Scans", {}) or {}
-    scan_details = scan_container.get("ScanDetail", []) if isinstance(scan_container, dict) else []
-    if isinstance(scan_details, list):
-        updates["delhivery_scan_count"] = len(scan_details)
-
-    await db.store_orders.update_one(
-        {"_id": order["_id"], "tracking_number": waybill},
-        {"$set": updates},
-    )
-    return {
-        "updated": True,
-        "order_id": order_id,
-        "tracking_number": waybill,
-        "order_status": mapped_status,
-        "delhivery_status": status_text,
-        "status_type": status_type,
-    }
+    await db.store_orders.update_one({"_id": order["_id"]}, {"$set": updates})
+    return {"updated": True, "order_id": order_id, "order_status": updates.get("order_status", order.get("order_status")), "shipments": results}
 
 
 @api_router.get("/store/orders/{order_id}/delhivery-tracking")
@@ -5650,7 +5849,7 @@ async def refresh_my_delhivery_tracking(
         raise HTTPException(status_code=404, detail="Order not found.")
 
     waybill = str(order.get("tracking_number") or "").strip()
-    if not waybill or str(order.get("courier") or "").strip().lower() != "delhivery":
+    if not _order_waybills(order):
         return {
             "order_id": order_id,
             "tracking_number": waybill,
@@ -5706,9 +5905,11 @@ async def _run_delhivery_tracking_cycle() -> None:
 
     try:
         cursor = db.store_orders.find({
-            "courier": {"$regex": "^delhivery$", "$options": "i"},
-            "tracking_number": {"$nin": [None, ""]},
-            "order_status": {"$nin": ["Delivered", "Cancelled", "Returned"]},
+            "$and": [{"$or": [
+                {"has_delhivery_awb": True},
+                {"courier": {"$regex": "^delhivery$", "$options": "i"}, "tracking_number": {"$nin": [None, ""]}},
+            ]}],
+            "order_status": {"$nin": ["Delivered", "Cancelled", "Returned", "Returned to Origin"]},
             "$or": [
                 {"delhivery_last_checked_at": {"$exists": False}},
                 {"delhivery_last_checked_at": {"$lt": cutoff}},
@@ -5787,4 +5988,268 @@ async def delhivery_config_check(
     }
 
 
+# ==================== DELHIVERY SHIPMENT LIFECYCLE (labels, cancel, auto-create) ====================
+
+# Auto-creation still respects DELHIVERY_TEST_MODE and DELHIVERY_LIVE_SHIPMENTS_ENABLED.
+DELHIVERY_AUTO_CREATE_ON_PAYMENT = os.getenv("DELHIVERY_AUTO_CREATE_ON_PAYMENT", "true").strip().lower() == "true"
+_dims = [float(x) for x in os.getenv("STORE_DEFAULT_PARCEL_CM", "20x15x10").lower().split("x")]
+STORE_DEFAULT_PARCEL_CM = (_dims + [10, 10, 10])[:3]
+DELHIVERY_PACKING_SLIP_URL = f"{DELHIVERY_BASE_URL}/api/p/packing_slip"
+DELHIVERY_EDIT_URL = f"{DELHIVERY_BASE_URL}/api/p/edit"
+
+PUBLIC_PARCEL_FIELDS = (
+    "courier", "tracking_number", "tracking_url", "delhivery_status", "shipment_status",
+    "last_status", "last_status_at", "scans", "label_url", "pickup_request_status",
+    "pickup_date", "delhivery_error", "ready_for_pickup", "weight_grams", "cancelled_at",
+)
+
+
+def serialize_order_shipments(order: dict) -> List[dict]:
+    parcels = order.get("seller_parcels") or {}
+    sellers = {}
+    for item in order.get("items", []):
+        sid = str(item.get("seller_id") or "")
+        if sid and sid not in sellers:
+            sellers[sid] = item.get("shop_name", "")
+    result = []
+    for sid, shop_name in sellers.items():
+        parcel = parcels.get(sid) or {}
+        view = {key: parcel.get(key) for key in PUBLIC_PARCEL_FIELDS if parcel.get(key) not in (None, "")}
+        view.setdefault("delhivery_status", "not_started")
+        result.append({"seller_id": sid, "shop_name": shop_name, **view})
+    return result
+
+
+async def _require_shipment_access(order_id: str, seller_id: str, user: dict) -> dict:
+    if user["role"] != "admin" and not (user["role"] == "seller" and user["id"] == seller_id):
+        raise HTTPException(status_code=403, detail="Unauthorized role access")
+    try:
+        order = await db.store_orders.find_one({"_id": ObjectId(order_id), "items.seller_id": seller_id})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid order ID")
+    if not order:
+        raise HTTPException(status_code=404, detail="Shipment not found for this seller")
+    return order
+
+
+async def auto_prepare_and_ship_order(order_id: str) -> dict:
+    """After payment verification (or COD placement) prepare one parcel per seller and request shipment."""
+    order = await db.store_orders.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        return {"automation_status": "order_not_found"}
+    confirmed = order.get("payment_method") == "cod" or order.get("payment_status") == "paid"
+    if not confirmed:
+        return {"automation_status": "awaiting_payment"}
+
+    weights: dict = {}
+    for item in order.get("items", []):
+        sid = str(item.get("seller_id") or "")
+        weights[sid] = weights.get(sid, 0) + max(int(item.get("weight_grams", 500) or 500), 1) * int(item.get("quantity", 1) or 1)
+
+    now = datetime.utcnow().isoformat()
+    existing = order.get("seller_parcels") or {}
+    sets = {}
+    for sid, grams in weights.items():
+        if sid and not existing.get(sid):
+            length, width, height = STORE_DEFAULT_PARCEL_CM
+            sets[f"seller_parcels.{sid}"] = {
+                "weight_grams": grams, "length_cm": length, "width_cm": width, "height_cm": height,
+                "ready_for_pickup": DELHIVERY_AUTO_CREATE_ON_PAYMENT, "auto_prepared": True,
+                "ready_at": now if DELHIVERY_AUTO_CREATE_ON_PAYMENT else None, "updated_at": now,
+            }
+    if sets:
+        await db.store_orders.update_one({"_id": order["_id"]}, {"$set": sets})
+
+    if not DELHIVERY_AUTO_CREATE_ON_PAYMENT:
+        return {"automation_status": "waiting_for_seller_ready", "shipment_created": False}
+
+    results = []
+    for sid in weights:
+        if not sid:
+            continue
+        try:
+            results.append(await _create_delhivery_shipment_for_order(order_id, seller_id=sid))
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+            parcel = ((await db.store_orders.find_one({"_id": order["_id"]})) or {}).get("seller_parcels", {}).get(sid, {})
+            update = {f"seller_parcels.{sid}.delhivery_error": detail[:300]}
+            if parcel.get("delhivery_status") not in {"creating", "created", "unknown"}:
+                update[f"seller_parcels.{sid}.delhivery_status"] = "needs_attention"
+            await db.store_orders.update_one({"_id": order["_id"]}, {"$set": update})
+            results.append({"seller_id": sid, "shipment_created": False, "automation_status": "needs_attention", "message": detail})
+    return {
+        "automation_status": "processed",
+        "shipment_created": any(r.get("shipment_created") for r in results),
+        "seller_shipments": results,
+    }
+
+
+@api_router.post("/store/shipments/{order_id}/{seller_id}/retry")
+async def retry_seller_shipment(order_id: str, seller_id: str, user: dict = Depends(get_current_user)):
+    await _require_shipment_access(order_id, seller_id, user)
+    result = await _create_delhivery_shipment_for_order(order_id, seller_id=seller_id)
+    automation_status = result.get("automation_status", "")
+    messages = {
+        "test_mode_waiting": "Delhivery TEST MODE is on, so no shipment was created and no AWB was generated.",
+        "live_shipments_disabled": "Live Delhivery shipments are disabled, so no shipment was created.",
+    }
+    result.setdefault("message", messages.get(automation_status, "Delhivery confirmed the shipment." if result.get("shipment_created") else f"Shipment status: {automation_status}"))
+    return result
+
+
+@api_router.get("/store/shipments/{order_id}/{seller_id}/label")
+async def get_seller_shipment_label(order_id: str, seller_id: str, user: dict = Depends(get_current_user)):
+    order = await _require_shipment_access(order_id, seller_id, user)
+    parcel = (order.get("seller_parcels") or {}).get(seller_id) or {}
+    awb = str(parcel.get("tracking_number") or "").strip()
+    if not awb:
+        raise HTTPException(status_code=409, detail="No Delhivery AWB yet. A label is available only after Delhivery confirms the shipment.")
+    if parcel.get("label_url"):
+        return {"waybill": awb, "label_url": parcel["label_url"]}
+    if not DELHIVERY_API_TOKEN:
+        raise HTTPException(status_code=503, detail="DELHIVERY_API_TOKEN is not configured.")
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as http:
+            response = await http.get(
+                DELHIVERY_PACKING_SLIP_URL,
+                headers={"Authorization": f"Token {DELHIVERY_API_TOKEN}", "Accept": "application/json"},
+                params={"wbns": awb, "pdf": "true"},
+            )
+        data = response.json() if response.content else {}
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(status_code=424, detail="Could not fetch the label from Delhivery.")
+    packages = data.get("packages", []) if isinstance(data, dict) else []
+    label_url = str((packages[0] if packages else {}).get("pdf_download_link") or "").strip()
+    if not response.is_success or not label_url:
+        raise HTTPException(status_code=424, detail="Delhivery did not return a shipping label for this AWB.")
+    await db.store_orders.update_one({"_id": order["_id"]}, {"$set": {f"seller_parcels.{seller_id}.label_url": label_url}})
+    return {"waybill": awb, "label_url": label_url}
+
+
+@api_router.post("/store/shipments/{order_id}/{seller_id}/cancel")
+async def cancel_seller_shipment(order_id: str, seller_id: str, user: dict = Depends(get_current_user)):
+    order = await _require_shipment_access(order_id, seller_id, user)
+    parcel = (order.get("seller_parcels") or {}).get(seller_id) or {}
+    awb = str(parcel.get("tracking_number") or "").strip()
+    if parcel.get("shipment_status") in {"Delivered", "Returned to Origin"}:
+        raise HTTPException(status_code=409, detail="Delivered or returned shipments cannot be cancelled.")
+    now = datetime.utcnow().isoformat()
+    if awb:
+        if not DELHIVERY_API_TOKEN:
+            raise HTTPException(status_code=503, detail="DELHIVERY_API_TOKEN is not configured.")
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as http:
+                response = await http.post(
+                    DELHIVERY_EDIT_URL,
+                    headers={"Authorization": f"Token {DELHIVERY_API_TOKEN}", "Accept": "application/json", "Content-Type": "application/json"},
+                    json={"waybill": awb, "cancellation": "true"},
+                )
+            data = response.json() if response.content else {}
+        except (httpx.HTTPError, ValueError):
+            raise HTTPException(status_code=424, detail="Could not reach Delhivery to cancel the shipment.")
+        remark = str(data.get("remark") or data.get("message") or "") if isinstance(data, dict) else ""
+        if not response.is_success or not (data.get("status") is True or "cancel" in remark.lower()):
+            raise HTTPException(status_code=424, detail=f"Delhivery did not confirm cancellation. {remark}".strip())
+    claimed = await db.store_orders.update_one(
+        {"_id": order["_id"], f"seller_parcels.{seller_id}.delhivery_status": {"$ne": "cancelled"}},
+        {"$set": {
+            f"seller_parcels.{seller_id}.delhivery_status": "cancelled",
+            f"seller_parcels.{seller_id}.shipment_status": "Cancelled",
+            f"seller_parcels.{seller_id}.ready_for_pickup": False,
+            f"seller_parcels.{seller_id}.cancelled_at": now,
+            "updated_at": now,
+        }},
+    )
+    if claimed.modified_count == 0:
+        raise HTTPException(status_code=409, detail="This shipment is already cancelled.")
+
+    # Stock was reserved for confirmed orders only, so return it once per cancelled parcel.
+    seller_items = [i for i in order.get("items", []) if str(i.get("seller_id")) == seller_id]
+    stock_restored = False
+    if order.get("payment_method") == "cod" or order.get("payment_status") == "paid":
+        for item in seller_items:
+            try:
+                await db.store_products.update_one(
+                    {"_id": ObjectId(item["product_id"])},
+                    {"$inc": {"stock": int(item.get("quantity", 0))}, "$set": {"is_available": True}},
+                )
+                stock_restored = True
+            except Exception:
+                logger.warning("Could not restore stock for product %s", item.get("product_id"))
+
+    latest = await db.store_orders.find_one({"_id": order["_id"]})
+    statuses = [(p or {}).get("shipment_status", "") for p in (latest.get("seller_parcels") or {}).values()]
+    all_cancelled = bool(statuses) and all(st == "Cancelled" for st in statuses)
+    refund_status = None
+    order_updates = {f"seller_parcels.{seller_id}.stock_restored": stock_restored}
+    if all_cancelled:
+        order_updates["order_status"] = "Cancelled"
+    if latest.get("payment_status") == "paid":
+        # No automatic Razorpay refund is issued; an admin must process and confirm it.
+        refund_status = "pending_admin_action"
+        already_refunded = latest.get("refund_status") == "refunded"
+        previous_due = 0.0 if already_refunded else float(latest.get("refund_due_amount", 0))
+        refund_due = round(previous_due + sum(float(i.get("line_total", 0)) for i in seller_items), 2)
+        if all_cancelled and not already_refunded and not latest.get("razorpay_refund_id"):
+            refund_due = float(latest.get("total_amount", refund_due))
+        order_updates.update({"refund_status": refund_status, "refund_due_amount": refund_due})
+    await db.store_orders.update_one({"_id": order["_id"]}, {"$set": order_updates})
+
+    message = "Shipment cancelled." + (" Stock returned to inventory." if stock_restored else "")
+    if refund_status:
+        message += " Refund is PENDING: no money has been refunded yet; an admin must process it in Razorpay."
+    return {
+        "cancelled": True,
+        "waybill": awb or None,
+        "delhivery_contacted": bool(awb),
+        "stock_restored": stock_restored,
+        "order_cancelled": all_cancelled,
+        "refund_status": refund_status,
+        "message": message,
+    }
+
+
+@api_router.post("/store/admin/orders/{order_id}/refund")
+async def process_store_order_refund(order_id: str, user: dict = Depends(get_current_user)):
+    """Issue the pending refund through Razorpay; status changes only after Razorpay confirms."""
+    await require_role(user, ["admin"])
+    try:
+        order = await db.store_orders.find_one({"_id": ObjectId(order_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid order ID")
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("refund_status") != "pending_admin_action":
+        raise HTTPException(status_code=409, detail="This order has no pending refund.")
+    payment_id = str(order.get("razorpay_payment_id") or "").strip()
+    amount_paise = int(round(float(order.get("refund_due_amount", 0)) * 100))
+    if not payment_id or amount_paise <= 0 or not razorpay_client:
+        raise HTTPException(status_code=409, detail="Refund cannot be issued: missing Razorpay payment or amount.")
+    claimed = await db.store_orders.update_one(
+        {"_id": order["_id"], "refund_status": "pending_admin_action"},
+        {"$set": {"refund_status": "processing"}},
+    )
+    if claimed.modified_count == 0:
+        raise HTTPException(status_code=409, detail="Refund is already being processed.")
+    try:
+        refund = await asyncio.to_thread(razorpay_client.payment.refund, payment_id, {"amount": amount_paise})
+    except Exception as exc:
+        logger.warning("Razorpay refund rejected for order %s: %r", order_id, exc)
+        await db.store_orders.update_one({"_id": order["_id"]}, {"$set": {"refund_status": "pending_admin_action", "refund_error": repr(exc)[:300]}})
+        raise HTTPException(status_code=424, detail="Razorpay did not accept the refund. Nothing was refunded.")
+    await db.store_orders.update_one({"_id": order["_id"]}, {"$set": {
+        "refund_status": "refunded",
+        "razorpay_refund_id": refund.get("id", ""),
+        "refunded_at": datetime.utcnow().isoformat(),
+        "refund_error": "",
+    }})
+    return {"refund_status": "refunded", "razorpay_refund_id": refund.get("id", ""), "amount": amount_paise / 100}
+
+
 app.include_router(api_router)
+
+
+
+
+
+
