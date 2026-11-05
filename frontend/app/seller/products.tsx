@@ -428,7 +428,7 @@ export default function SellerProductsScreen() {
             style={styles.photoButton}
             onPress={choosePhoto}
             disabled={saving || uploadingImage}
-          >
+>
             <Ionicons name="images-outline" size={21} color="#2874F0" />
             <Text style={styles.photoButtonText}>
               {selectedImageUri || imageUrl
