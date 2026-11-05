@@ -599,7 +599,7 @@ async def get_store_shipping_fee(pickup_pincode: str, delivery_pincode: str, wei
 async def quote_store_shipping(seller_groups: dict, delivery_pincode: str, payment_mode: str) -> dict:
     """Quote one parcel per seller; return estimates come from Delhivery only in live-rate mode."""
     parcels = []
-return_total = 0.0
+    return_total = 0.0
     for seller_id, group in seller_groups.items():
         fee = await get_store_shipping_fee(group["pickup_pincode"], delivery_pincode, group["weight_grams"], payment_mode)
         parcel = {"seller_id": seller_id, "weight_grams": group["weight_grams"], "shipping_fee": fee, "return_shipping_estimate": None}
@@ -1799,7 +1799,7 @@ async def create_payment_order(
         )
 
     if razorpay_client is None:
-raise HTTPException(
+        raise HTTPException(
             status_code=500,
             detail="Payment service is not configured"
         )
@@ -2998,7 +2998,7 @@ async def create_store_order(
     user: dict = Depends(get_current_user),
 ):
     await require_role(user, ["customer"])
-if not payload.items:
+    if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     payment_method = (payload.payment_method or "online").strip().lower()
@@ -4797,7 +4797,7 @@ async def test_delhivery_shipment(
         )
 
     items = order.get("items", [])
-if not items:
+    if not items:
         raise HTTPException(
             status_code=400,
             detail="The order contains no items.",
