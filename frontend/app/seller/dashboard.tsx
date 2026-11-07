@@ -144,7 +144,7 @@ export default function SellerDashboard() {
 
         <TouchableOpacity
           style={styles.actionCard}
-          onPress={() => router.push('/seller/products')}
+          onPress={() => router.push('/seller/Products')}
         >
           <View style={styles.actionIcon}>
             <Ionicons name="pricetags-outline" size={26} color="#2874F0" />
