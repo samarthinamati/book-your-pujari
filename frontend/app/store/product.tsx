@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -17,6 +17,7 @@ import { C, money, useLayout } from '@/src/store/theme';
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const {
     t,
     pName,
@@ -37,16 +38,33 @@ export default function ProductDetails() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setError('Product not found.');
+      return;
+    }
+
+    setProduct(null);
+    setError('');
+    setActive(0);
+    setQty(1);
 
     apiClient
       .get(`/store/products/${id}`)
-      .then(setProduct)
-      .catch((e) => setError(e.message));
+      .then((data) => {
+        if (!data) {
+          setError('Product not found.');
+          return;
+        }
+
+        setProduct(data);
+      })
+      .catch((e) => {
+        setError(e?.message || 'Unable to load product.');
+      });
 
     apiClient
       .get(`/store/products/${id}/reviews`)
-      .then((r) => setReviews(r || []))
+      .then((r) => setReviews(Array.isArray(r) ? r : []))
       .catch(() => setReviews([]));
 
     apiClient
@@ -64,6 +82,14 @@ export default function ProductDetails() {
           text={error}
           testID="product-error"
         />
+
+        <View style={s.errorActions}>
+          <Btn
+            label="Back to Store"
+            icon="arrow-back"
+            onPress={() => router.replace('/store')}
+          />
+        </View>
       </Page>
     );
   }
@@ -76,22 +102,25 @@ export default function ProductDetails() {
     );
   }
 
-  const images = product.images?.length
-    ? product.images
-    : product.image_url
-      ? [product.image_url]
-      : [];
+  const images =
+    Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : product.image_url
+        ? [product.image_url]
+        : [];
 
   const stock = Number(product.stock ?? 0);
 
   const liked = wishlist.includes(product.id);
 
   const rating = Number(
-    product.average_rating || 0
+    product.average_rating ?? product.rating ?? 0
   );
 
   const reviewCount = Number(
-    product.review_count || 0
+    product.review_count ??
+      product.reviews_count ??
+      0
   );
 
   const isPopular =
@@ -100,24 +129,20 @@ export default function ProductDetails() {
   const isLowStock =
     stock > 0 && stock <= 5;
 
-  const tags = useMemo(() => {
-    const raw = product.tags;
+  let tags: string[] = [];
 
-    if (Array.isArray(raw)) {
-      return raw.filter(Boolean);
-    }
-
-    if (typeof raw === 'string') {
-      return raw
-        .split(',')
-        .map((x) => x.trim())
-        .filter(Boolean);
-    }
-
-    return [];
-  }, [product.tags]);
+  if (Array.isArray(product.tags)) {
+    tags = product.tags.filter(Boolean).map(String);
+  } else if (typeof product.tags === 'string') {
+    tags = product.tags
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
 
   const onAdd = () => {
+    if (stock <= 0) return;
+
     addToCart(product, qty);
     setAdded(true);
 
@@ -127,6 +152,8 @@ export default function ProductDetails() {
   };
 
   const onBuyNow = () => {
+    if (stock <= 0) return;
+
     router.push({
       pathname: '/store/checkout',
       params: {
@@ -175,14 +202,16 @@ export default function ProductDetails() {
                   size={48}
                   color={C.muted}
                 />
+
+                <Text style={s.placeholderText}>
+                  No image available
+                </Text>
               </View>
             )}
 
             <Pressable
               testID="product-detail-wishlist-toggle"
-              onPress={() =>
-                toggleWishlist(product.id)
-              }
+              onPress={() => toggleWishlist(product.id)}
               style={s.heart}
             >
               <Ionicons
@@ -225,21 +254,15 @@ export default function ProductDetails() {
                 <Pressable
                   key={`${uri}-${i}`}
                   testID={`product-thumb-${i}`}
-                  onPress={() =>
-                    setActive(i)
-                  }
+                  onPress={() => setActive(i)}
                   style={[
                     s.thumb,
-                    i === active &&
-                      s.thumbActive,
+                    i === active && s.thumbActive,
                   ]}
                 >
                   <Image
                     source={{ uri }}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                    }}
+                    style={s.thumbImage}
                     resizeMode="cover"
                   />
                 </Pressable>
@@ -268,7 +291,7 @@ export default function ProductDetails() {
             {pName(product)}
           </Text>
 
-          {!!product.review_count && (
+          {reviewCount > 0 && (
             <View style={s.ratingRow}>
               <View style={s.ratingBadge}>
                 <Text style={s.ratingBadgeText}>
@@ -277,8 +300,7 @@ export default function ProductDetails() {
               </View>
 
               <Text style={s.ratingCount}>
-                {reviewCount}{' '}
-                {t('reviews')}
+                {reviewCount} {t('reviews')}
               </Text>
             </View>
           )}
@@ -297,18 +319,16 @@ export default function ProductDetails() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.tags}
             >
-              {tags.slice(0, 8).map(
-                (tag, index) => (
-                  <View
-                    key={`${tag}-${index}`}
-                    style={s.tag}
-                  >
-                    <Text style={s.tagText}>
-                      {tag}
-                    </Text>
-                  </View>
-                )
-              )}
+              {tags.slice(0, 8).map((tag, index) => (
+                <View
+                  key={`${tag}-${index}`}
+                  style={s.tag}
+                >
+                  <Text style={s.tagText}>
+                    {tag}
+                  </Text>
+                </View>
+              ))}
             </ScrollView>
           )}
 
@@ -345,6 +365,7 @@ export default function ProductDetails() {
             </Text>
           </View>
 
+          {/* SELLER */}
           {!!product.shop_name && (
             <View style={s.infoLine}>
               <Ionicons
@@ -355,15 +376,14 @@ export default function ProductDetails() {
 
               <Text style={s.meta}>
                 {t('soldBy')}:{' '}
-                <Text
-                  style={s.metaStrong}
-                >
+                <Text style={s.metaStrong}>
                   {product.shop_name}
                 </Text>
               </Text>
             </View>
           )}
 
+          {/* WEIGHT */}
           {!!product.weight_grams && (
             <View style={s.infoLine}>
               <Ionicons
@@ -374,16 +394,14 @@ export default function ProductDetails() {
 
               <Text style={s.meta}>
                 {t('weight')}:{' '}
-                <Text
-                  style={s.metaStrong}
-                >
+                <Text style={s.metaStrong}>
                   {product.weight_grams} g
                 </Text>
               </Text>
             </View>
           )}
 
-          {/* QUANTITY */}
+          {/* QUANTITY + ACTIONS */}
           {stock > 0 && (
             <>
               <Text style={s.meta}>
@@ -393,18 +411,12 @@ export default function ProductDetails() {
               <QtyStepper
                 testID="product-qty"
                 value={qty}
-                max={Math.min(
-                  stock,
-                  50
-                )}
+                max={Math.min(stock, 50)}
                 onChange={(n) =>
-                  setQty(
-                    Math.max(1, n)
-                  )
+                  setQty(Math.max(1, n))
                 }
               />
 
-              {/* ACTIONS */}
               <View style={s.actions}>
                 <Btn
                   testID="product-add-to-cart-button"
@@ -442,9 +454,7 @@ export default function ProductDetails() {
                     color={C.ink}
                   />
 
-                  <Text
-                    style={s.viewCartText}
-                  >
+                  <Text style={s.viewCartText}>
                     Added to cart · View Cart
                   </Text>
 
@@ -468,23 +478,18 @@ export default function ProductDetails() {
               />
 
               <View style={{ flex: 1 }}>
-                <Text
-                  style={s.outStockTitle}
-                >
+                <Text style={s.outStockTitle}>
                   {t('outOfStock')}
                 </Text>
 
-                <Text
-                  style={s.outStockText}
-                >
-                  This product is currently
-                  unavailable.
+                <Text style={s.outStockText}>
+                  This product is currently unavailable.
                 </Text>
               </View>
             </View>
           )}
 
-          {/* PRODUCT DETAILS */}
+          {/* DESCRIPTION */}
           <Card>
             <SectionTitle>
               {t('description')}
@@ -498,7 +503,7 @@ export default function ProductDetails() {
             </Text>
           </Card>
 
-          {/* QUICK INFORMATION */}
+          {/* PRODUCT INFORMATION */}
           <Card>
             <SectionTitle>
               Product Information
@@ -574,7 +579,7 @@ export default function ProductDetails() {
             {t('reviews')}
           </SectionTitle>
 
-          {!!reviewCount && (
+          {reviewCount > 0 && (
             <View style={s.reviewSummary}>
               <Text style={s.reviewBig}>
                 {rating.toFixed(1)}
@@ -585,8 +590,7 @@ export default function ProductDetails() {
               </Text>
 
               <Text style={s.reviewSmall}>
-                {reviewCount}{' '}
-                {t('reviews')}
+                {reviewCount} {t('reviews')}
               </Text>
             </View>
           )}
@@ -597,30 +601,30 @@ export default function ProductDetails() {
             {t('noReviews')}
           </Text>
         ) : (
-          reviews.map((r) => (
-            <View
-              key={r.id}
-              style={s.review}
-            >
-              <Text
-                style={s.metaStrong}
-              >
-                {'★'.repeat(
-                  Number(
-                    r.rating || 0
-                  )
-                )}{' '}
-                {r.customer_name ||
-                  ''}
-              </Text>
+          reviews.map((r, index) => {
+            const reviewRating = Math.max(
+              0,
+              Math.min(5, Number(r.rating ?? 0))
+            );
 
-              {!!r.comment && (
-                <Text style={s.desc}>
-                  {r.comment}
+            return (
+              <View
+                key={r.id ?? `review-${index}`}
+                style={s.review}
+              >
+                <Text style={s.metaStrong}>
+                  {'★'.repeat(reviewRating)}{' '}
+                  {r.customer_name || ''}
                 </Text>
-              )}
-            </View>
-          ))
+
+                {!!r.comment && (
+                  <Text style={s.desc}>
+                    {r.comment}
+                  </Text>
+                )}
+              </View>
+            );
+          })
         )}
       </Card>
     </Page>
@@ -656,12 +660,18 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  placeholderText: {
+    marginTop: 8,
+    color: C.muted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
   heart: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor:
-      'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 999,
     padding: 9,
   },
@@ -701,6 +711,11 @@ const s = StyleSheet.create({
 
   thumbActive: {
     borderColor: C.primary,
+  },
+
+  thumbImage: {
+    width: '100%',
+    height: '100%',
   },
 
   info: {
@@ -933,5 +948,9 @@ const s = StyleSheet.create({
     paddingTop: 10,
     marginTop: 10,
     gap: 4,
+  },
+
+  errorActions: {
+    marginTop: 15,
   },
 });
