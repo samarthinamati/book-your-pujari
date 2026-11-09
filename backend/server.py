@@ -574,7 +574,7 @@ async def get_delhivery_shipping_fee(
 
 
 # Demo shipping stays on until STORE_SHIPPING_MODE=delhivery is set after account verification.
-STORE_SHIPPING_MODE = os.getenv("STORE_SHIPPING_MODE", "demo").strip().lower()
+STORE_SHIPPING_MODE = os.getenv("STORE_SHIPPING_MODE", "delhivery").strip().lower()
 STORE_DEMO_SHIPPING_FEE = round(float(os.getenv("STORE_DEMO_SHIPPING_FEE", "60")), 2)
 STORE_PLATFORM_FEE_PERCENT = 2
 DEFAULT_STORE_COMMISSION_PERCENT = 10.0
