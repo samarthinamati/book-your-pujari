@@ -5,8 +5,23 @@ import { router } from 'expo-router';
 import { Product, useStore } from '../StoreContext';
 import { C, money } from '../theme';
 
-export function ProductCard({ product, width }: { product: Product; width: string }) {
-  const { t, pName, cat, addToCart, wishlist, toggleWishlist } = useStore();
+export function ProductCard({
+  product,
+  width,
+}: {
+  product: Product;
+  width: string;
+}) {
+  const {
+    t,
+    pName,
+    cat,
+    addToCart,
+    setQty,
+    cart,
+    wishlist,
+    toggleWishlist,
+  } = useStore();
 
   const [added, setAdded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -14,15 +29,18 @@ export function ProductCard({ product, width }: { product: Product; width: strin
   const stock = Number(product.stock ?? 0);
   const liked = wishlist.includes(product.id);
 
-  const rating = Number(product.rating ?? 0);
-  const reviewCount = Number(product.review_count ?? product.reviews_count ?? 0);
+  const cartLine = cart[product.id];
+  const cartQty = cartLine?.quantity ?? 0;
+
+  const rating = Number(product.average_rating ?? 0);
+  const reviewCount = Number(product.review_count ?? 0);
 
   const isLowStock = stock > 0 && stock <= 5;
   const isOutOfStock = stock <= 0;
   const isPopular = rating >= 4.5 && reviewCount >= 3;
 
   const onAdd = () => {
-    if (stock <= 0) return;
+    if (isOutOfStock) return;
 
     addToCart(product, 1);
     setAdded(true);
@@ -30,6 +48,16 @@ export function ProductCard({ product, width }: { product: Product; width: strin
     setTimeout(() => {
       setAdded(false);
     }, 1200);
+  };
+
+  const increaseQty = () => {
+    if (isOutOfStock) return;
+
+    setQty(product.id, cartQty + 1);
+  };
+
+  const decreaseQty = () => {
+    setQty(product.id, cartQty - 1);
   };
 
   const openProduct = () => {
@@ -90,7 +118,11 @@ export function ProductCard({ product, width }: { product: Product; width: strin
             {/* Popular badge */}
             {isPopular && (
               <View style={s.popularBadge}>
-                <Ionicons name="flame" size={12} color={C.saffronDark} />
+                <Ionicons
+                  name="flame"
+                  size={12}
+                  color={C.saffronDark}
+                />
                 <Text style={s.popularText}>Popular</Text>
               </View>
             )}
@@ -104,7 +136,9 @@ export function ProductCard({ product, width }: { product: Product; width: strin
 
             {isOutOfStock && (
               <View style={s.outBadge}>
-                <Text style={s.outBadgeText}>{t('outOfStock')}</Text>
+                <Text style={s.outBadgeText}>
+                  {t('outOfStock')}
+                </Text>
               </View>
             )}
           </View>
@@ -125,7 +159,12 @@ export function ProductCard({ product, width }: { product: Product; width: strin
             {rating > 0 && (
               <View style={s.ratingRow}>
                 <View style={s.ratingBadge}>
-                  <Ionicons name="star" size={11} color={C.white} />
+                  <Ionicons
+                    name="star"
+                    size={11}
+                    color={C.white}
+                  />
+
                   <Text style={s.ratingText}>
                     {rating.toFixed(1)}
                   </Text>
@@ -140,9 +179,9 @@ export function ProductCard({ product, width }: { product: Product; width: strin
             )}
 
             {/* Seller */}
-            {!!product.seller_name && (
+            {!!product.shop_name && (
               <Text style={s.seller} numberOfLines={1}>
-                Sold by {product.seller_name}
+                Sold by {product.shop_name}
               </Text>
             )}
 
@@ -153,48 +192,115 @@ export function ProductCard({ product, width }: { product: Product; width: strin
               {money(product.price)}
             </Text>
 
-            {product.weight_grams != null && Number(product.weight_grams) > 0 && (
-              <Text style={s.weight}>
-                {Number(product.weight_grams) >= 1000
-                  ? `${(Number(product.weight_grams) / 1000).toFixed(2)} kg`
-                  : `${Number(product.weight_grams)} g`}
-              </Text>
-            )}
+            {/* Weight */}
+            {product.weight_grams != null &&
+              Number(product.weight_grams) > 0 && (
+                <Text style={s.weight}>
+                  {Number(product.weight_grams) >= 1000
+                    ? `${(
+                        Number(product.weight_grams) / 1000
+                      ).toFixed(2)} kg`
+                    : `${Number(product.weight_grams)} g`}
+                </Text>
+              )}
           </View>
         </Pressable>
 
-        {/* Add to cart */}
-        <Pressable
-          testID={`product-add-to-cart-${product.id}`}
-          disabled={isOutOfStock}
-          onPress={onAdd}
-          style={({ pressed }) => [
-            s.addBtn,
-            isOutOfStock && s.addDisabled,
-            added && s.addedBtn,
-            pressed && !isOutOfStock && { opacity: 0.85 },
-          ]}
-        >
-          <Ionicons
-            name={
-              isOutOfStock
-                ? 'close-circle-outline'
-                : added
+        {/* Cart controls */}
+        {isOutOfStock ? (
+          <View style={[s.addBtn, s.addDisabled]}>
+            <Ionicons
+              name="close-circle-outline"
+              size={17}
+              color={C.white}
+            />
+
+            <Text style={s.addText}>
+              {t('outOfStock')}
+            </Text>
+          </View>
+        ) : cartQty > 0 ? (
+          <View
+            testID={`product-cart-controls-${product.id}`}
+            style={s.quantityBox}
+          >
+            <Pressable
+              testID={`product-decrease-${product.id}`}
+              onPress={decreaseQty}
+              style={({ pressed }) => [
+                s.quantityButton,
+                pressed && { opacity: 0.7 },
+              ]}
+              hitSlop={5}
+            >
+              <Ionicons
+                name="remove"
+                size={18}
+                color={C.ink}
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={openProduct}
+              style={s.quantityMiddle}
+            >
+              <Text style={s.quantityText}>
+                {cartQty}
+              </Text>
+
+              <Text style={s.inCartText}>
+                In cart
+              </Text>
+            </Pressable>
+
+            <Pressable
+              testID={`product-increase-${product.id}`}
+              onPress={increaseQty}
+              style={({ pressed }) => [
+                s.quantityButton,
+                pressed && { opacity: 0.7 },
+              ]}
+              hitSlop={5}
+            >
+              <Ionicons
+                name="add"
+                size={18}
+                color={C.ink}
+              />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            testID={`product-add-to-cart-${product.id}`}
+            disabled={isOutOfStock}
+            onPress={onAdd}
+            style={({ pressed }) => [
+              s.addBtn,
+              isOutOfStock && s.addDisabled,
+              added && s.addedBtn,
+              pressed &&
+                !isOutOfStock && {
+                  opacity: 0.85,
+                },
+            ]}
+          >
+            <Ionicons
+              name={
+                added
                   ? 'checkmark-circle'
                   : 'cart-outline'
-            }
-            size={17}
-            color={C.white}
-          />
+              }
+              size={17}
+              color={C.white}
+            />
 
-          <Text style={s.addText}>
-            {isOutOfStock
-              ? t('outOfStock')
-              : added
+            <Text style={s.addText}>
+              {added
                 ? t('added')
                 : t('addToCart')}
-          </Text>
-        </Pressable>
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -396,5 +502,46 @@ const s = StyleSheet.create({
     color: C.white,
     fontWeight: '800',
     fontSize: 13,
+  },
+
+  quantityBox: {
+    margin: 12,
+    marginTop: 0,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+
+  quantityButton: {
+    width: 46,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.primaryLight,
+  },
+
+  quantityMiddle: {
+    flex: 1,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  quantityText: {
+    color: C.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    lineHeight: 17,
+  },
+
+  inCartText: {
+    color: C.muted,
+    fontSize: 9,
+    fontWeight: '600',
   },
 });
