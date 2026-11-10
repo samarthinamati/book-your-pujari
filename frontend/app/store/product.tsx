@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -9,10 +9,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+
 import { apiClient } from '@/src/api/client';
 import { Product, useStore } from '@/src/store/StoreContext';
-import { Page, Loading, SectionTitle } from '@/src/store/components/Page';
-import { Btn, Card, Notice, QtyStepper } from '@/src/store/components/ui';
+import {
+  Page,
+  Loading,
+  SectionTitle,
+} from '@/src/store/components/Page';
+import {
+  Btn,
+  Card,
+  Notice,
+  QtyStepper,
+} from '@/src/store/components/ui';
+import { ProductCard } from '@/src/store/components/ProductCard';
 import { C, money, useLayout } from '@/src/store/theme';
 
 export default function ProductDetails() {
@@ -32,6 +43,8 @@ export default function ProductDetails() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [recommended, setRecommended] = useState<Product[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [error, setError] = useState('');
   const [active, setActive] = useState(0);
   const [qty, setQty] = useState(1);
@@ -47,7 +60,10 @@ export default function ProductDetails() {
     setError('');
     setActive(0);
     setQty(1);
+    setRecommended([]);
+    setRecentlyViewed([]);
 
+    // Load product
     apiClient
       .get(`/store/products/${id}`)
       .then((data) => {
@@ -59,20 +75,87 @@ export default function ProductDetails() {
         setProduct(data);
       })
       .catch((e) => {
-        setError(e?.message || 'Unable to load product.');
+        setError(
+          e?.message || 'Unable to load product.'
+        );
       });
 
+    // Load reviews
     apiClient
       .get(`/store/products/${id}/reviews`)
-      .then((r) => setReviews(Array.isArray(r) ? r : []))
+      .then((r) =>
+        setReviews(Array.isArray(r) ? r : [])
+      )
       .catch(() => setReviews([]));
 
+    // Save recently viewed
     apiClient
       .post('/store/recently-viewed', {
         product_id: id,
       })
       .catch(() => {});
+
+    // Load recently viewed
+    apiClient
+      .get('/store/recently-viewed')
+      .then((r) => {
+        if (Array.isArray(r)) {
+          setRecentlyViewed(
+            r
+              .filter((p: Product) => String(p.id) !== String(id))
+              .slice(0, 10)
+          );
+        }
+      })
+      .catch(() => {
+        setRecentlyViewed([]);
+      });
+
+    // Load products for recommendations
+    apiClient
+      .get('/store/products')
+      .then((r) => {
+        if (Array.isArray(r)) {
+          setRecommended(
+            r.filter(
+              (p: Product) =>
+                String(p.id) !== String(id)
+            )
+          );
+        }
+      })
+      .catch(() => {
+        setRecommended([]);
+      });
   }, [id]);
+
+  const similarProducts = useMemo(() => {
+    if (!product) return [];
+
+    const sameCategory = recommended.filter(
+      (p) =>
+        p.category &&
+        product.category &&
+        String(p.category).toLowerCase() ===
+          String(product.category).toLowerCase()
+    );
+
+    return sameCategory.slice(0, 10);
+  }, [product, recommended]);
+
+  const popularProducts = useMemo(() => {
+    return [...recommended]
+      .filter(
+        (p) =>
+          Number(p.average_rating ?? 0) >= 4
+      )
+      .sort(
+        (a, b) =>
+          Number(b.average_rating ?? 0) -
+          Number(a.average_rating ?? 0)
+      )
+      .slice(0, 10);
+  }, [recommended]);
 
   if (error) {
     return (
@@ -87,7 +170,9 @@ export default function ProductDetails() {
           <Btn
             label="Back to Store"
             icon="arrow-back"
-            onPress={() => router.replace('/store')}
+            onPress={() =>
+              router.replace('/store')
+            }
           />
         </View>
       </Page>
@@ -103,7 +188,8 @@ export default function ProductDetails() {
   }
 
   const images =
-    Array.isArray(product.images) && product.images.length > 0
+    Array.isArray(product.images) &&
+    product.images.length > 0
       ? product.images
       : product.image_url
         ? [product.image_url]
@@ -114,31 +200,19 @@ export default function ProductDetails() {
   const liked = wishlist.includes(product.id);
 
   const rating = Number(
-    product.average_rating ?? product.rating ?? 0
+    product.average_rating ?? 0
   );
 
   const reviewCount = Number(
-    product.review_count ??
-      product.reviews_count ??
-      0
+    product.review_count ?? 0
   );
 
   const isPopular =
-    rating >= 4.5 && reviewCount >= 3;
+    rating >= 4.5 &&
+    reviewCount >= 3;
 
   const isLowStock =
     stock > 0 && stock <= 5;
-
-  let tags: string[] = [];
-
-  if (Array.isArray(product.tags)) {
-    tags = product.tags.filter(Boolean).map(String);
-  } else if (typeof product.tags === 'string') {
-    tags = product.tags
-      .split(',')
-      .map((x) => x.trim())
-      .filter(Boolean);
-  }
 
   const onAdd = () => {
     if (stock <= 0) return;
@@ -211,7 +285,9 @@ export default function ProductDetails() {
 
             <Pressable
               testID="product-detail-wishlist-toggle"
-              onPress={() => toggleWishlist(product.id)}
+              onPress={() =>
+                toggleWishlist(product.id)
+              }
               style={s.heart}
             >
               <Ionicons
@@ -254,10 +330,13 @@ export default function ProductDetails() {
                 <Pressable
                   key={`${uri}-${i}`}
                   testID={`product-thumb-${i}`}
-                  onPress={() => setActive(i)}
+                  onPress={() =>
+                    setActive(i)
+                  }
                   style={[
                     s.thumb,
-                    i === active && s.thumbActive,
+                    i === active &&
+                      s.thumbActive,
                   ]}
                 >
                   <Image
@@ -311,26 +390,6 @@ export default function ProductDetails() {
           >
             {money(product.price)}
           </Text>
-
-          {/* TAGS */}
-          {tags.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.tags}
-            >
-              {tags.slice(0, 8).map((tag, index) => (
-                <View
-                  key={`${tag}-${index}`}
-                  style={s.tag}
-                >
-                  <Text style={s.tagText}>
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
 
           {/* STOCK + RETURN */}
           <View style={s.badges}>
@@ -411,9 +470,14 @@ export default function ProductDetails() {
               <QtyStepper
                 testID="product-qty"
                 value={qty}
-                max={Math.min(stock, 50)}
+                max={Math.min(
+                  stock,
+                  50
+                )}
                 onChange={(n) =>
-                  setQty(Math.max(1, n))
+                  setQty(
+                    Math.max(1, n)
+                  )
                 }
               />
 
@@ -602,19 +666,33 @@ export default function ProductDetails() {
           </Text>
         ) : (
           reviews.map((r, index) => {
-            const reviewRating = Math.max(
-              0,
-              Math.min(5, Number(r.rating ?? 0))
-            );
+            const reviewRating =
+              Math.max(
+                0,
+                Math.min(
+                  5,
+                  Number(
+                    r.rating ?? 0
+                  )
+                )
+              );
 
             return (
               <View
-                key={r.id ?? `review-${index}`}
+                key={
+                  r.id ??
+                  `review-${index}`
+                }
                 style={s.review}
               >
-                <Text style={s.metaStrong}>
-                  {'★'.repeat(reviewRating)}{' '}
-                  {r.customer_name || ''}
+                <Text
+                  style={s.metaStrong}
+                >
+                  {'★'.repeat(
+                    reviewRating
+                  )}{' '}
+                  {r.customer_name ||
+                    ''}
                 </Text>
 
                 {!!r.comment && (
@@ -627,6 +705,99 @@ export default function ProductDetails() {
           })
         )}
       </Card>
+
+      {/* RECENTLY VIEWED */}
+      {recentlyViewed.length > 0 && (
+        <View style={s.recommendSection}>
+          <SectionTitle>
+            Recently Viewed
+          </SectionTitle>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={
+              s.productRow
+            }
+          >
+            {recentlyViewed.map(
+              (p) => (
+                <View
+                  key={p.id}
+                  style={s.recommendCard}
+                >
+                  <ProductCard
+                    product={p}
+                    width="100%"
+                  />
+                </View>
+              )
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* SIMILAR PRODUCTS */}
+      {similarProducts.length > 0 && (
+        <View style={s.recommendSection}>
+          <SectionTitle>
+            Similar Products
+          </SectionTitle>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={
+              s.productRow
+            }
+          >
+            {similarProducts.map(
+              (p) => (
+                <View
+                  key={p.id}
+                  style={s.recommendCard}
+                >
+                  <ProductCard
+                    product={p}
+                    width="100%"
+                  />
+                </View>
+              )
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* POPULAR PRODUCTS */}
+      {popularProducts.length > 0 && (
+        <View style={s.recommendSection}>
+          <SectionTitle>
+            Popular Products
+          </SectionTitle>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={
+              s.productRow
+            }
+          >
+            {popularProducts.map(
+              (p) => (
+                <View
+                  key={p.id}
+                  style={s.recommendCard}
+                >
+                  <ProductCard
+                    product={p}
+                    width="100%"
+                  />
+                </View>
+              )
+            )}
+          </ScrollView>
+        </View>
+      )}
     </Page>
   );
 }
@@ -645,7 +816,8 @@ const s = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: C.primaryLight,
+    backgroundColor:
+      C.primaryLight,
     maxWidth: 560,
   },
 
@@ -671,7 +843,8 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor:
+      'rgba(255,255,255,0.95)',
     borderRadius: 999,
     padding: 9,
   },
@@ -683,7 +856,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: C.saffronDark,
+    backgroundColor:
+      C.saffronDark,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -706,7 +880,8 @@ const s = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor:
+      'transparent',
   },
 
   thumbActive: {
@@ -727,7 +902,8 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: C.primaryDark,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform:
+      'uppercase',
   },
 
   name: {
@@ -744,7 +920,8 @@ const s = StyleSheet.create({
   },
 
   ratingBadge: {
-    backgroundColor: C.success,
+    backgroundColor:
+      C.success,
     borderRadius: 7,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -768,26 +945,6 @@ const s = StyleSheet.create({
     color: C.ink,
   },
 
-  tags: {
-    gap: 7,
-    paddingVertical: 2,
-  },
-
-  tag: {
-    backgroundColor: C.primaryLight,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#D3ECFB',
-  },
-
-  tagText: {
-    color: C.ink,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
   badges: {
     flexDirection: 'row',
     gap: 8,
@@ -804,12 +961,14 @@ const s = StyleSheet.create({
   },
 
   badgeOk: {
-    backgroundColor: C.successBg,
+    backgroundColor:
+      C.successBg,
     color: C.success,
   },
 
   badgeBad: {
-    backgroundColor: C.dangerBg,
+    backgroundColor:
+      C.dangerBg,
     color: C.danger,
   },
 
@@ -847,7 +1006,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: C.primaryLight,
+    backgroundColor:
+      C.primaryLight,
     borderRadius: 12,
     paddingHorizontal: 13,
     paddingVertical: 10,
@@ -866,7 +1026,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: C.dangerBg,
+    backgroundColor:
+      C.dangerBg,
     borderRadius: 14,
     padding: 13,
     borderWidth: 1,
@@ -948,6 +1109,20 @@ const s = StyleSheet.create({
     paddingTop: 10,
     marginTop: 10,
     gap: 4,
+  },
+
+  recommendSection: {
+    marginTop: 8,
+  },
+
+  productRow: {
+    paddingHorizontal: 2,
+    paddingVertical: 4,
+    gap: 8,
+  },
+
+  recommendCard: {
+    width: 190,
   },
 
   errorActions: {
