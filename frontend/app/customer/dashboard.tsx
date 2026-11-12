@@ -298,6 +298,14 @@ const handleSwitchToSeller = async () => {
       <Text style={styles.bookingOptionSubtitle}>
         Shop puja essentials
       </Text>
+        <TouchableOpacity
+    style={styles.bookingOption}
+    onPress={() => setShowPujariSection(!showPujariSection)}
+    activeOpacity={0.8}
+  >
+  </TouchableOpacity>
+
+</View>
     </View>
     <Ionicons name="arrow-forward" size={20} color="#2874F0" />
   </TouchableOpacity>
