@@ -94,9 +94,13 @@ export const apiClient = {
     });
   },
 
-  delete(endpoint: string) {
+   delete(endpoint: string) {
     return this.request(endpoint, {
       method: 'DELETE',
     });
+  },
+
+  async setAuthToken(token: string) {
+    await storage.secureSet('auth_token', token);
   },
 };
