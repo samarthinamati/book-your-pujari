@@ -255,6 +255,9 @@ class SellerApprovalRequest(BaseModel):
 
 class SellerPickupDaysUpdate(BaseModel):
     pickup_days: List[str]
+
+class AccountModeSwitchRequest(BaseModel):
+    mode: str
 # ==================== AUTHENTICATION ====================
 
 JWT_SECRET = os.environ.get(
