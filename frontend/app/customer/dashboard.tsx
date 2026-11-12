@@ -129,9 +129,7 @@ const handleSwitchToSeller = async () => {
   } catch (error: any) {
     Alert.alert(
       'Unable to switch',
-      error?.response?.data?.detail ||
-        error?.message ||
-        'Your seller account is not approved.'
+      error?.message || 'Your seller account is not approved.'
     );
   }
 };
