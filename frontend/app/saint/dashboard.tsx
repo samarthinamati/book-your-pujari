@@ -789,6 +789,36 @@ export default function SaintDashboard() {
 
             {/* ACTIONS */}
             <View style={styles.actionsCard}>
+            {/* PUJA STORE */}
+<TouchableOpacity
+  style={styles.storeButton}
+  onPress={() => router.push('/customer/store')}
+  activeOpacity={0.8}
+>
+  <View style={styles.storeButtonIcon}>
+    <Ionicons
+      name="cart-outline"
+      size={26}
+      color="#2874F0"
+    />
+  </View>
+
+  <View style={styles.storeButtonText}>
+    <Text style={styles.storeButtonTitle}>
+      Puja Store
+    </Text>
+
+    <Text style={styles.storeButtonSubtitle}>
+      Buy puja items and essentials
+    </Text>
+  </View>
+
+  <Ionicons
+    name="arrow-forward"
+    size={22}
+    color="#2874F0"
+  />
+</TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.actionItem}
