@@ -287,6 +287,7 @@ const handleSwitchToSeller = async () => {
 )}
         
 <View style={styles.bookingOptions}>
+  {/* BOOKING ITEMS */}
   <TouchableOpacity
     style={styles.bookingOption}
     onPress={() => router.push('/customer/store')}
@@ -311,6 +312,7 @@ const handleSwitchToSeller = async () => {
     />
   </TouchableOpacity>
 
+  {/* BOOKING SAINT / PUJARI */}
   <TouchableOpacity
     style={styles.bookingOption}
     onPress={() => setShowPujariSection(!showPujariSection)}
@@ -339,6 +341,7 @@ const handleSwitchToSeller = async () => {
     />
   </TouchableOpacity>
 
+  {/* SWITCH TO SELLER */}
   {sellerStatus.approved && (
     <TouchableOpacity
       style={styles.bookingOption}
@@ -369,7 +372,6 @@ const handleSwitchToSeller = async () => {
     </TouchableOpacity>
   )}
 </View>
-
         {showPujariSection && (
   <>
     <View style={styles.searchSection}>
