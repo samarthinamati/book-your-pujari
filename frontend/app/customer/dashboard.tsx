@@ -293,21 +293,22 @@ const handleSwitchToSeller = async () => {
     activeOpacity={0.8}
   >
     <Ionicons name="cart-outline" size={28} color="#2874F0" />
+
     <View style={styles.bookingOptionText}>
-      <Text style={styles.bookingOptionTitle}>Booking Items</Text>
+      <Text style={styles.bookingOptionTitle}>
+        Booking Items
+      </Text>
+
       <Text style={styles.bookingOptionSubtitle}>
         Shop puja essentials
       </Text>
-        <TouchableOpacity
-    style={styles.bookingOption}
-    onPress={() => setShowPujariSection(!showPujariSection)}
-    activeOpacity={0.8}
-  >
-  </TouchableOpacity>
-
-</View>
     </View>
-    <Ionicons name="arrow-forward" size={20} color="#2874F0" />
+
+    <Ionicons
+      name="arrow-forward"
+      size={20}
+      color="#2874F0"
+    />
   </TouchableOpacity>
 
   <TouchableOpacity
@@ -315,19 +316,58 @@ const handleSwitchToSeller = async () => {
     onPress={() => setShowPujariSection(!showPujariSection)}
     activeOpacity={0.8}
   >
-    <Ionicons name="person-outline" size={28} color="#C45A16" />
+    <Ionicons
+      name="person-outline"
+      size={28}
+      color="#C45A16"
+    />
+
     <View style={styles.bookingOptionText}>
-      <Text style={styles.bookingOptionTitle}>Booking Saint / Pujari</Text>
+      <Text style={styles.bookingOptionTitle}>
+        Booking Saint / Pujari
+      </Text>
+
       <Text style={styles.bookingOptionSubtitle}>
         Find and book your Pujari
       </Text>
     </View>
+
     <Ionicons
       name={showPujariSection ? 'chevron-up' : 'arrow-forward'}
       size={20}
       color="#C45A16"
     />
   </TouchableOpacity>
+
+  {sellerStatus.approved && (
+    <TouchableOpacity
+      style={styles.bookingOption}
+      onPress={handleSwitchToSeller}
+      activeOpacity={0.8}
+    >
+      <Ionicons
+        name="storefront-outline"
+        size={28}
+        color="#2E7D32"
+      />
+
+      <View style={styles.bookingOptionText}>
+        <Text style={styles.bookingOptionTitle}>
+          Switch to Seller
+        </Text>
+
+        <Text style={styles.bookingOptionSubtitle}>
+          Manage your products and seller orders
+        </Text>
+      </View>
+
+      <Ionicons
+        name="arrow-forward"
+        size={20}
+        color="#2E7D32"
+      />
+    </TouchableOpacity>
+  )}
 </View>
 
         {showPujariSection && (
