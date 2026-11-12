@@ -3399,7 +3399,7 @@ async def create_store_order(
 async def get_my_store_orders(
     user: dict = Depends(get_current_user)
 ):
-    await require_role(user, ["customer"])
+    await require_role(user, ["customer", "saint"])
 
     orders = await db.store_orders.find({
         "customer_id": user["id"],
