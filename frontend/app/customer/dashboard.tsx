@@ -93,6 +93,48 @@ useEffect(() => {
     setBanners([]);
   }
 };
+const fetchSellerStatus = async () => {
+  try {
+    const data = await apiClient.get('/auth/seller-status');
+
+    setSellerStatus({
+      has_application: !!data?.has_application,
+      status: data?.status || 'not_applied',
+      approved: !!data?.approved,
+    });
+  } catch (error) {
+    console.log('Failed to load seller status:', error);
+  }
+};
+const handleSwitchToSeller = async () => {
+  try {
+    const response = await apiClient.put('/auth/account-mode', {
+      mode: 'seller',
+    });
+
+    if (response?.token) {
+      await apiClient.setAuthToken(response.token);
+    }
+
+    Alert.alert(
+      'Seller Account',
+      'You have switched to your seller account.',
+      [
+        {
+          text: 'Continue',
+          onPress: () => router.replace('/seller/dashboard'),
+        },
+      ]
+    );
+  } catch (error: any) {
+    Alert.alert(
+      'Unable to switch',
+      error?.response?.data?.detail ||
+        error?.message ||
+        'Your seller account is not approved.'
+    );
+  }
+};
 
   const handleSearch = async () => {
     setLoading(true);
