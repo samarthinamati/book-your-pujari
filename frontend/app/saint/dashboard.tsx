@@ -1961,4 +1961,41 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
   },
+  storeButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#FFFFFF',
+  marginHorizontal: 16,
+  marginBottom: 16,
+  padding: 16,
+  borderRadius: 16,
+  borderWidth: 1,
+  borderColor: '#D9E6FF',
+},
+
+storeButtonIcon: {
+  width: 48,
+  height: 48,
+  borderRadius: 12,
+  backgroundColor: '#EAF2FF',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+storeButtonText: {
+  flex: 1,
+  marginLeft: 12,
+},
+
+storeButtonTitle: {
+  fontSize: 17,
+  fontWeight: 'bold',
+  color: '#172B4D',
+},
+
+storeButtonSubtitle: {
+  fontSize: 12,
+  color: '#667085',
+  marginTop: 4,
+},
 });
