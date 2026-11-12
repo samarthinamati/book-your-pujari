@@ -68,11 +68,11 @@ const [showPujariSection, setShowPujariSection] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
+useEffect(() => {
   fetchSaints();
   fetchBanners();
+  fetchSellerStatus();
 }, []);
-
   const fetchSaints = async () => {
     try {
       const data = await apiClient.get('/saints/search');
