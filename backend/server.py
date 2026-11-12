@@ -4342,7 +4342,7 @@ async def create_store_payment_order(
     payload: StorePaymentCreate,
     user: dict = Depends(get_current_user)
 ):
-   await require_role(user, ["customer", "saint"])
+    await require_role(user, ["customer", "saint"])
 
     try:
         store_order_object_id = ObjectId(payload.store_order_id)
@@ -4400,7 +4400,8 @@ async def verify_store_payment(
     payload: StorePaymentVerify,
     user: dict = Depends(get_current_user)
 ):
-   await require_role(user, ["customer", "saint"])
+    await require_role(user, ["customer", "saint"])
+
     try:
         store_order_object_id = ObjectId(payload.store_order_id)
     except Exception:
