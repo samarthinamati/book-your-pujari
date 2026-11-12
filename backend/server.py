@@ -1532,6 +1532,31 @@ async def switch_account_mode(
             "role": requested_mode,
         },
     }
+
+@api_router.get("/auth/seller-status")
+async def get_seller_status(
+    user: dict = Depends(get_current_user)
+):
+    application = await db.seller_applications.find_one({
+        "user_id": user["id"],
+    })
+
+    if not application:
+        return {
+            "has_application": False,
+            "status": "not_applied",
+            "approved": False,
+        }
+
+    status_value = application.get("status", "pending")
+
+    return {
+        "has_application": True,
+        "status": status_value,
+        "approved": status_value == "approved",
+        "shop_name": application.get("shop_name", ""),
+        "owner_name": application.get("owner_name", ""),
+    }
 # ==================== SAINT ROUTES ====================
 
 @api_router.post("/saints/profile")
