@@ -3111,7 +3111,7 @@ async def create_store_order(
     payload: StoreOrderCreate,
     user: dict = Depends(get_current_user),
 ):
-    await require_role(user, ["customer"])
+    await require_role(user, ["customer", "saint"])
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
