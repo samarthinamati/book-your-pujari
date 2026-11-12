@@ -393,6 +393,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+ switchCustomerButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#EAF2FF',
+  borderRadius: 14,
+  padding: 15,
+  marginBottom: 22,
+  borderWidth: 1,
+  borderColor: '#B8D4FF',
+},
+
+switchCustomerText: {
+  flex: 1,
+  marginLeft: 10,
+  fontSize: 15,
+  fontWeight: 'bold',
+  color: '#2874F0',
+},
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
