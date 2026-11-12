@@ -1454,7 +1454,84 @@ async def get_me(
 ):
     return user
 
+@api_router.put("/auth/account-mode")
+async def switch_account_mode(
+    payload: AccountModeSwitchRequest,
+    user: dict = Depends(get_current_user)
+):
+    requested_mode = payload.mode.strip().lower()
 
+    if requested_mode not in {"customer", "seller"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Account mode must be customer or seller"
+        )
+
+    if user["role"] == "admin":
+        raise HTTPException(
+            status_code=400,
+            detail="Admin accounts cannot switch account mode"
+        )
+
+    current_user = await db.users.find_one({
+        "_id": ObjectId(user["id"])
+    })
+
+    if not current_user:
+        raise HTTPException(
+            status_code=404,
+            detail="User account not found"
+        )
+
+    # Switching to seller is allowed only for an approved seller.
+    if requested_mode == "seller":
+        application = await db.seller_applications.find_one({
+            "user_id": user["id"],
+            "status": "approved",
+        })
+
+        if not application:
+            raise HTTPException(
+                status_code=403,
+                detail="Your seller application is not approved"
+            )
+
+    # Update the single user account's active role.
+    await db.users.update_one(
+        {"_id": ObjectId(user["id"])},
+        {
+            "$set": {
+                "role": requested_mode,
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        }
+    )
+
+    # Create a fresh token with the new account mode.
+    new_token = create_access_token({
+        "user_id": user["id"],
+        "role": requested_mode,
+    })
+
+    updated_user = await db.users.find_one({
+        "_id": ObjectId(user["id"])
+    })
+
+    return {
+        "message": (
+            "Switched to seller account"
+            if requested_mode == "seller"
+            else "Switched to customer account"
+        ),
+        "token": new_token,
+        "user": {
+            "id": str(updated_user["_id"]),
+            "email": updated_user.get("email", ""),
+            "name": updated_user.get("name", ""),
+            "phone": updated_user.get("phone", ""),
+            "role": requested_mode,
+        },
+    }
 # ==================== SAINT ROUTES ====================
 
 @api_router.post("/saints/profile")
