@@ -119,6 +119,53 @@ export default function SellerDashboard() {
         <Text style={styles.description}>
           Manage your shop, products and customer orders.
         </Text>
+        <TouchableOpacity
+  style={styles.switchCustomerButton}
+  onPress={async () => {
+    try {
+      const response = await apiClient.put('/auth/account-mode', {
+        mode: 'customer',
+      });
+
+      if (response?.token) {
+        await apiClient.setAuthToken(response.token);
+      }
+
+      Alert.alert(
+        'Customer Account',
+        'You have switched to your customer account.',
+        [
+          {
+            text: 'Continue',
+            onPress: () => router.replace('/customer/dashboard'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Unable to switch',
+        error?.message || 'Unable to switch to customer account.'
+      );
+    }
+  }}
+  activeOpacity={0.8}
+>
+  <Ionicons
+    name="person-outline"
+    size={22}
+    color="#2874F0"
+  />
+
+  <Text style={styles.switchCustomerText}>
+    Switch to Customer
+  </Text>
+
+  <Ionicons
+    name="arrow-forward"
+    size={20}
+    color="#2874F0"
+  />
+</TouchableOpacity>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
